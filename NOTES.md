@@ -114,3 +114,10 @@ Full annotated evidence in `RECON.md`. Key takeaways:
 - Lesson: a client-side edit changes only what you see; an edit to the authority changes reality.
   Online, the authority is on someone else's machine.
 - Next: freeze A for god mode, then pointer scan (step 2.5) to survive relaunch.
+- **God mode works (froze A at 25600):** each hit, the bar drops to 100 - damage, then the *next* hit
+  starts from 100 again. The server computes damage from the frozen 100 and sends the result (flagged
+  change); Cheat Engine then silently rewrites the real value to 100 (no flag, no sync), so the bar keeps
+  showing the last sent number until the next hit.
+- Weakness of freezing: Cheat Engine rewrites on a timer (~every 100 ms). A single hit bigger than 100 HP,
+  or two hits in the same frame, lands before the rewrite -> you can still die. A robust god mode patches
+  the *code* (`Health::change_by`) instead of the *data*: that's Phase 3.
