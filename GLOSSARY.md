@@ -54,6 +54,16 @@ Plain-words definitions. Add a term the first time you meet it.
   Easy to balance; also easy to read and tamper with if shipped as plain text.
 - **RON (Rusty Object Notation)** — the plain-text data format Veloren uses for its assets.
 
+## Memory layout
+- **Fixed-point** — storing a fractional number as an integer times a constant (Veloren: value ×256).
+  100.0 HP is stored as `25600`. Fast integer math; also an accidental speed bump for memory scanners.
+- **`#[repr(Rust)]`** — the default Rust struct layout: the compiler **reorders fields** to cut padding,
+  so source order ≠ memory order. You must read offsets from the binary, not assume declaration order.
+- **line-tables-only DWARF (`debug=1`)** — ships function names + source line mappings (for backtraces)
+  but not struct field layouts. `gdb ptype` can't dump offsets; you recover them from source + disassembly.
+- **Calling convention (Win64):** first arg in **RCX**. In a method, RCX = `&self`/`&mut self`, so
+  `mov [rcx+0x50],...` is writing a field at offset 0x50 of the object.
+
 ## Game architecture
 
 - **ECS (Entity-Component-System)** — entities are just IDs; data lives in per-type *component storages*

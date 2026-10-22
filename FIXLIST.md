@@ -26,5 +26,16 @@ Each item: **what**, **why (which attack it answers)**, **how (UE specifics)**. 
       Denuvo-protected AAA game defeated with a hypervisor-level bypass. Anything the client can
       run, the client's owner can eventually change. Real protection = server authority (see Phase 5).
 
-<!-- Later phases add: obfuscated stat wrapper, sanity checks, server RPC validation,
-     movement correction, hook/debugger detection, EAC via Epic Online Services. -->
+## Phase 2 — memory editing defenses
+- [ ] **Obfuscate critical stats in memory.** Why: health was findable as `displayed*256`, a fixed guessable
+      transform. How: store `value XOR session_key` + a checksum; recompute on read; rotate the key per
+      session. (Veloren's ×256 fixed-point only slows a beginner — don't rely on it.)
+- [ ] **Sanity-check every stat mutation.** Why: freezing `current` was never questioned. How: enforce
+      `current <= maximum` (Veloren already does in `change_by`), reject health gains without a heal event,
+      rate-limit changes. Client-side these only slow cheats; server-side they're real.
+- [ ] **Keep mutation authoritative on the server; replicate down.** Why: the client holds a writable copy;
+      freezing it is cosmetic online. How: model after `change_by` on the server + a dirty flag that syncs to
+      clients (Veloren's `DerefFlaggedStorage`). The client may never be trusted to report its own health.
+
+<!-- Later phases add: server RPC WithValidation, movement/speed-hack correction,
+     hook/debugger detection, EAC via Epic Online Services. -->

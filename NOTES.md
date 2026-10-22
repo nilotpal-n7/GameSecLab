@@ -77,6 +77,22 @@ Full annotated evidence in `RECON.md`. Key takeaways:
     object. Damage flows attack -> `HealthChangeEvent` -> system -> `Health::change_by`.
   - Single-player = two copies of game state in one process (embedded server + client). Phase 2 is about
     finding the server's copy.
+## 2026-10-22 — Phase 1-by-hand on Veloren (no UE tools, used debug info + source + disasm)
+
+- `gdb ptype/o Health` fails: build is **line-tables-only DWARF** (`debug=1`) — function names yes,
+  Rust struct layouts no (556,850 subprograms, 0 Rust structure_types; the 149 are C runtime).
+- Recovered the layout anyway: function symbols + open-source `health.rs`/`energy.rs` (pulled from GitLab
+  at tag v0.18.0) + reading `[rcx+off]` in `Health::change_by`. **Claude verified against the binary:**
+  - `current` @ **+0x50** (`mov %r15d,0x50(%rcx)`), `maximum` @ **+0x58** (clamp source).
+  - **x256 fixed point** (constant `0x43800000` = 256.0): memory = displayed*256; 100 HP -> 25600.
+  - `Energy` = 16 bytes: current/base_max/maximum u32 (x256) + regen_rate f32 (raw).
+  - Fixed the first-pass guess: `last_change` is at +0x00, not +0x30.
+- This is effectively Phase 1 done for Veloren: debug info replaced UE4SS/Dumper-7. On a stripped AAA
+  binary you'd get here via Dumper-7 (Phase 1) or breakpoints (Phase 4) instead.
+- Phase 2 lesson written using these offsets (`phases/phase2_memory_editing.md`).
+
+## 2026-10-22 — Phase 0: static recon of Veloren (earlier)
+
 - Gotchas: Rust strings aren't null-terminated (junk like `energy_rH3`); PowerShell truncates columns
   (use `-ExpandProperty` / `Format-List`); DIE GUI hides Entropy until **Advanced** is ticked;
   CLI needs `-u` for heuristics.

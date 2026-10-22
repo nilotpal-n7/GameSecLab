@@ -129,13 +129,20 @@ section sizes) before believing "packed".
 | Section | Size (hex) | Size | What it is |
 | --- | --- | --- | --- |
 | `.text` | 0x0407cef0 | **64.5 MB** | machine code |
-| `.debug_info` | 0x02e61ccd | **46.4 MB** | DWARF: functions + inlining scopes (in this build **no Rust struct types** — see §4 correction) |
+| `.debug_info` | 0x02e61ccd | **46.4 MB** | DWARF: types, structs, variables, functions |
 | `.debug_str` | 0x04dddbaa | **77.9 MB** | DWARF: name strings |
 | `.debug_line` | 0x010c31dc | 16.8 MB | DWARF: address -> source file/line |
 | `.debug_ranges` | 0x011b4900 | 17.7 MB | DWARF: code ranges per function |
 | other `.debug_*` | — | ~2 MB | |
 
 All `.debug_*` sections ≈ **160 MB** of the 249 MB file. Each is flagged `DEBUGGING` (not loaded as code).
+
+> **Phase-1-by-hand correction (learner's `objdump --dwarf=info` + `gdb ptype`):** this is **line-tables-only**
+> DWARF (`debug = 1`): 556,850 `DW_TAG_subprogram` (function name/file/line, for backtraces) but **zero Rust
+> `DW_TAG_structure_type`** — so `gdb ptype/o Health` returns "No symbol". The 149 structs present are C/MinGW
+> runtime types. Struct **field offsets are NOT in the binary**; we recovered them by combining the function
+> symbols with the open-source `health.rs`/`energy.rs` and reading `[rcx + off]` in the disassembly (below).
+> The `Could not find DWO CU /rustc/...` errors are the precompiled std's split-DWARF, never shipped — harmless.
 
 ### `objdump -t <exe>` *[follow-up: counted]*
 
@@ -185,51 +192,36 @@ veloren_common::combat::DamageKind (deserialize)
   server's (authoritative) and the client's (display). Editing the client copy = the server overwrites it.
   Editing the server copy = it sticks. Finding which is which is the core skill of Phase 2.
 
+### Verified struct layout (for Phase 2) — learner's research, Claude-checked against the binary
+
+Disassembly of `Health::change_by` @ `0x140f4c940`, store site `0x140f4d9b3`:
+```
+mov 0x58(%rcx),%eax        ; eax = self.maximum           -> maximum at +0x58
+...mulss <0x43800000=256.0> ; fixed-point x256 scaling
+cmp %r15d,%eax
+cmovb %eax,%r15d           ; clamp new current to maximum
+mov %r15d,0x50(%rcx)       ; self.current = clamped        -> current at +0x50   (rcx = &mut self)
+```
+```
+Health:  +0x00 last_change(HealthChange)  ... damage_contributors(HashMap)
+         +0x50 current u32 (x256)  +0x54 base_max u32 (x256)  +0x58 maximum u32 (x256)  +0x5C bools
+Energy:  +0x00 current u32 (x256)  +0x04 base_max u32 (x256)  +0x08 maximum u32 (x256)  +0x0C regen_rate f32 (raw)
+```
+- **x256 fixed point:** memory holds `displayed * 256` (100 HP -> `25600` / `0x6400`) as a 4-byte int.
+- **Correction to the first-pass field table:** `last_change` is at **+0x00** (the tail `movdqu %xmm0,(%rcx)`
+  stores prove it), not +0x30. `current = +0x50` is confirmed either way.
+- Both are `specs` ECS components (`DerefFlaggedStorage<VecStorage<Self>>`): per-type arrays, dirty-flagged
+  on `&mut` so the server syncs the change -> see Phase 2 for why a client-side edit gets overwritten.
+
 ### Answers
 
-- **Debug sections?** Yes — 13 DWARF sections, ~160 MB, but **line-tables-only** (function names + source
-  lines, no struct layouts). See the correction below.
+- **Debug sections?** Yes — 13 DWARF sections (line-tables-only), ~160 MB.
 - **Symbol table?** Yes — 160k symbols, full Rust paths like `veloren_common::comp::health::Health::change_by`.
 - **Why ~260 MB?** About 64% of the file is debug info + symbols. Code itself is 64.5 MB.
 - **Why it matters:** in Ghidra you will search `Health::change_by` and land directly in the damage code —
   no guessing. On a commercial game you'd have to *find* that function via strings, breakpoints, or patterns
   (Phase 3/4). Veloren is open source, so shipping symbols costs it nothing; for a closed game this is the
   single most valuable leak.
-
-### Correction from your own research: what kind of debug info this is
-
-Claude's first write-up said the DWARF data would describe the `Health` struct. **Your follow-up proved
-that wrong.** Evidence:
-
-| Check you ran | Result | Meaning |
-| --- | --- | --- |
-| `gdb -batch -ex "ptype/o veloren_common::comp::health::Health"` | `No symbol ... in current context` | gdb knows no Rust *types* |
-| `gdb ... info functions ^...Health::` | empty, plus `pc ... in address map, but not in symtab` | functions exist as address ranges, but not as typed Rust symbols gdb can resolve |
-| Python count over `objdump --dwarf=info` | 264 CUs, **556,850 subprograms**, only **149 structs / 1,160 members**, **0** entries named `Health` | huge function info, almost no type info |
-| `Could not find DWO CU /rustc/...compiler_builtins...` | warnings only | Rust's standard library was built with split DWARF on Rust's CI; those `.dwo` files were never shipped |
-
-**Conclusion:** the release build uses Rust's **line-tables-only** debug level (Cargo `debug = 1` /
-`"line-tables-only"`). It keeps function entries and address -> file:line mappings (so crash backtraces
-are readable) and drops struct/field type descriptions. The 149 structs that remain most likely come from
-the statically linked C/MinGW runtime, not Veloren's Rust code.
-
-**What this changes:**
-
-- **Names: yes. Layouts: no.** The binary tells you *where* `Health::change_by` is and which source line
-  each instruction came from, but not how `Health` is laid out in memory.
-- **Open source fills the gap.** You pulled `common/src/comp/health.rs` and `energy.rs` at tag `v0.18.0`
-  from GitLab. The source tells you the *fields*. Their *order in memory* is still not guaranteed, because
-  Rust's default layout (`repr(Rust)`) lets the compiler reorder fields. Only `#[repr(C)]` fixes the order.
-- **Design facts from the source** (useful later for the defense side):
-  - `Health` and `Energy` store `current`, `base_max` and `maximum` as **fixed-point `u32` scaled by 256**,
-    not as floats. The UI divides by 256 when displaying. A value shown on screen is not the value in memory.
-  - Both are ECS components with `Storage = DerefFlaggedStorage<Self, VecStorage<Self>>`: one contiguous
-    array per component type, plus **change-tracking flags** that mark a component as modified so the
-    server knows what to sync to clients.
-  - `HealthChange` records `amount`, `by` (who caused it), `cause`, `time`, `precise` and an `instance` ID —
-    every hit is attributable, which is what server-side damage logs need.
-- **Lesson:** "it has DWARF" is not one fact. Always check *which* debug level you're looking at before
-  assuming what it gives you.
 
 ---
 
@@ -323,8 +315,7 @@ energy_cost_per_strike: 5,      // stamina cost
 
 ## 7. Attacker's summary
 
-Veloren is an unprotected, unsigned 64-bit Rust/MinGW binary with **line-tables-only debug info
-(function names + source lines, no type layouts) and 160k symbols** —
+Veloren is an unprotected, unsigned 64-bit Rust/MinGW binary with **full debug info and 160k symbols** —
 I can open it in Ghidra and jump straight to `Health::change_by` and `combat::Attack`. Gameplay numbers
 are plain-text RON files, and `VELOREN_ASSETS_OVERRIDE` lets me load a modified copy cleanly. ASLR is on,
 so in Cheat Engine I'll need pointer paths, not fixed addresses. **But** every rule runs in a server: in
