@@ -135,3 +135,9 @@ Full annotated evidence in `RECON.md`. Key takeaways:
   confirmed by it advancing, amount f32 @0x20 = last damage), HashMap 0x28–0x4F (ptr, mask 7, growth 6,
   items 1, seed), current/base_max/maximum @0x50/54/58, bools @0x5C–0x5E. At +0x60 the next NPC's Health
   starts: the ECS VecStorage seen directly in memory. Full table in `dumps/veloren_health_pointer.md`.
+- **Recording decoded every byte of `last_change` (0x00–0x27)** against v0.18.0 source:
+  attacker = `DamageContributor::Group{entity_uid 1224, group ENEMY=u32::MAX}`; two damage types
+  alternating — `Attack(Melee)` hits of -5.4/-10.85 (precise=1) and `Buff(Bleeding)` ticks of -0.271
+  (BuffKind #34 = 0x22). Byte 0x27 flips between 00 and 40: padding junk, never initialised.
+- Lessons: Rust packs enums as *tag + payload* (and uses spare tag values for `None`); **padding bytes
+  hold garbage**, so never fingerprint/compare structs with raw memcmp including padding.

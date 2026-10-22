@@ -65,6 +65,12 @@ Plain-words definitions. Add a term the first time you meet it.
 - **Calling convention (Win64):** first arg in **RCX**. In a method, RCX = `&self`/`&mut self`, so
   `mov [rcx+0x50],...` is writing a field at offset 0x50 of the object.
 
+- **Enum tag + payload** — a Rust/C++ tagged union is stored as a small *tag* (which variant) followed by
+  that variant's data. `DamageSource::Buff(Bleeding)` = tag `0`, payload `0x22`. Rust's *niche optimisation*
+  reuses impossible tag values to mean `None`, so `Option<T>` often costs no extra bytes.
+- **Padding bytes** — gaps the compiler inserts for alignment. Their contents are leftover junk (Veloren
+  byte `0x27` flips 00/40), so hashing or comparing whole structs byte-for-byte gives false mismatches.
+
 ## Game architecture
 
 - **ECS (Entity-Component-System)** — entities are just IDs; data lives in per-type *component storages*

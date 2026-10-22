@@ -37,14 +37,21 @@ whatever `RCX` holds when it runs.* Using that is a code-hook technique — Phas
 
 ## Full Health layout, mapped live in ReClass (server copy, god mode frozen)
 
+Sources: two ReClass screenshots + a 17 s screen recording (frames extracted with ffmpeg), each field
+cross-checked against Veloren v0.18.0 source (`health.rs`, `combat.rs`, `group.rs`, `buff.rs`).
+
 | Offset | Size | Field | Evidence |
 | --- | --- | --- | --- |
-| `0x00` | 8 | `last_change.by` (part 1: tag / group?) | `01 00 00 00 FF FF FF FF`; not decoded yet |
-| `0x08` | 8 | `last_change.by` attacker Uid (likely) | `1224` |
-| `0x10` | 8 | `last_change.time` f64 | 2293.97 -> 2422.28 between snapshots (game clock, seconds) |
-| `0x18` | 8 | `last_change.instance` u64 | random, new value every change |
-| `0x20` | 4 | `last_change.amount` f32 | -8.95, later -0.271 (damage of the last hit) |
-| `0x24` | 4 | `last_change.cause` / `precise` tags | `01 00 01 00` -> `00 22 00 00` when damage type changed |
+| `0x00` | 4 | `last_change.by` variant tag (u32) | `1` = `DamageContributor::Group` (0 = Solo) |
+| `0x04` | 4 | `last_change.by` group (u32) | `FFFFFFFF` = `ENEMY` (`u32::MAX`); neighbour has `FFFFFFFE` = `NPC` |
+| `0x08` | 8 | `last_change.by` entity_uid (u64) | `1224` = the attacker, same for both hit types |
+| `0x10` | 8 | `last_change.time` f64 | advanced 2848.4 -> 2865.1 over a 17 s recording: game clock in seconds |
+| `0x18` | 8 | `last_change.instance` u64 | new random value on every change |
+| `0x20` | 4 | `last_change.amount` f32 | -5.392, -10.850 (melee hits), -0.271 (bleed ticks) |
+| `0x24` | 1 | `last_change.cause` variant | `1` = `DamageSource::Attack`, `0` = `DamageSource::Buff` |
+| `0x25` | 1 | `last_change.cause` payload | Attack: `0` = `AttackSource::Melee`; Buff: `0x22` = BuffKind #34 = `Bleeding` |
+| `0x26` | 1 | `last_change.precise` bool | `1` on the melee hits, `0` on bleed ticks |
+| `0x27` | 1 | padding | `00` / `40`: leftover junk, never initialised |
 | `0x28` | 8 | `damage_contributors` table pointer | `-> <HEAP>32076070B00` |
 | `0x30` | 8 | bucket_mask | 7 (8 buckets) |
 | `0x38` | 8 | growth_left | 6 |
