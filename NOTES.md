@@ -153,3 +153,17 @@ Full annotated evidence in `RECON.md`. Key takeaways:
   `change_by_block_damage.js` (zero damage; all-entities by default, `ONLY_ENTITY` to target the player).
   Driver `run_hook.py` (frida 17 module; frida CLI not on PATH). Lesson preview: shared choke point needs a
   player filter; inline hooks are detectable via prologue-integrity checks. Lesson: `phases/phase3_warmup_veloren.md`.
+
+## 2026-10-22 — Phase 3 warm-up: change_by logger ran (180 events)
+
+- **Hook worked first try.** base `0x7FF7E26E0000` + RVA `0xF4D9B3` = `0x7FF7E362D9B3`; same instruction as
+  Phase 0/1 static and Phase 2 debugger. Static analysis, debugger, and Frida all agree on one address.
+- **Player = `0x3204EDA8000`** (max 100) — exact match to the ReClass struct base from Phase 2.
+- **One function serves ALL entities.** 14+ distinct Health addresses in 180 events (player, several max=50
+  trash mobs dying to 0.0, a max=320 boss `...8540`, max=85/65 others). THE reason a hook here needs a filter.
+- **ECS stride 0x60 confirmed live:** every entity address = player_base + n*0x60 (slots 0,2,14,17,25,...,149).
+  Matches the "+0x60 = next entity" finding from ReClass — now proven across 14 entities.
+- **Damage types readable from deltas:** -0.1/-0.2 = DoT (bleed/poison) ticks; -5.4/-14.5/-35.2 = hits;
+  +5.0/+7.5/+1.3 = heals/regen; `-0.0` lines = sub-0.05 ticks rounding to 0 but still a write.
+- Next: `change_by_block_damage.js` with `ONLY_ENTITY` = this run's player base to block only the player's
+  damage (run-specific; a stable player filter is Phase 3 proper).
