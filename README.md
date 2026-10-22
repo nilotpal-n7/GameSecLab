@@ -56,7 +56,7 @@ C:\Tools\GameSecLab\
 | Detect It Easy (DIE) | 0 | already installed |
 | objdump / strings / c++filt | 0 | already in msys64 (`C:\Tools\msys64\ucrt64\bin`) |
 | Cheat Engine 7.7 | 2 | installed system-wide (`C:\Program Files\Cheat Engine`; includes `Tutorial-x86_64.exe`) |
-| ReClass.NET | 2 | later |
+| ReClass.NET v1.2 | 2 | to install (`C:ToolsReClass.NET`, from `ReClass.NET.rar`) |
 | Frida (pip) | 3 | later |
 | ScyllaHide | 4 | later |
 | UE4SS, Dumper-7, FModel | 1 | later (Lyra) |
