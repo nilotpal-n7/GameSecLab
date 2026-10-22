@@ -1,0 +1,62 @@
+# GameSecLab
+
+Hands-on course: learn how game cheats work on a running process, and how anti-cheat
+detects/prevents them — so you can build those defenses into your own games.
+
+**You do the work. Claude explains, writes scripts, and reviews what you paste back.**
+Each phase file in `phases/` is a guided lesson: CONCEPT -> YOUR STEPS -> ANTI-CHEAT LENS -> DELIVERABLE.
+Do every step yourself, paste the output back, and only move on after you can explain it.
+
+## Lab rules
+
+1. Single-player / offline only. Never attach tools to a game while it is connected to a
+   public server — that hurts real players and gets accounts banned.
+2. Legit copies only. No cracked games, no DRM (Denuvo/Steam) bypass, no anti-cheat bypass.
+3. Every attack you learn gets a matching defense written into `FIXLIST.md`.
+
+## Targets
+
+| Target | Engine | Used for | Location |
+| --- | --- | --- | --- |
+| Veloren v0.18.0 | Rust (custom) | Phases 0, 2, 3 (generic hooking), 4, 5 | `targets\Veloren` |
+| Lyra Starter Game (Shipping build) | Unreal Engine 5 | Phases 0 (UE recon), 1, 3 (ProcessEvent) | `targets\Lyra` (later) |
+
+## Folder map
+
+```text
+C:\Tools\                 <- reusable tools live here (Ghidra, x64dbg, DIE, Cheat Engine, ...)
+C:\Tools\GameSecLab\
+  README.md               <- this file
+  NOTES.md                <- running learning log (what you did, what you learned)
+  GLOSSARY.md             <- every term, in plain words
+  FIXLIST.md              <- defenses to implement in your own games
+  RECON.md                <- Phase 0 deliverable (you write it)
+  phases\                 <- one lesson file per phase
+  targets\                <- the practice games
+  scripts\                <- cheatengine, frida, python, x64dbg, ghidra scripts
+  dumps\                  <- SDK dumps, pointer scans, logs you generate
+  screenshots\            <- evidence for your notes
+```
+
+## Roadmap
+
+- [ ] Phase 0 — Static recon (Veloren, then Lyra)
+- [ ] Phase 1 — Map the game live (Lyra: UE4SS, Dumper-7, offsets.json)
+- [ ] Phase 2 — Memory editing (Veloren: Cheat Engine, pointer paths, ReClass)
+- [ ] Phase 3 — Function hooking (Frida; ProcessEvent on Lyra)
+- [ ] Phase 4 — Debugger & deeper RE (x64dbg + Ghidra)
+- [ ] Phase 5 — Anti-cheat synthesis (ANTICHEAT_MAP.md, FIXLIST.md)
+
+## Tool install status (all go in `C:\Tools\<Name>`)
+
+| Tool | Phase | Status |
+| --- | --- | --- |
+| Ghidra | 4 | already installed (`C:\Tools\ghidra`) |
+| x64dbg | 4 | already installed? (`C:\Tools\x96gdb` — confirm in Phase 0) |
+| Detect It Easy (DIE) | 0 | you install in Phase 0 |
+| Cheat Engine | 2 | later |
+| ReClass.NET | 2 | later |
+| Frida (pip) | 3 | later |
+| ScyllaHide | 4 | later |
+| UE4SS, Dumper-7, FModel | 1 | later (Lyra) |
+| System Informer | any | optional |

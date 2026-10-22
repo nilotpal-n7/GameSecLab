@@ -1,0 +1,20 @@
+# Practice games are large third-party binaries: keep them out of the repo.
+# Re-download instructions live in NOTES.md.
+targets/
+
+# Binaries and archives anywhere in the lab
+*.exe
+*.dll
+*.sys
+*.pdb
+*.zip
+*.7z
+
+# Big generated output: commit curated results (e.g. offsets.json), not raw dumps
+dumps/**
+!dumps/.gitkeep
+
+# Editor / OS noise
+.vscode/
+Thumbs.db
+desktop.ini
