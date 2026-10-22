@@ -55,7 +55,7 @@ C:\Tools\GameSecLab\
 | x64dbg | 4 | installed (`C:\Tools\x96gdb` — folder name is a typo of x64dbg; `release\x96dbg.exe` launcher) |
 | Detect It Easy (DIE) | 0 | already installed |
 | objdump / strings / c++filt | 0 | already in msys64 (`C:\Tools\msys64\ucrt64\bin`) |
-| Cheat Engine | 2 | later |
+| Cheat Engine | 2 | installed system-wide (`C:\Program Files\Cheat Engine`) |
 | ReClass.NET | 2 | later |
 | Frida (pip) | 3 | later |
 | ScyllaHide | 4 | later |

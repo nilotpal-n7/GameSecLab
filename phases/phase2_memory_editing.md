@@ -43,12 +43,11 @@ it lets the game do fractional health with fast integer math — an *accidental*
 
 ## 2. YOUR STEPS
 
-### Step 2.0 — Install Cheat Engine into `C:\Tools\CheatEngine`
-1. Get it from the official site: <https://cheatengine.org/> (or the dev's GitHub releases,
-   <https://github.com/cheat-engine/cheat-engine/releases>).
-2. **During setup, decline all bundled/adware offers** (custom install, untick extras).
-3. Install to `C:\Tools\CheatEngine`. Update the tool table in `README.md`.
-4. Lab hygiene: we only ever attach to **single-player** Veloren. Never with a public server connected.
+### Step 2.0 — Cheat Engine (already installed)
+- Installed system-wide at **`C:\Program Files\Cheat Engine\Cheat Engine.exe`**. Just launch it.
+- Optional warm-up: run `Tutorial-x86_64.exe` in that folder and do steps 1–6 — exact value, unknown
+  initial value, and pointer scanning are precisely what we use below.
+- Lab hygiene: we only ever attach to **single-player** Veloren. Never with a public server connected.
 
 ### Step 2.1 — Launch Veloren single-player and note your HP
 1. Start `veloren-voxygen.exe`, create/enter a **singleplayer** world, spawn in.
