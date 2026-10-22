@@ -69,6 +69,14 @@ Full annotated evidence in `RECON.md`. Key takeaways:
 - **`VELOREN_ASSETS_OVERRIDE`** env var redirects asset loading -> clean way to test modified data.
 - **Embedded server:** single-player runs the same server code locally -> I am the authority offline;
   online, `server.veloren.net` computes everything itself.
+- **Re-ran everything myself.** New from that run:
+  - Server exe = same build but **no OpenGL** -> headless authority.
+  - My `_ZN` count was 91,226 vs 67,559 earlier: mine also matched section/pointer names that *contain*
+    Rust names (`.text$_ZN...`). Know what a regex counts before quoting a number.
+  - Health is an **ECS component** (`specs::storage::MaskedStorage<Health>`), not a field on a player
+    object. Damage flows attack -> `HealthChangeEvent` -> system -> `Health::change_by`.
+  - Single-player = two copies of game state in one process (embedded server + client). Phase 2 is about
+    finding the server's copy.
 - Gotchas: Rust strings aren't null-terminated (junk like `energy_rH3`); PowerShell truncates columns
   (use `-ExpandProperty` / `Format-List`); DIE GUI hides Entropy until **Advanced** is ticked;
   CLI needs `-u` for heuristics.

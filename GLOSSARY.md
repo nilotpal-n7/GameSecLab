@@ -54,6 +54,15 @@ Plain-words definitions. Add a term the first time you meet it.
   Easy to balance; also easy to read and tamper with if shipped as plain text.
 - **RON (Rusty Object Notation)** — the plain-text data format Veloren uses for its assets.
 
+## Game architecture
+
+- **ECS (Entity-Component-System)** — entities are just IDs; data lives in per-type *component storages*
+  (all `Health` values together, all `Position` values together); *systems* loop over them each tick.
+  Veloren uses the `specs` library. Memory-hacking impact: no "Player object" to walk — you find the
+  storage array and your entity's slot.
+- **Event-driven damage** — attacks don't subtract health directly; they emit an event
+  (`HealthChangeEvent`) that one system applies later. One choke point = one hook to catch all damage.
+
 ## Networking
 
 - **Embedded / listen server** — the game server running inside the player's own process (Veloren
