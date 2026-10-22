@@ -167,3 +167,10 @@ Full annotated evidence in `RECON.md`. Key takeaways:
   +5.0/+7.5/+1.3 = heals/regen; `-0.0` lines = sub-0.05 ticks rounding to 0 but still a write.
 - Next: `change_by_block_damage.js` with `ONLY_ENTITY` = this run's player base to block only the player's
   damage (run-specific; a stable player filter is Phase 3 proper).
+- **Root cause of the "blocker did nothing" scare: the game was idle, not a broken hook.** A QPC probe
+  fired ~46k times in 6s from the same (background) Frida env -> hooks placed here DO fire. change_by fired
+  ~0 while on a death/menu screen. A clean 45s block run during active play: calls=35, dmg=16, blocked=16 —
+  hook fires, block branch runs, r15 rewritten. Lesson: when a hook shows zero, check the target is actually
+  exercising that code before suspecting the hook. (Also: Frida 17 renamed APIs — `Module.findExportByName`
+  is gone; use `Module.getGlobalExportByName` / `module.getExportByName`.)
+- Fixed run_hook.py timed mode to os._exit instead of session.detach (detach hung on this target).

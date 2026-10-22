@@ -26,14 +26,33 @@ def main():
     script = session.create_script(source)
     script.on("message", on_message)
     script.load()
-    print("[*] loaded. Play the game; press Enter here to detach.")
-    try:
-        input()
-    except KeyboardInterrupt:
-        pass
-    session.detach()
-    print("[*] detached.")
-    return 0
+    # Optional 2nd arg = seconds to run (for unattended/background use).
+    # Omit it to run until you press Enter.
+    secs = None
+    if len(sys.argv) >= 3:
+        try:
+            secs = float(sys.argv[2])
+        except ValueError:
+            secs = None
+    if secs is not None:
+        import time
+        print(f"[*] loaded. Running for {secs:.0f}s; play now.")
+        sys.stdout.flush()
+        time.sleep(secs)
+        # Frida's session.detach() can hang on some targets; exiting the process
+        # removes the agent (and all hooks) cleanly, so just exit.
+        print("[*] done (hooks removed on exit).")
+        sys.stdout.flush()
+        os._exit(0)
+    else:
+        print("[*] loaded. Play the game; press Enter here to detach.")
+        try:
+            input()
+        except (KeyboardInterrupt, EOFError):
+            pass
+        session.detach()
+        print("[*] detached.")
+        return 0
 
 def on_message(message, data):
     if message["type"] == "send":
