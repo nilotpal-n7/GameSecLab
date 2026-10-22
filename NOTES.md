@@ -146,3 +146,10 @@ Full annotated evidence in `RECON.md`. Key takeaways:
   split client-side (cost-raising, always defeatable) vs server-side (real). The one proven-real defense:
   server-authoritative state — froze the server copy and it worked; froze the client copy and the next
   sync overwrote it. FIXLIST gained field-hash integrity + handle/tool/DR detection (as telemetry).
+- **Phase 3 warm-up (Frida) prepared.** Hook the verified store `veloren-voxygen.exe+0xF4D9B3`
+  (`mov [rcx+0x50],r15d`): rcx=Health*, r15d=new current, [rcx+0x50]=old, [rcx+0x58]=max. Chose the store,
+  not the function entry, because Rust's ABI + inlining make entry args unreliable. Scripts:
+  `change_by_logger.js` (observe all health changes — fires for every ECS entity) and
+  `change_by_block_damage.js` (zero damage; all-entities by default, `ONLY_ENTITY` to target the player).
+  Driver `run_hook.py` (frida 17 module; frida CLI not on PATH). Lesson preview: shared choke point needs a
+  player filter; inline hooks are detectable via prologue-integrity checks. Lesson: `phases/phase3_warmup_veloren.md`.
