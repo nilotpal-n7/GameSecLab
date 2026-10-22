@@ -179,3 +179,9 @@ Full annotated evidence in `RECON.md`. Key takeaways:
   at the store site is honored — mid-function register modification works via Frida Interceptor. The whole
   warm-up (observe -> modify) is validated on Veloren. The one wrinkle: it blocks EVERY entity (ECS shared
   choke point) -> a real cheat needs a player filter (ONLY_ENTITY), which is Phase 3 proper on Unreal.
+- **Player-only filter WORKS (selective cheat).** Can't tell the player from the hook, so identify BY
+  BEHAVIOUR: calibrate phase counts damage per entity while the user takes hits without attacking; the
+  only/most-damaged entity is the player -> lock it. Live: locked PLAYER=0x3204E718000 max=100 (auto-found
+  fresh this run), then blocked=392 on that entity only. In-game: player HP held at 28 under attack while
+  enemies still took damage and died. This is the ECS "identify your entity" skill that Phase 3 on Unreal
+  formalises. Script: `scripts/frida/change_by_block_player.js`.

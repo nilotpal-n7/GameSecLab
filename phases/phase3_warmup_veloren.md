@@ -5,6 +5,7 @@ function, which is exactly what you'll do to Unreal's `ProcessEvent` later — j
 Unreal machinery.
 
 ## CONCEPT — what a hook is
+
 A **hook** diverts a running function through your code. Frida's `Interceptor.attach(addr, {onEnter})`
 inserts a detour at `addr`: when the CPU reaches it, your JavaScript runs first (with full access to the
 registers via `this.context`), then the original code continues. No files are patched on disk; it's all in
@@ -20,14 +21,17 @@ heavily, so reading arguments at the entry is unreliable. At the store we *know*
 (ASLR), but **RVA `0xF4D9B3` is constant**, so Frida finds it via `module base + RVA`.
 
 ## SETUP (once)
+
 `pip install frida-tools` — already done (frida 17.x). We drive it from Python so PATH doesn't matter.
 Close Cheat Engine / ReClass first (their breakpoints/handles can clash). Start Veloren singleplayer.
 
 ## STEP 1 — observe (read-only)
+
 ```bash
 cd C:\Tools\GameSecLab\scripts\frida
 python run_hook.py change_by_logger.js
 ```
+
 Take a hit, heal, stand in a fire. Each health change prints: entity address, old -> new HP, delta, max.
 **Watch for this:** you'll see lines for hits you *didn't* take — NPCs fighting elsewhere. That proves the
 function is shared across all entities (ECS). Press Enter to detach.
@@ -35,9 +39,11 @@ function is shared across all entities (ECS). Press Enter to detach.
 Paste a few log lines back.
 
 ## STEP 2 — modify (register edit)
+
 ```bash
 python run_hook.py change_by_block_damage.js
 ```
+
 Now when a write would *lower* health, the script overwrites `r15` with the old value first, so no damage
 lands. Try to take a hit — you won't lose HP.
 
@@ -49,6 +55,7 @@ affect only you. Finding "which entity is the player" automatically is the heart
 Restart the game to clear the hook.
 
 ## ANTI-CHEAT LENS
+
 - **Inline hook detection:** `Interceptor` overwrites the first bytes of the target with a jump. Anti-cheat
   can hash/compare `.text` against a known-good copy and spot the changed prologue (function-prologue
   integrity). Veloren does none of this; a protected game would.
@@ -56,6 +63,7 @@ Restart the game to clear the hook.
   `UObject::ProcessEvent`, and you read `UFunction*` + params instead of raw registers. That's Phase 3.
 
 ## FILES
+
 - `scripts/frida/change_by_logger.js` — observe every health change
 - `scripts/frida/change_by_block_damage.js` — block damage (all entities, or one via `ONLY_ENTITY`)
 - `scripts/frida/run_hook.py` — attach + load driver

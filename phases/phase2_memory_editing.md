@@ -95,6 +95,7 @@ it lets the game do fractional health with fast integer math — an *accidental*
 memory in one run and compare against a second run, keeping only paths valid in both:
 
 **Run 1**
+
 1. Right-click the **server** health address -> **Pointer scan for this address**.
 2. Select **Generate pointermap** -> OK -> save `dumps\veloren_run1.scandata`. Note the run-1 address.
 
