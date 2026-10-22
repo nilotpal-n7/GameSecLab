@@ -37,6 +37,13 @@ Each item: **what**, **why (which attack it answers)**, **how (UE specifics)**. 
 - [ ] **Keep mutation authoritative on the server; replicate down.** Why: the client holds a writable copy;
       freezing it is cosmetic online. How: model after `change_by` on the server + a dirty flag that syncs to
       clients (Veloren's `DerefFlaggedStorage`). The client may never be trusted to report its own health.
+- [ ] **Integrity-hash stat blocks over FIELDS, not raw bytes.** Why: a direct write bypasses the setter;
+      a shadow checksum catches it. How: hash only initialised fields — padding (bytes `0x27`/`0x5F` here)
+      holds junk and would cause false mismatches. Client-side detection only (defeatable), not prevention.
+- [ ] **Detect foreign handles / known tools / debug registers — as telemetry, not a wall.** Why: attach,
+      freezing, and hardware breakpoints are all observable (open handle with VM_WRITE, tool signatures,
+      DR0–DR7 set). How: enumerate handles to self, scan drivers/processes, check own CONTEXT. Every one is
+      defeatable (renamed tools, kernel reads, DBVM) — treat as cost-raising signals, never as protection.
 
 <!-- Later phases add: server RPC WithValidation, movement/speed-hack correction,
      hook/debugger detection, EAC via Epic Online Services. -->

@@ -141,3 +141,8 @@ Full annotated evidence in `RECON.md`. Key takeaways:
   (BuffKind #34 = 0x22). Byte 0x27 flips between 00 and 40: padding junk, never initialised.
 - Lessons: Rust packs enums as *tag + payload* (and uses spare tag values for `None`); **padding bytes
   hold garbage**, so never fingerprint/compare structs with raw memcmp including padding.
+- **Phase 2 closed.** Anti-cheat review in `phases/phase2_anticheat_review.md`: every attack we ran
+  (attach, value scan, freeze, pointer scan/code anchor, ReClass) mapped to detection signal + defense,
+  split client-side (cost-raising, always defeatable) vs server-side (real). The one proven-real defense:
+  server-authoritative state — froze the server copy and it worked; froze the client copy and the next
+  sync overwrote it. FIXLIST gained field-hash integrity + handle/tool/DR detection (as telemetry).

@@ -42,7 +42,7 @@ C:\Tools\GameSecLab\
 
 - [ ] Phase 0 — Static recon (Veloren: done, see RECON.md — Lyra recon when it's packaged)
 - [ ] Phase 1 — Map the game live (Lyra: UE4SS, Dumper-7, offsets.json)
-- [ ] Phase 2 — Memory editing (Veloren: Cheat Engine, pointer paths, ReClass)
+- [x] Phase 2 — Memory editing (Veloren: CE scan/freeze, server-vs-client copy, code anchor, ReClass) — done
 - [ ] Phase 3 — Function hooking (Frida; ProcessEvent on Lyra)
 - [ ] Phase 4 — Debugger & deeper RE (x64dbg + Ghidra)
 - [ ] Phase 5 — Anti-cheat synthesis (ANTICHEAT_MAP.md, FIXLIST.md)
