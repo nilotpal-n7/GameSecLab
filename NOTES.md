@@ -174,3 +174,8 @@ Full annotated evidence in `RECON.md`. Key takeaways:
   exercising that code before suspecting the hook. (Also: Frida 17 renamed APIs — `Module.findExportByName`
   is gone; use `Module.getGlobalExportByName` / `module.getExportByName`.)
 - Fixed run_hook.py timed mode to os._exit instead of session.detach (detach hung on this target).
+- **Modify half CONFIRMED working.** No-timer run during real combat: calls=329, dmg=315, blocked=315,
+  and in-game NOTHING lost health (player or enemies, HUD showed no decrease). So `this.context.r15 = old`
+  at the store site is honored — mid-function register modification works via Frida Interceptor. The whole
+  warm-up (observe -> modify) is validated on Veloren. The one wrinkle: it blocks EVERY entity (ECS shared
+  choke point) -> a real cheat needs a player filter (ONLY_ENTITY), which is Phase 3 proper on Unreal.
