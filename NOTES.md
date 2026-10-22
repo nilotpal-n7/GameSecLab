@@ -121,3 +121,13 @@ Full annotated evidence in `RECON.md`. Key takeaways:
 - Weakness of freezing: Cheat Engine rewrites on a timer (~every 100 ms). A single hit bigger than 100 HP,
   or two hits in the same frame, lands before the rewrite -> you can still die. A robust god mode patches
   the *code* (`Health::change_by`) instead of the *data*: that's Phase 3.
+- **Pointer scan dead end:** two compare scans (plain; then thread stacks as static, offset 65535, level 6)
+  both gave **0 paths**. Rust keeps the world on a thread, not in globals; Health is an ECS list slot; and
+  the run-1 pointermap had no stack info to compare against. ECS slot paths would be fragile anyway.
+- **What writes to this address** (debugger) on the server health: one instruction, 23 writes:
+  `7FF7E362D9B3  44 89 79 50  mov [rcx+50],r15d` — the **same** instruction found statically at
+  `0x140F4D9B3`. Static analysis and live debugging agree.
+- **ASLR measured:** RVA `0xF4D9B3` is fixed; this launch the module base was `0x7FF7E26E0000` instead of the
+  preferred `0x140000000`. Code addresses are stable as *module+RVA*; heap data (Health) is not.
+- Lesson: when data has no stable pointer path, anchor on the **code** that touches it. That's Phase 3.
+  Write-up: `dumps/veloren_health_pointer.md`.
