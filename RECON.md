@@ -195,6 +195,7 @@ veloren_common::combat::DamageKind (deserialize)
 ### Verified struct layout (for Phase 2) — learner's research, Claude-checked against the binary
 
 Disassembly of `Health::change_by` @ `0x140f4c940`, store site `0x140f4d9b3`:
+
 ```
 mov 0x58(%rcx),%eax        ; eax = self.maximum           -> maximum at +0x58
 ...mulss <0x43800000=256.0> ; fixed-point x256 scaling
@@ -202,11 +203,13 @@ cmp %r15d,%eax
 cmovb %eax,%r15d           ; clamp new current to maximum
 mov %r15d,0x50(%rcx)       ; self.current = clamped        -> current at +0x50   (rcx = &mut self)
 ```
+
 ```
 Health:  +0x00 last_change(HealthChange)  ... damage_contributors(HashMap)
          +0x50 current u32 (x256)  +0x54 base_max u32 (x256)  +0x58 maximum u32 (x256)  +0x5C bools
 Energy:  +0x00 current u32 (x256)  +0x04 base_max u32 (x256)  +0x08 maximum u32 (x256)  +0x0C regen_rate f32 (raw)
 ```
+
 - **x256 fixed point:** memory holds `displayed * 256` (100 HP -> `25600` / `0x6400`) as a 4-byte int.
 - **Correction to the first-pass field table:** `last_change` is at **+0x00** (the tail `movdqu %xmm0,(%rcx)`
   stores prove it), not +0x30. `current = +0x50` is confirmed either way.

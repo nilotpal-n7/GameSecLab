@@ -55,6 +55,7 @@ Plain-words definitions. Add a term the first time you meet it.
 - **RON (Rusty Object Notation)** — the plain-text data format Veloren uses for its assets.
 
 ## Memory layout
+
 - **Fixed-point** — storing a fractional number as an integer times a constant (Veloren: value ×256).
   100.0 HP is stored as `25600`. Fast integer math; also an accidental speed bump for memory scanners.
 - **`#[repr(Rust)]`** — the default Rust struct layout: the compiler **reorders fields** to cut padding,

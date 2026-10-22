@@ -77,6 +77,7 @@ Full annotated evidence in `RECON.md`. Key takeaways:
     object. Damage flows attack -> `HealthChangeEvent` -> system -> `Health::change_by`.
   - Single-player = two copies of game state in one process (embedded server + client). Phase 2 is about
     finding the server's copy.
+
 ## 2026-10-22 — Phase 1-by-hand on Veloren (no UE tools, used debug info + source + disasm)
 
 - `gdb ptype/o Health` fails: build is **line-tables-only DWARF** (`debug=1`) — function names yes,

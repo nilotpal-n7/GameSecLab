@@ -3,7 +3,7 @@
 You arrive here with something most cheaters never get: the **exact struct layout**, recovered in Phase 0/1
 from debug symbols + open source + a disassembly check. We verified it against the binary:
 
-```
+```text
 Health (component), &mut self in RCX inside Health::change_by @ 0x140f4c940:
   +0x00  last_change (HealthChange)      <- copied here by the movdqu stores at the end of change_by
   ...    damage_contributors (HashMap)
@@ -43,17 +43,23 @@ it lets the game do fractional health with fast integer math — an *accidental*
 
 ## 2. YOUR STEPS
 
-### Step 2.0 — Cheat Engine (already installed)
-- Installed system-wide at **`C:\Program Files\Cheat Engine\Cheat Engine.exe`**. Just launch it.
-- Optional warm-up: run `Tutorial-x86_64.exe` in that folder and do steps 1–6 — exact value, unknown
-  initial value, and pointer scanning are precisely what we use below.
-- Lab hygiene: we only ever attach to **single-player** Veloren. Never with a public server connected.
+### Step 2.0 — Cheat Engine (already installed: 7.7, `C:\Program Files\Cheat Engine`)
+
+1. Start it with `Cheat Engine.exe` — a small launcher that opens the right build
+   (`cheatengine-x86_64-SSE4-AVX2.exe` on your CPU). Veloren is 64-bit, so you need the x86_64 build anyway.
+2. **Optional warm-up (30–60 min, recommended):** run `Tutorial-x86_64.exe` from the same folder. Steps 2–8
+   drill exactly this phase on a safe target: exact scan, unknown-value scan, float, code finder,
+   **pointers (step 6)** and **multilevel pointers (step 8)**. `gtutorial-x86_64.exe` is a tiny graphical
+   game version. If you finish step 8, steps 2.5 below will feel familiar.
+3. Lab hygiene: we only ever attach to **single-player** Veloren. Never with a public server connected.
 
 ### Step 2.1 — Launch Veloren single-player and note your HP
+
 1. Start `veloren-voxygen.exe`, create/enter a **singleplayer** world, spawn in.
 2. Read your HUD health number, call it `H` (e.g. 100). Keep a weak enemy nearby to take a hit later.
 
 ### Step 2.2 — First scan: the scaled integer
+
 1. Cheat Engine -> click the computer icon -> pick `veloren-voxygen.exe`.
 2. Value Type: **4 Bytes**. Scan Type: **Exact Value**. Value: **`H * 256`** (100 -> `25600`).
 3. First Scan. You'll likely get many hits (lots of things equal that number).
@@ -67,11 +73,13 @@ it lets the game do fractional health with fast integer math — an *accidental*
 > frozen, actually stops you dying is the **server** copy. Finding which is which is the lesson in 2.4.
 
 ### Step 2.3 — Confirm you found health (and prove the ×256)
+
 1. Add a candidate to the table. Right-click -> change the value to `50 * 256 = 12800`; watch the HUD snap
    to 50. That confirms both the address **and** the scaling.
 2. Note it's `displayed * 256`. Set it to `(H_max) * 256` for a top-up.
 
 ### Step 2.4 — Freeze, and find who wins
+
 1. Tick the **Freeze** box (the "Active"/frozen checkbox) on your health address. Take hits.
 2. Two outcomes teach the whole phase:
    - **HP won't drop** -> you froze the **authoritative (server)** copy. That's god mode in single-player.
@@ -81,6 +89,7 @@ it lets the game do fractional health with fast integer math — an *accidental*
    which you can't reach — so this freeze would be pure client-side and purely cosmetic.)
 
 ### Step 2.5 — Pointer scan to a stable path (beat ASLR)
+
 1. Right-click your good health address -> **Pointer scan for this address**.
 2. Settings to start: Max level **5–7**, Max offset **0x1000**. Scan. Save the `.PTR` results into
    `C:\Tools\GameSecLab\dumps\`.
@@ -96,11 +105,13 @@ it lets the game do fractional health with fast integer math — an *accidental*
 > is exactly the kind of logic Phase 3/4 hooks reveal.
 
 ### Step 2.6 — Scripts (I'll hand these to you; keep in `scripts\cheatengine\`)
+
 - `veloren_health_scaled.CT` notes + a Lua helper that reads/writes using the ×256 rule.
 - An **Auto-Assembler** snippet that, once you have a stable base, injects a tiny "health = maximum each
   tick" or "freeze current" routine, to contrast *data edits* (this phase) with *code edits* (Phase 3).
 
 ### Step 2.7 — ReClass.NET: rebuild the struct
+
 1. Install ReClass.NET to `C:\Tools\ReClass.NET` (<https://github.com/ReClassNET/ReClass.NET/releases>).
 2. Attach to `veloren-voxygen.exe`, point a class at your health address, and lay out the verified fields:
    `+0x50 current (uint32)`, `+0x54 base_max (uint32)`, `+0x58 maximum (uint32)`,
@@ -108,6 +119,7 @@ it lets the game do fractional health with fast integer math — an *accidental*
 3. This turns raw bytes into a labelled struct — the manual version of what Dumper-7 will give us on Lyra.
 
 ### Step 2.8 — Write it up
+
 Fill `dumps\veloren_health_pointer.md` (path + which copy is authoritative) and add a NOTES.md entry.
 
 ---
@@ -128,6 +140,7 @@ cost. Design your own game so the client can lie about its health all day and it
 ---
 
 ## 4. HOW THIS TRANSFERS TO AAA / Unreal (Khazan-like)
+
 - Same workflow (scan -> confirm -> freeze -> pointer scan -> ReClass), but values are usually **float**
   or **double** HP, often behind `GWorld -> PlayerController -> Pawn -> AttributeSet -> Health`.
 - Phase 1 (Dumper-7) gives you those offsets up front, so you *start* at step 2.5 with a known path.
@@ -137,6 +150,7 @@ cost. Design your own game so the client can lie about its health all day and it
 ---
 
 ## 5. DELIVERABLE
+
 `dumps\veloren_health_pointer.md`: your verified stable pointer path to `Health.current (+0x50)`, a note on
 which copy (server vs client) was authoritative when frozen, and the ReClass layout screenshot in
 `screenshots\`. Phase 2 is done when you can relaunch the game and re-reach your health **via the saved

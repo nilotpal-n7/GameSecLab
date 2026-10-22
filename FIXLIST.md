@@ -27,6 +27,7 @@ Each item: **what**, **why (which attack it answers)**, **how (UE specifics)**. 
       run, the client's owner can eventually change. Real protection = server authority (see Phase 5).
 
 ## Phase 2 — memory editing defenses
+
 - [ ] **Obfuscate critical stats in memory.** Why: health was findable as `displayed*256`, a fixed guessable
       transform. How: store `value XOR session_key` + a checksum; recompute on read; rotate the key per
       session. (Veloren's ×256 fixed-point only slows a beginner — don't rely on it.)
