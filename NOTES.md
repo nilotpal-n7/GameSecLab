@@ -131,3 +131,7 @@ Full annotated evidence in `RECON.md`. Key takeaways:
   preferred `0x140000000`. Code addresses are stable as *module+RVA*; heap data (Health) is not.
 - Lesson: when data has no stable pointer path, anchor on the **code** that touches it. That's Phase 3.
   Write-up: `dumps/veloren_health_pointer.md`.
+- **ReClass mapped the whole Health struct (96 bytes = 0x60).** `last_change` 0x00–0x27 (time f64 @0x10
+  confirmed by it advancing, amount f32 @0x20 = last damage), HashMap 0x28–0x4F (ptr, mask 7, growth 6,
+  items 1, seed), current/base_max/maximum @0x50/54/58, bools @0x5C–0x5E. At +0x60 the next NPC's Health
+  starts: the ECS VecStorage seen directly in memory. Full table in `dumps/veloren_health_pointer.md`.

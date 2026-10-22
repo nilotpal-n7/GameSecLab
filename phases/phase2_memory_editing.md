@@ -126,23 +126,11 @@ Dialog notes: leave **Pointers must end with specific offsets** off — with ECS
 
 ### Step 2.7 — ReClass.NET: rebuild the struct
 
-1. **Install:** download `ReClass.NET.rar` (v1.2) from <https://github.com/ReClassNET/ReClass.NET/releases>,
-   extract to `C:\Tools\ReClass.NET` (Windows 11 Explorer can extract `.rar`; otherwise 7-Zip). Run
-   `x64\ReClass.NET.exe` — Veloren is 64-bit. (Needs .NET Framework 4.7+, already on Windows 11.)
-2. **Attach:** Process menu -> *Attach to Process* -> `veloren-voxygen.exe`.
-3. **Point a class at Health:** the struct starts **0x50 before** `current`. Server health
-   `...8050` -> struct base `...8000`. Click the address in the class header and type the base.
-4. **Make room:** right-click a row -> *Add Bytes* -> *Add 64 Bytes* until the class is at least `0x70` long.
-5. **Type the known fields** (select row -> right-click -> *Change Type*), then double-click names to rename:
-   `+0x50 current UInt32`, `+0x54 base_max UInt32`, `+0x58 maximum UInt32`,
-   `+0x5C is_dead Bool`, `+0x5D can_have_death_protection Bool`, `+0x5E death_protection Bool`.
-   Rename the class `Health`. Displayed HP = value / 256.
-6. **Watch it live:** take a hit — `current` changes in the window. Double-click a value to edit it, just like CE.
-7. **Explore the unknown part (the real ReClass skill):** `+0x00` holds `last_change` (`HealthChange`).
-   Change the first rows to **Float** and take a hit: look for a float equal to the damage you just took
-   (negative = damage). Try **Double** for a steadily increasing value (game time).
-8. **Save + export:** File -> Save As -> `scripts\reclass\veloren_health.rcnet`; Project -> *Generate C++ Code*
-   -> save as `scripts\reclass\Health.h`. That header is the hand-made version of what Dumper-7 generates for Unreal.
+1. Install ReClass.NET to `C:\Tools\ReClass.NET` (<https://github.com/ReClassNET/ReClass.NET/releases>).
+2. Attach to `veloren-voxygen.exe`, point a class at your health address, and lay out the verified fields:
+   `+0x50 current (uint32)`, `+0x54 base_max (uint32)`, `+0x58 maximum (uint32)`,
+   `+0x5C` three bytes of bool. Add a commented note that displayed = value/256.
+3. This turns raw bytes into a labelled struct — the manual version of what Dumper-7 will give us on Lyra.
 
 ### Step 2.8 — Write it up
 

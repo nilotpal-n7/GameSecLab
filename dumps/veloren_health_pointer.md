@@ -34,3 +34,30 @@ Cheat Engine's "Find out what writes to this address" caught **one** instruction
 
 So the stable "address" of health in this game is: *the code location `veloren-voxygen.exe+F4D9B3`, plus
 whatever `RCX` holds when it runs.* Using that is a code-hook technique — Phase 3.
+
+## Full Health layout, mapped live in ReClass (server copy, god mode frozen)
+
+| Offset | Size | Field | Evidence |
+| --- | --- | --- | --- |
+| `0x00` | 8 | `last_change.by` (part 1: tag / group?) | `01 00 00 00 FF FF FF FF`; not decoded yet |
+| `0x08` | 8 | `last_change.by` attacker Uid (likely) | `1224` |
+| `0x10` | 8 | `last_change.time` f64 | 2293.97 -> 2422.28 between snapshots (game clock, seconds) |
+| `0x18` | 8 | `last_change.instance` u64 | random, new value every change |
+| `0x20` | 4 | `last_change.amount` f32 | -8.95, later -0.271 (damage of the last hit) |
+| `0x24` | 4 | `last_change.cause` / `precise` tags | `01 00 01 00` -> `00 22 00 00` when damage type changed |
+| `0x28` | 8 | `damage_contributors` table pointer | `-> <HEAP>32076070B00` |
+| `0x30` | 8 | bucket_mask | 7 (8 buckets) |
+| `0x38` | 8 | growth_left | 6 |
+| `0x40` | 8 | items | 1 (one contributor) |
+| `0x48` | 8 | hasher seed | random |
+| `0x50` | 4 | `current` u32 x256 | `0x6400` = 25600 = 100 HP (frozen) |
+| `0x54` | 4 | `base_max` u32 x256 | 25600 |
+| `0x58` | 4 | `maximum` u32 x256 | 25600 |
+| `0x5C` | 1 | `is_dead` | 0 |
+| `0x5D` | 1 | `can_have_death_protection` | 1 |
+| `0x5E` | 1 | `death_protection` | 1 |
+| `0x5F` | 1 | padding | 0 |
+
+**sizeof(Health) = 0x60 (96 bytes).** Proof: at `+0x60` the pattern repeats (`01 00 00 00 FE FF FF FF`,
+an attacker Uid `1496`, a time `747.73`) — that's the **next entity's Health** in the same ECS `VecStorage`.
+Element *n* of the array is at `storage_base + n*0x60`, and `current` at `+ n*0x60 + 0x50`.
