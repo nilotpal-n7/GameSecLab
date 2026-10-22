@@ -97,3 +97,20 @@ Full annotated evidence in `RECON.md`. Key takeaways:
 - Gotchas: Rust strings aren't null-terminated (junk like `energy_rH3`); PowerShell truncates columns
   (use `-ExpandProperty` / `Format-List`); DIE GUI hides Entropy until **Advanced** is ticked;
   CLI needs `-u` for heuristics.
+
+## 2026-10-22 — Phase 2: found health, proved which copy is real
+
+- First scan `25600` (100 HP, 4 Bytes, exact) -> filtered with damage -> **3 hits**: two at `8351`
+  (= 32.62 HP, HUD showed 33 because it rounds) and one at `0` (noise, ignored).
+- Both real hits end in **`...050`** = struct base + `0x50` -> the Phase 1 offset confirmed live.
+  This run: **A = `292DED88050`**, **B = `29513580050`** (addresses change every launch: ASLR/heap).
+- **B is the client (display) copy:** setting it to 50 changed the HUD instantly; the next server update overwrote it.
+- **A is the server (authoritative) copy.** Proof: set A to 100 (25600), HUD stayed 70 (no sync), took a
+  hit of **60.2** -> HUD showed **39.84** (`10199`/256) = 100 - 60.2. If A were fake, it would have been
+  70.29 - 60.2 = **10.1**. The server computed damage from *my edited value*.
+- **Why editing A didn't move the HUD:** Cheat Engine writes memory directly, skipping `change_by` /
+  `DerefMut`, so `DerefFlaggedStorage` never marked Health as changed and the server sent nothing. The
+  next *real* change (damage) went through the game's code, got flagged, and synced A's value to B.
+- Lesson: a client-side edit changes only what you see; an edit to the authority changes reality.
+  Online, the authority is on someone else's machine.
+- Next: freeze A for god mode, then pointer scan (step 2.5) to survive relaunch.
