@@ -90,14 +90,28 @@ it lets the game do fractional health with fast integer math — an *accidental*
 
 ### Step 2.5 — Pointer scan to a stable path (beat ASLR)
 
-1. Right-click your good health address -> **Pointer scan for this address**.
-2. Settings to start: Max level **5–7**, Max offset **0x1000**. Scan. Save the `.PTR` results into
-   `C:\Tools\GameSecLab\dumps\`.
-3. **Close Veloren, relaunch, re-enter singleplayer.** Your old address is now wrong (ASLR).
-4. Find current health again (2.2), then in the pointer-scan window **Rescan** with the new address.
-   Paths that survive both runs are candidates for a **stable pointer path**.
-5. Repeat the relaunch+rescan once more to shrink to a handful of reliable paths. Record the final
-   `base_module+offset -> ... -> +0x50` path in `dumps\veloren_health_pointer.md`.
+**Use the pointermap method.** A plain pointer scan writes *every* candidate path — Cheat Engine warns
+"billions of useless results and giga/terabytes" — so answer **No** to that warning. Instead snapshot
+memory in one run and compare against a second run, keeping only paths valid in both:
+
+**Run 1**
+1. Right-click the **server** health address -> **Pointer scan for this address**.
+2. Select **Generate pointermap** -> OK -> save `dumps\veloren_run1.scandata`. Note the run-1 address.
+
+**Relaunch** — 3. Close Veloren fully, relaunch, load the same singleplayer world. Old address is now wrong (ASLR).
+
+**Run 2**
+4. Find health again (2.2) and identify the server copy (2.4 — the copy whose edit does *not* move the HUD).
+5. Right-click it -> **Pointer scan for this address** -> tick **Compare results with other saved
+   pointermap(s)** -> add `veloren_run1.scandata` with its run-1 address.
+6. Max level **5**, Maximum offset **4095**, Max different offsets per node **3** -> OK ->
+   save `dumps\veloren_health.PTR`. Results = paths that worked in **both** runs.
+7. Relaunch once more and use **Rescan memory** in the pointer-scan window with the new address to shrink to a
+   handful of reliable paths. Record the final `module+offset -> ... -> +offset` path in
+   `dumps\veloren_health_pointer.md`.
+
+Dialog notes: leave **Pointers must end with specific offsets** off — with ECS storage the last offset is
+`slot*sizeof(Health) + 0x50`, not plain `0x50`. If you get 0 results, raise Maximum offset to `65535`.
 
 > Expect the ECS to make this interesting: the last hop should land on a `VecStorage` buffer and the final
 > `+0x50` is our verified `Health.current`. If paths are unstable across relaunch, the slot index is

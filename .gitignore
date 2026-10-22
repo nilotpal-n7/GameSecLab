@@ -13,6 +13,7 @@ targets/
 # Big generated output: commit curated results (e.g. offsets.json), not raw dumps
 dumps/**
 !dumps/.gitkeep
+!dumps/*.md
 
 # Editor / OS noise
 .vscode/
