@@ -40,7 +40,7 @@ C:\Tools\GameSecLab\
 
 ## Roadmap
 
-- [ ] Phase 0 — Static recon (Veloren, then Lyra)
+- [ ] Phase 0 — Static recon (Veloren: done, see RECON.md — Lyra recon when it's packaged)
 - [ ] Phase 1 — Map the game live (Lyra: UE4SS, Dumper-7, offsets.json)
 - [ ] Phase 2 — Memory editing (Veloren: Cheat Engine, pointer paths, ReClass)
 - [ ] Phase 3 — Function hooking (Frida; ProcessEvent on Lyra)
@@ -52,8 +52,9 @@ C:\Tools\GameSecLab\
 | Tool | Phase | Status |
 | --- | --- | --- |
 | Ghidra | 4 | already installed (`C:\Tools\ghidra`) |
-| x64dbg | 4 | already installed? (`C:\Tools\x96gdb` — confirm in Phase 0) |
-| Detect It Easy (DIE) | 0 | you install in Phase 0 |
+| x64dbg | 4 | installed (`C:\Tools\x96gdb` — folder name is a typo of x64dbg; `release\x96dbg.exe` launcher) |
+| Detect It Easy (DIE) | 0 | already installed |
+| objdump / strings / c++filt | 0 | already in msys64 (`C:\Tools\msys64\ucrt64\bin`) |
 | Cheat Engine | 2 | later |
 | ReClass.NET | 2 | later |
 | Frida (pip) | 3 | later |

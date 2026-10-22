@@ -22,6 +22,17 @@ Plain-words definitions. Add a term the first time you meet it.
 - **Entropy** — how random the bytes look (0–8). Normal code ~6; compressed/encrypted data ~7.9+.
   A code section with very high entropy hints at packing or encryption.
 
+- **Overlay** — bytes appended after the last PE section. Installers, packers and self-extractors
+  hide payloads there; in MinGW builds it's often just the COFF symbol table.
+- **COFF symbol table** — the classic in-file list of symbol names + addresses (`objdump -t`).
+- **Demangling** — turning `_ZN14veloren_common...` back into `veloren_common::comp::health::...` (`c++filt`).
+- **`.pdata` / `.xdata`** — x64 exception/unwind tables. Dense address arrays -> high entropy that is *not* encryption.
+- **ASLR** — Address Space Layout Randomization: the exe/DLLs load at a different address every run,
+  so hard-coded addresses break. NX/DEP = data pages can't be executed.
+- **XREF (cross-reference)** — in Ghidra/IDA, "who uses this string/function?". Find a string -> follow its XREFs -> land in the code.
+- **False positive (heuristic)** — a detector flagging something that isn't there (DIE's "Packer: Generic" on Veloren).
+  Anti-cheat faces the same problem: a false ban is worse than a missed cheat.
+
 ## Protection
 
 - **Packer** — wraps an exe in a compressed/encrypted stub that unpacks at runtime (e.g. UPX).
@@ -45,6 +56,8 @@ Plain-words definitions. Add a term the first time you meet it.
 
 ## Networking
 
+- **Embedded / listen server** — the game server running inside the player's own process (Veloren
+  single-player). Whoever runs the server is the authority, so offline, the player is.
 - **Server authority** — the server owns the true game state; clients only send inputs/requests.
   The only defense that cannot be defeated by editing your own client.
 - **TLS interception (MITM)** — a middlebox (e.g. corporate firewall) that decrypts HTTPS by

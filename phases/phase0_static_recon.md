@@ -42,6 +42,14 @@ Get-ChildItem $G -Filter *.exe | ForEach-Object { Get-FileHash $_.FullName -Algo
 Get-ChildItem $G -Include *.exe,*.dll -Recurse | Get-AuthenticodeSignature | Format-Table Status,Path -AutoSize
 ```
 
+**What each command does:**
+
+- `Get-ChildItem ... Format-Table` — lists files with sizes: *what ships, and how big*.
+- `Get-FileHash -Algorithm SHA256` — a fingerprint of each exe. Every offset/signature you find later
+  is only valid for this exact hash (a game update = new hash = re-check everything).
+- `Get-AuthenticodeSignature` — is the file code-signed, and by whom? `NotSigned` = no proof of origin.
+- Tip: if a column is cut off (`...`), add `| Format-List` or `| Select-Object -ExpandProperty Path`.
+
 **Think:**
 
 - There are two `.exe` files. Which is the game client, which is the server? Why would a
@@ -62,17 +70,25 @@ Get-ChildItem $G -Include *.exe,*.dll -Recurse | Get-AuthenticodeSignature | For
 GUI: open `die.exe`, drag in `veloren-voxygen.exe`.
 
 - Read the detection lines (Compiler / Linker / Language / Packer / Protector).
-- Click **Entropy**: note the overall value and which sections are highest.
-- Click **Sections** (or "PE" -> Sections): note every section name and its size.
+  Red `(Heur)` lines are **guesses** — always confirm them with a second signal (entropy, sections).
+- **Entropy / Sections are hidden by default:** tick the **Advanced** checkbox (top right). Extra
+  buttons appear on the right side (Entropy, Strings, Hex, Memory map, ...). If your build doesn't
+  show a Sections view, the CLI commands below give you both entropy *and* every section.
 
 CLI (paste this output to Claude):
 
 ```powershell
-& C:\Tools\DIE\diec.exe -d "$G\veloren-voxygen.exe"
-& C:\Tools\DIE\diec.exe -d "$G\veloren-server-cli.exe"
+& C:\Tools\DIE\diec.exe -d -u "$G\veloren-voxygen.exe"
+& C:\Tools\DIE\diec.exe -e "$G\veloren-voxygen.exe"
+& C:\Tools\DIE\diec.exe -d -u "$G\veloren-server-cli.exe"
 ```
 
-(If a flag errors, run `& C:\Tools\DIE\diec.exe --help` and paste that too.)
+**What each command does:**
+
+- `-d` deep scan: checks the whole file against DIE's signature database (compiler, packer, protector).
+- `-u` heuristics: the "educated guess" checks the GUI runs by default. Without `-u` the CLI shows fewer lines.
+- `-e` entropy: randomness per section (0–8). Code ≈ 6. Encrypted/compressed ≈ 7.5–8.
+  One section high can be normal (e.g. `.pdata`); **`.text` (code) high = packed.**
 
 **Think:**
 
@@ -87,6 +103,10 @@ The client exe is ~260 MB. That is huge for code. Find out why:
 & C:\Tools\msys64\ucrt64\bin\objdump.exe -h "$G\veloren-voxygen.exe"
 ```
 
+**What it does:** `objdump -h` prints the **section headers** — name, size (hex), address, and flags.
+Convert a hex size with `[Convert]::ToInt64("02e61ccd",16)` in PowerShell. Flags: `CODE` = executable,
+`DEBUGGING` = debug info only (not run).
+
 **Think:**
 
 - On MSVC builds, debug info lives in a separate `.pdb`. On GNU/MinGW builds it can be
@@ -99,6 +119,17 @@ The client exe is ~260 MB. That is huge for code. Find out why:
 
   If you see names like `_ZN...veloren...` those are **mangled Rust function names** — a map
   of the whole program, handed to you for free.
+  `-t` = dump the symbol table. The first lines are only MinGW startup code; count and decode the rest:
+
+  ```powershell
+  $sym = & C:\Tools\msys64\ucrt64\bin\objdump.exe -t "$G\veloren-voxygen.exe" 2>$null
+  $sym.Count                                                    # how many symbols
+  ($sym | Select-String '_ZN').Count                            # how many are Rust
+  $sym | Select-String 'health' | Select-Object -First 10 | ForEach-Object { ($_ -split ' ')[-1] } | & C:\Tools\msys64\ucrt64\bin\c++filt.exe
+  ```
+
+  `c++filt` **demangles**: `_ZN14veloren_common4comp6health6Health9change_by...` ->
+  `veloren_common::comp::health::Health::change_by`. The `Unable to load dwo file` warnings are harmless.
 
 ### Step 0.5 — Strings recon (15 min)
 
@@ -106,6 +137,11 @@ The client exe is ~260 MB. That is huge for code. Find out why:
 & C:\Tools\msys64\ucrt64\bin\strings.exe -n 8 "$G\veloren-voxygen.exe" | Select-String -Pattern "health|energy|stamina|damage|poise" | Select-Object -First 40
 & C:\Tools\msys64\ucrt64\bin\strings.exe -n 8 "$G\veloren-voxygen.exe" | Select-String -Pattern "veloren\.net|https?://|\.ron" | Select-Object -First 40
 ```
+
+**What it does:** `strings -n 8` prints every run of 8+ readable characters in the file;
+`Select-String` keeps lines matching the regex. Rust strings have no terminating zero byte, so
+you'll see junk glued on (`energy_rH3` — the `H3` is machine code). The `VK_...` wall of text is
+Vulkan's name table; ignore it.
 
 **Think:**
 
@@ -116,8 +152,13 @@ The client exe is ~260 MB. That is huge for code. Find out why:
 
 ```powershell
 Get-ChildItem "$G\assets" -Recurse -File | Group-Object Extension | Sort-Object Count -Descending | Format-Table Count,Name -AutoSize
-Get-ChildItem "$G\assets" -Recurse -Filter *.ron | Select-String -Pattern "max_health|health:|energy" -List | Select-Object -First 20 Path,LineNumber,Line
+Get-ChildItem "$G\assets" -Recurse -Filter *.ron | Select-String -Pattern "max_health|health:|energy" -List | Select-Object -First 20 -ExpandProperty Path
+notepad "$G\assets\common\abilities\sword\agile_cascade.ron"
 ```
+
+**What it does:** the first line counts asset files by extension (what kinds of data ship). The
+second finds `.ron` files mentioning health/energy (`-List` = first match per file, `-ExpandProperty`
+= full path, not cut off). The third opens a sword ability so you can read real damage/energy values.
 
 Open one of the matching `.ron` files in a text editor and read it. **Do not edit yet.**
 

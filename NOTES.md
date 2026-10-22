@@ -48,3 +48,27 @@ validation exists to catch.
 - Saved as `targets\Veloren\_download\veloren-v0.18.0-windows-x86_64.zip` (464,592,174 bytes)
 - SHA256 `71F07893D842F871C63C726095A92AFAEAE77941AF1D7186E54195032E335866`
 - Extracted to `targets\Veloren\v0.18.0` (`veloren-voxygen.exe`, `veloren-server-cli.exe`, `assets\`)
+
+---
+
+## 2026-10-22 — Phase 0: static recon of Veloren
+
+Full annotated evidence in `RECON.md`. Key takeaways:
+
+- **Built with:** Rust + MinGW-w64 (GNU). Two proofs: DIE says `Compiler: MinGW` / `Language: Rust`,
+  and the bundled `libgcc_s_seh-1.dll` / `libstdc++-6.dll` / `libwinpthread-1.dll`.
+- **Not packed.** Total entropy 6.35, `.text` 6.22. DIE's red `Protection: Generic` and
+  `Packer: Generic` were **false positives** (24 sections because of DWARF; `.pdata` is a dense address
+  table). Lesson: a heuristic is a hint — confirm with entropy + section names.
+- **Huge debug leak:** ~160 MB of DWARF `.debug_*` sections + 160,307 symbols (67,559 Rust). The 13 MB
+  DIE "overlay" is the COFF symbol table (`PointerToSymbolTable` = overlay offset `0x0ebae800`).
+  `veloren_common::comp::health::Health::change_by` is probably where all damage and healing go -> target for Phases 3/4.
+- **ASLR + high-entropy ASLR + NX on** -> addresses move every run -> pointer paths in Phase 2.
+- **Data:** 2,826 plain-text `.ron` files (abilities, items). E.g. `sword/agile_cascade.ron`:
+  `damage: 11`, `energy_cost_per_strike: 5`. Player max health/energy are computed in code, not RON.
+- **`VELOREN_ASSETS_OVERRIDE`** env var redirects asset loading -> clean way to test modified data.
+- **Embedded server:** single-player runs the same server code locally -> I am the authority offline;
+  online, `server.veloren.net` computes everything itself.
+- Gotchas: Rust strings aren't null-terminated (junk like `energy_rH3`); PowerShell truncates columns
+  (use `-ExpandProperty` / `Format-List`); DIE GUI hides Entropy until **Advanced** is ticked;
+  CLI needs `-u` for heuristics.
