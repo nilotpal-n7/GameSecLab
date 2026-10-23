@@ -43,10 +43,19 @@ won't be — that contrast is the whole lesson.
 ---
 
 ## Step 1 — install Tigress in WSL (15 min)
-1. Open **Ubuntu** (WSL). Get the Linux package from the official site: <https://tigress.wtf/download.html>
-   (the Arizona site `tigress.cs.arizona.edu` is obsolete and redirects here). Follow its install notes;
-   it sets `TIGRESS_HOME` and puts `tigress` on PATH. A C compiler is needed inside WSL (`sudo apt install gcc`).
-2. Sanity check: `tigress --version`.
+The download is **gated behind a name/email + license form** (can't wget it; a direct GET returns the form
+HTML). Download it in a normal browser, then install the `.deb` in WSL.
+1. Browser → <https://tigress.wtf/download.html> → Linux package `tigress_3.3.3-1_any.deb` → fill name/email,
+   accept the license, submit. You get `tigress_3.3.3-1_any.deb.zip` in `C:\Users\nilot\Downloads`.
+2. In **Ubuntu** (WSL):
+   ```bash
+   cd ~ && mkdir -p tigress_dl && cd tigress_dl
+   cp /mnt/c/Users/nilot/Downloads/tigress_3.3.3-1_any.deb.zip .
+   unzip -o tigress_3.3.3-1_any.deb.zip
+   sudo dpkg --force-architecture -i tigress_3.3.3-1_any.deb      # installs to /usr/local/bin/tigresspkg/3.3.3
+   ```
+3. Verify: `/usr/local/bin/tigresspkg/3.3.3/check.sh` then `tigress --version`. A C compiler is already present
+   in WSL (gcc). The `.deb` install puts `tigress` on PATH; no manual `TIGRESS_HOME` needed.
 
 ## Step 2 — virtualize `check_key` (10 min)
 From the project dir inside WSL (your Windows C: is at `/mnt/c`):
