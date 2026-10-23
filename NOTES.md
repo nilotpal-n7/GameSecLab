@@ -185,3 +185,23 @@ Full annotated evidence in `RECON.md`. Key takeaways:
   fresh this run), then blocked=392 on that entity only. In-game: player HP held at 28 under attack while
   enemies still took damage and died. This is the ECS "identify your entity" skill that Phase 3 on Unreal
   formalises. Script: `scripts/frida/change_by_block_player.js`.
+
+## 2026-10-23 — Session pause: where we are
+
+**Done so far (all committed):**
+- Phase 0 (Veloren): full annotated recon — RECON.md.
+- Phase 1-by-hand (Veloren): recovered Health/Energy layout from debug info + source + disasm (no UE tools).
+- Phase 2 (Veloren): CE scan (x256), server-vs-client copy proof, god mode via freeze, pointer-scan dead end,
+  code anchor (change_by @ +0xF4D9B3), full ReClass struct (scripts/reclass/veloren_health.rcnet),
+  anti-cheat review (phases/phase2_anticheat_review.md).
+- Phase 3 warm-up (Veloren): Frida hooks — logger, all-entity block, auto-calibrating player-only block
+  (all validated live). scripts/frida/.
+
+**Next (user's hands-on, hours, mostly unattended): build Lyra.**
+- Follow phases/lyra_setup.md: VS workload -> Epic Launcher -> UE 5.8 -> Lyra (Fab, supports 5.0-5.8, free)
+  -> package Shipping build into targets/Lyra/.
+- Then with Claude: Phase 0 recon on Lyra, Phase 1 (UE4SS + Dumper-7 -> offsets.json), Phase 3 (ProcessEvent),
+  Phase 4 (x64dbg + Ghidra on the damage routine), Phase 5 (ANTICHEAT_MAP.md).
+
+**Env reminders:** frida CLI not on PATH (use the python module); download.veloren.net blocked by Fortinet
+(Epic downloads may hit the same); 15.4 GB RAM is tight for UE compiles.
