@@ -15,6 +15,8 @@ PATHS = {
     "x64dbg":   [r"C:\Tools\x96gdb\release\x96dbg.exe", r"C:\Tools\x96gdb\release\x64\x64dbg.exe"],
     "die":      [r"C:\Tools\DIE\diec.exe", r"C:\Tools\DIE\die.exe"],
     "gcc":      [r"C:\Tools\msys64\ucrt64\bin\gcc.exe"],
+    "ida":      [r"C:\Program Files\IDA Professional 9.1\ida.exe"],
+    "ida_headless": [r"C:\Program Files\IDA Professional 9.1\idat.exe"],
     "scyllahide": [r"C:\Tools\x96gdb\release\x64\plugins\ScyllaHideX64DBGPlugin.dp64",
                    r"C:\Tools\x96gdb\release\x32\plugins\ScyllaHideX64DBGPlugin.dp32"],
     "novmp":    [r"C:\Tools\NoVmp\NoVmp.exe"],

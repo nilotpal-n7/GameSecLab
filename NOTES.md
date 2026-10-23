@@ -248,3 +248,11 @@ Full annotated evidence in `RECON.md`. Key takeaways:
   unverified/likely inflated). Runs third-party agent code via npx/install.sh -> NOT auto-installed; evaluate
   sandboxed later if wanted. We build our own (reaforge) as the core.
 - Fixed pre-existing WSL ~/.bashrc syntax error (unquoted (x86) PATH dump, line 120; backup saved).
+
+## 2026-10-24 — Capstone C0 built + bridge mode proven
+- C0 target capstone/license_app.c: hardware-bound license (C: volume serial -> expected_key -> 8-hex compare).
+  Built license_app.exe + keygen.exe; verified LICENSED with keygen's key (this machine: 75685AB2).
+- IDA Professional 9.1 found + registered (C:\Program Files\IDA Professional 9.1\ida.exe, idat.exe headless).
+- **Bridge mode end-to-end:** `REAFORGE_LLM=bridge python reaforge/orchestrator.py recon license_app.exe` ->
+  wrote facts.json, posted bridge/pending.json, Claude Code wrote reply_<id>.json, orchestrator printed the
+  AI plan and exited. Automatic while a Claude Code session drives it (the design goal).

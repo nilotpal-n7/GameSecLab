@@ -1,1 +1,6 @@
-{}
+{
+  "C:\\Tools\\GameSecLab\\capstone\\license_app.exe": {
+    "reason": "capstone C0 target: hardware-bound license app I wrote",
+    "sha256": "925959a0c761b535b7aea2b993a93d218743bae0d7fcfdec9c803fe5512df9b0"
+  }
+}
