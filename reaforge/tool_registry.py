@@ -18,8 +18,9 @@ PATHS = {
     "scyllahide": [r"C:\Tools\x96gdb\release\x64\plugins\ScyllaHide.dp64",
                    r"C:\Tools\x96gdb\release\x32\plugins\ScyllaHide.dp32"],
     "novmp":    [r"C:\Tools\NoVmp\NoVmp.exe"],
-    "vmprotect":[r"C:\Tools\VMProtect\VMProtect.exe"],
-    "themida":  [r"C:\Tools\Themida\Themida.exe", r"C:\Tools\Themida\Themida64.exe"],
+    "vmprotect":[r"C:\Program Files\VMProtect Demo\VMProtect.exe", r"C:\Tools\VMProtect\VMProtect.exe"],
+    "vmprotect_con":[r"C:\Program Files\VMProtect Demo\VMProtect_Con.exe"],
+    "themida":  [r"C:\Tools\ThemidaDemo\Themida64.exe", r"C:\Tools\ThemidaDemo\Themida.exe"],
 }
 PY_LIBS = ["capstone", "unicorn", "keystone", "lief", "pefile", "r2pipe", "frida", "angr", "triton"]
 WSL_TOOLS = {"tigress": "tigress --version", "gdb": "gdb --version", "radare2": "r2 -v"}
