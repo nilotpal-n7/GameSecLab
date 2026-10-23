@@ -48,6 +48,7 @@ C:\Tools\GameSecLab\
 - [ ] Phase 4 — Debugger & deeper RE (x64dbg + Ghidra)
 - [ ] Phase 5 — Anti-cheat synthesis (ANTICHEAT_MAP.md, FIXLIST.md)
 - [~] Side track — Virtualization & anti-tamper (Tigress + Ghidra on your own code; legal Denuvo-technique study) — see phases/vmtrack_01_virtualize.md
+- [ ] Capstone — protect your own app with VMProtect/Themida/OLLVM, then devirtualize it (see phases/capstone_protect_and_break.md)
 
 ## Tool install status (all go in `C:\Tools\<Name>`)
 

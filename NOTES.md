@@ -225,3 +225,11 @@ Full annotated evidence in `RECON.md`. Key takeaways:
 - Deliverable skeleton: vmlab/recovery_notes.md (exercises A-D). Lesson updated: phases/vmtrack_01_virtualize.md.
 - Nuance for the lesson: plain Virtualize hides control flow but NOT literals -> 0x32629093 leaks; searching the
   scalar is a valid first lead, but the skill is recovering the ALGORITHM (dispatcher + opcode map).
+
+## 2026-10-24 — Capstone decided: pro-tool protect-and-break (legal Denuvo analog)
+- User wants commercial-grade depth, not toy layers. Plan: protect OWN program with the real industry tools
+  (VMProtect demo + Themida/WinLicense demo + an OLLVM x64 fork Hikari/Pluto), then reverse own output with
+  the pro RE stack (x64dbg+ScyllaHide, Scylla dump, NoVmp/VTIL devirt, Triton/angr). Windows x64 PE (matches
+  the Unreal target; uses VS2026 + x64dbg already here). Plan: phases/capstone_protect_and_break.md.
+- Note O-MVLL is iOS/Android only -> use Hikari/Pluto for x64. Legal line: own code only; external test later
+  = Tigress Challenge / FLARE-On (pro-made, legal). Honest ceiling: still not Denuvo-scale, but real VM/anti-tamper.
