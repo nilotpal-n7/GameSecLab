@@ -23,6 +23,7 @@ PATHS = {
     "vmprotect":[r"C:\Program Files\VMProtect Demo\VMProtect.exe", r"C:\Tools\VMProtect\VMProtect.exe"],
     "vmprotect_con":[r"C:\Program Files\VMProtect Demo\VMProtect_Con.exe"],
     "themida":  [r"C:\Tools\ThemidaDemo\Themida64.exe", r"C:\Tools\ThemidaDemo\Themida.exe"],
+    "pin":      [r"C:\Tools\PIN\pin-external-4.4-99977-g54fbb8814-clang-windows\pin.exe", r"C:\Tools\PIN\pin.exe"],
 }
 PY_LIBS = ["capstone", "unicorn", "keystone", "lief", "pefile", "r2pipe", "frida", "angr", "triton"]
 WSL_TOOLS = {"tigress": "tigress --version", "gdb": "gdb --version", "radare2": "r2 -v"}

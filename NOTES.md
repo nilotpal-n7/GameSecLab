@@ -189,6 +189,7 @@ Full annotated evidence in `RECON.md`. Key takeaways:
 ## 2026-10-23 — Session pause: where we are
 
 **Done so far (all committed):**
+
 - Phase 0 (Veloren): full annotated recon — RECON.md.
 - Phase 1-by-hand (Veloren): recovered Health/Energy layout from debug info + source + disasm (no UE tools).
 - Phase 2 (Veloren): CE scan (x256), server-vs-client copy proof, god mode via freeze, pointer-scan dead end,
@@ -198,6 +199,7 @@ Full annotated evidence in `RECON.md`. Key takeaways:
   (all validated live). scripts/frida/.
 
 **Next (user's hands-on, hours, mostly unattended): build Lyra.**
+
 - Follow phases/lyra_setup.md: VS workload -> Epic Launcher -> UE 5.8 -> Lyra (Fab, supports 5.0-5.8, free)
   -> package Shipping build into targets/Lyra/.
 - Then with Claude: Phase 0 recon on Lyra, Phase 1 (UE4SS + Dumper-7 -> offsets.json), Phase 3 (ProcessEvent),
@@ -207,6 +209,7 @@ Full annotated evidence in `RECON.md`. Key takeaways:
 (Epic downloads may hit the same); 15.4 GB RAM is tight for UE compiles.
 
 ## 2026-10-23 — New side track: virtualization & anti-tamper (legal Denuvo-technique study)
+
 - User wanted to study Denuvo. Denuvo on a shipping game = DRM circumvention (illegal, DMCA §1201), declined
   repeatedly across reframes (own game / buy it / "open-source game with Denuvo" (doesn't exist) / college project).
 - Legal path that teaches the SAME skills: virtualize your OWN C function with **Tigress** (WSL), then recover
@@ -217,6 +220,7 @@ Full annotated evidence in `RECON.md`. Key takeaways:
   build verified (WIN/LOSE). Lesson: phases/vmtrack_01_virtualize.md.
 
 ## 2026-10-23 — vmtrack staged end-to-end (user away; ready to recover)
+
 - Tigress 3.1-bin installed in WSL (~/tigress31/tigress/3.1; env in ~/.bashrc; needs --Environment=x86_64:Linux:Gcc:4.6).
 - Virtualized check_key -> keycheck_vm (Virtualize, 416 lines, magic 0x32629093 still visible) and keycheck_vm2
   (EncodeLiterals+EncodeArithmetic+Virtualize, 638 lines). Plain ELF keycheck_plain_elf = answer key. All behave identically.
@@ -227,6 +231,7 @@ Full annotated evidence in `RECON.md`. Key takeaways:
   scalar is a valid first lead, but the skill is recovering the ALGORITHM (dispatcher + opcode map).
 
 ## 2026-10-24 — Capstone decided: pro-tool protect-and-break (legal Denuvo analog)
+
 - User wants commercial-grade depth, not toy layers. Plan: protect OWN program with the real industry tools
   (VMProtect demo + Themida/WinLicense demo + an OLLVM x64 fork Hikari/Pluto), then reverse own output with
   the pro RE stack (x64dbg+ScyllaHide, Scylla dump, NoVmp/VTIL devirt, Triton/angr). Windows x64 PE (matches
@@ -235,12 +240,13 @@ Full annotated evidence in `RECON.md`. Key takeaways:
   = Tigress Challenge / FLARE-On (pro-made, legal). Honest ceiling: still not Denuvo-scale, but real VM/anti-tamper.
 
 ## 2026-10-24 — REAForge (AI RE orchestrator) + tool install sweep
+
 - Built reaforge/ (tool_registry, llm_backend[3 modes], orchestrator skeleton, README, scope guard).
 - LLM modes: (1) API multi-provider anthropic/openai/gemini; (2) Bridge = Claude Code auto-answers a file
   mailbox while driving the session (honest limit: only while a session drives it); (3) Custom (user's own tool
   via stdin/stdout). Ollama optional — recommended qwen2.5-coder:7b for 15GB RAM. No API keys set yet.
 - Installed free RE core: capstone, unicorn, keystone, lief, r2pipe (pefile/frida already). ScyllaHide v1.4
-  installed into x64dbg plugins (x32+x64). 
+  installed into x64dbg plugins (x32+x64).
 - Protectors present (user installed demos): VMProtect Demo (C:\Program Files\VMProtect Demo\VMProtect.exe +
   VMProtect_Con.exe CLI), Themida (C:\Tools\ThemidaDemo\Themida64.exe). OSS fallback = Tigress (have).
 - Still to build when needed: NoVmp+VTIL (VS build), OLLVM x64 fork (Pluto/Hikari), angr/triton (heavy).
@@ -250,9 +256,20 @@ Full annotated evidence in `RECON.md`. Key takeaways:
 - Fixed pre-existing WSL ~/.bashrc syntax error (unquoted (x86) PATH dump, line 120; backup saved).
 
 ## 2026-10-24 — Capstone C0 built + bridge mode proven
+
 - C0 target capstone/license_app.c: hardware-bound license (C: volume serial -> expected_key -> 8-hex compare).
   Built license_app.exe + keygen.exe; verified LICENSED with keygen's key (this machine: 75685AB2).
 - IDA Professional 9.1 found + registered (C:\Program Files\IDA Professional 9.1\ida.exe, idat.exe headless).
 - **Bridge mode end-to-end:** `REAFORGE_LLM=bridge python reaforge/orchestrator.py recon license_app.exe` ->
   wrote facts.json, posted bridge/pending.json, Claude Code wrote reply_<id>.json, orchestrator printed the
   AI plan and exited. Automatic while a Claude Code session drives it (the design goal).
+
+## 2026-10-24 — Folded in the RE-crack
+
+- Educational transcript analyzed -> phases/re_techniques_reference.md: 3 RE layers (HWID+token,
+  anti-tamper CRC, VMProtect VM) and the 15-step attacker stack, each mapped to a LEGAL reproduction on our
+  OWN VMProtect-protected binary + the tool for it. RE obfuscator = VMProtect = what we have.
+- Added capstone phase C5 (full bypass chain on a RE-like version of license_app): multi-source HWID +
+  anti-tamper CRC + VMProtect, then our own DLL-hijack/IAT/VEH/shadow-page/VirtualProtect-hook/RDTSC/HWID
+  record-replay harness + Intel Pin tracing + NoVmp devirt. Harness becomes reusable REAForge tooling.
+- To install when needed: Intel Pin 4.0 (free DBI, step #12), NoVmp+VTIL (build, step #5). Rest we write in C.

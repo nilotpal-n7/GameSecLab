@@ -67,8 +67,31 @@ easy vs. what needed symbolic execution. That document is the portfolio centerpi
 to prove the skills transfer.
 
 ## Install list (fetch when we reach each phase; all into `C:\Tools\`)
+
 - VMProtect demo — vmpsoft.com → Get Demo (Windows)
 - Themida/WinLicense demo — oreans.com (your name/email; eval license)
 - Hikari or Pluto (prebuilt clang, or build) — for the OLLVM layer
 - ScyllaHide — x64dbg plugin (github)
 - NoVmp + VTIL (build in VS2026); Triton/angr (pip) when needed
+
+---
+
+## C5 — full "RE-like" bypass chain on our own target
+
+See `phases/re_techniques_reference.md` for the technique->tool map. Make `license_app` resemble
+RE, then reproduce the whole bypass chain legally on our own binary:
+
+1. **Make the target RE-like:** bind the license to **multiple HWID sources** (CPUID + C: volume serial +
+   PEB + KUserSharedData), add an **anti-tamper CRC** of its own `.text`, then **protect with VMProtect**
+   (virtualize `check_license`). Now it mirrors the 3 RE layers.
+2. **Build the reusable harness** (our own, in C — becomes part of REAForge):
+   proxy-DLL hijack + `DllMain`, IAT hook framework, VEH, shadow-page patch (UD2 trick),
+   VirtualProtect/VirtualQuery hooks, RDTSC-timing hook, HWID record/replay.
+3. **Find the checks** with Intel Pin (CPUID/RDTSC trace, incl. JIT'd regions via VirtualAlloc hook).
+4. **Devirtualize** the VMProtect'd `check_license` with NoVmp/VTIL + our capstone deobfuscator.
+5. **Record HWIDs on this machine, replay** to make the check pass as if on another machine — the exact
+   "get past the popup" goal from the video, on our own app.
+
+This is the capstone's capstone: a from-scratch, legal reproduction of the modern DRM-analysis workflow.
+
+---

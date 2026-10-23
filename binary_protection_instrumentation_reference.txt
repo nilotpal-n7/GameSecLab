@@ -1,0 +1,254 @@
+Binary Protection & Instrumentation — Educational Technology Reference
+==========================================================================
+
+Purpose
+-------
+These notes summarize technologies discussed in an educational reverse-engineering
+presentation, using neutral terminology and a defensive/authorized-lab framing.
+They are intended for learning about software protection, binary analysis, and
+instrumentation on software you own or are explicitly authorized to examine.
+
+1. Software protection and defense in depth
+--------------------------------------------
+Software protection systems may combine several layers:
+- Licensing and entitlement checks.
+- Environment or device characteristics used as risk signals.
+- Runtime integrity verification.
+- Code obfuscation and virtualization.
+- Server-side validation and recovery flows.
+
+No single layer is a complete security boundary. A robust design should assume
+that client-side logic can be inspected and that local checks may be observed or
+modified by a sufficiently capable analyst. Keep valuable authorization decisions
+server-side where practical, minimize secrets embedded in clients, and provide
+clear recovery paths for legitimate hardware or OS changes.
+
+2. Device binding and token-based authorization
+------------------------------------------------
+A service may associate a signed or encrypted authorization token with a set of
+device characteristics. A client gathers approved signals, sends them to a
+service, and receives a token or authorization response. At launch, the client
+validates the response and checks whether the current environment remains
+consistent with the token's policy.
+
+Design considerations:
+- Prefer privacy-preserving, documented signals and explain their use to users.
+- Avoid treating any single hardware or OS value as a permanent identity.
+- Use server-side signatures or authenticated encryption; do not rely on secrecy
+  of a client-embedded key.
+- Include token expiry, revocation, key rotation, and legitimate device migration.
+- Test mismatches and service outages in a local mock service.
+- Log decision reasons without collecting unnecessary personal data.
+
+3. Static binary analysis
+-------------------------
+Disassemblers and decompilers such as Ghidra and IDA help analysts inspect
+machine code, imports, sections, control flow, and probable function boundaries.
+Packed or transformed sections may be difficult to interpret statically.
+A runtime memory snapshot can differ from the on-disk file because loaders,
+runtime initialization, or just-in-time compilation may change memory contents.
+
+Useful workflow for an authorized sample:
+- Record the sample hash, build configuration, and test environment.
+- Inspect PE headers, sections, imports, exports, and memory permissions.
+- Compare symbols, source, compiler output, and disassembly where available.
+- Treat decompiler output as a hypothesis and verify it against assembly.
+- Keep untouched originals and document every experiment.
+
+4. Code virtualization and obfuscation
+--------------------------------------
+A virtualization-based protector translates selected functions into a custom
+instruction representation and executes them using an embedded interpreter.
+The representation may use virtual registers or a virtual stack, instruction
+handlers, dispatch tables, and encoded bytecode.
+
+Common analysis challenges include:
+- Indirect control flow and fragmented basic blocks.
+- Opaque predicates, redundant instructions, and dead stores.
+- Encoded dispatch metadata or bytecode.
+- A mismatch between native and virtual machine state.
+- Decompiler output becoming less useful when control flow is obscured.
+
+For a protector you build yourself, create a small toy virtual machine and
+document its instruction set. Compare the original function's behavior with the
+protected function using unit tests and differential testing. Measure performance
+and compatibility costs; obfuscation raises analysis cost but does not replace
+sound architecture or server-side authorization.
+
+5. Instruction decoding and emulation libraries
+------------------------------------------------
+A disassembly library such as Capstone can decode machine instructions and expose
+their operands and instruction boundaries. A lab analyzer can use this metadata
+to build control-flow graphs, annotate register reads/writes, and identify
+candidate dead assignments.
+
+Emulation is more complex than decoding: it must model flags, registers,
+memory, exceptions, calling conventions, and any relevant instruction semantics.
+Heuristics can be useful for exploration, but should not be treated as proof.
+Validate analysis results against known source code and test cases.
+
+6. Dynamic binary instrumentation (DBI) and Intel Pin
+-----------------------------------------------------
+Dynamic binary instrumentation inserts analysis logic while a program executes.
+Intel Pin provides a framework for writing tools that observe or instrument
+instructions and routines. Depending on the tool, instrumentation can collect
+instruction counts, basic-block coverage, call traces, selected register values,
+or performance measurements.
+
+Safe lab exercises:
+- Count instructions or basic blocks in a small program you wrote.
+- Trace calls to a function in your own test application.
+- Measure instrumentation overhead with and without analysis enabled.
+- Compare compiler optimizations using a deterministic test workload.
+- Keep logs bounded and avoid collecting secrets or unrelated user data.
+
+Instrumentation changes runtime behavior and timing. Findings should account
+for observer effects, thread scheduling, JIT activity, and differences between
+debug and release builds.
+
+7. Windows loader behavior and DLLs
+-----------------------------------
+The Windows loader maps executable images and dependencies, resolves imports,
+and invokes initialization routines. DLL search order and initialization timing
+are important security considerations.
+
+Defensive guidance:
+- Use secure DLL-loading APIs and explicit trusted paths where possible.
+- Avoid loading dependencies from writable or untrusted directories.
+- Minimize work performed during DLL initialization.
+- Verify the provenance and signature of critical components.
+- Test dependency-loading behavior in an isolated application you control.
+
+8. Import tables and API observability
+--------------------------------------
+The PE import address table contains addresses used for imported functions.
+Analysts and diagnostic tools can inspect API usage to understand application
+behavior. API interception can also be useful in controlled test harnesses, but
+it introduces compatibility, concurrency, and reliability concerns.
+
+For defensive testing, prefer explicit dependency injection, mock interfaces,
+or documented diagnostic callbacks in your own application. If external
+instrumentation is necessary, scope it to a disposable test process and record
+the limitations of the results.
+
+9. Windows memory protection and exception handling
+----------------------------------------------------
+Virtual memory pages have permissions such as read, write, and execute.
+Windows APIs expose memory allocation, protection changes, and memory-query
+operations. Access violations and invalid instructions may raise structured
+exceptions, and applications can register handlers for supported exception
+models.
+
+Defensive lessons:
+- Avoid writable-and-executable memory unless there is a justified need.
+- Follow least-privilege memory permissions and restore them carefully.
+- Validate all JIT-generated code and manage executable-memory transitions.
+- Keep exception handlers minimal, predictable, and well tested.
+- Do not treat memory permissions or exception handling as a substitute for
+  authorization and integrity architecture.
+- Test expected failures in a toy application and ensure crashes fail safely.
+
+10. Runtime integrity checks
+----------------------------
+An application may hash or otherwise verify selected code/data regions to detect
+unexpected modification. Integrity checks can be bypassed by sufficiently
+privileged local analysis, so they should be considered tamper signals rather
+than an absolute guarantee.
+
+A defensive implementation should:
+- Define exactly what is measured and why.
+- Account for relocations, legitimate runtime writes, and platform variation.
+- Use authenticated server-side policy for high-value decisions.
+- Avoid crashing or destroying user data solely because a check is inconclusive.
+- Test detection, false positives, recovery, and telemetry in controlled builds.
+
+11. JIT compilation and generated code
+--------------------------------------
+Just-in-time compilation produces executable code at runtime, often in allocated
+memory rather than the original image's code section. This can complicate static
+analysis and affect instrumentation results. Generated code should have clear
+lifecycle management, appropriate page permissions, and well-defined validation
+rules.
+
+For a lab, instrument a small JIT or runtime code generator you own. Record where
+generated regions originate, their lifetime, and how behavior changes when
+instrumentation is enabled. Do not infer intent from an address alone.
+
+12. Timing, performance, and observer effects
+---------------------------------------------
+Runtime protection and instrumentation can affect execution time. Software may
+use timing measurements for profiling or anomaly detection, but timing is noisy
+and can vary with CPU frequency, scheduling, virtualization, and background load.
+
+For defensive evaluation:
+- Benchmark many runs and report distributions, not just one result.
+- Compare instrumented and uninstrumented baselines.
+- Avoid using a single timing threshold as a security decision.
+- Treat debugger/instrumentation signals as risk indicators with false positives.
+- Never rely on client-side timing checks as the only enforcement mechanism.
+
+13. Process and OS environment structures
+------------------------------------------
+Operating systems expose process metadata and shared system information through
+documented APIs and internal structures. Some low-level structures vary by OS
+version and are not stable application interfaces.
+
+Use documented APIs for production software. In an authorized research lab,
+compare documented API results with observations from a controlled test program,
+and clearly label undocumented structure layouts as version-specific. Avoid
+hard-coding internal offsets into production code.
+
+14. Building a safe protection-evaluation lab
+---------------------------------------------
+A useful lab can model the ideas without reproducing a circumvention workflow:
+- Build a small licensing application and a local mock authorization server.
+- Issue signed test tokens with expiry and device-policy metadata.
+- Add integrity telemetry and a documented recovery path.
+- Build a toy virtual machine to learn interpreter and bytecode design.
+- Use Ghidra/IDA to compare your own source, assembly, and protected builds.
+- Use Intel Pin for instruction counts, call tracing, and performance studies.
+- Test benign fault cases, malformed tokens, network failures, and OS updates.
+- Keep all binaries, tokens, and test identities synthetic and isolated.
+- Write down threat assumptions, expected outcomes, false positives, and limits.
+
+15. Tool glossary
+-----------------
+Ghidra / IDA:
+  Static disassembly, decompilation, cross-references, and control-flow review.
+
+x64dbg:
+  Interactive debugging of Windows user-mode applications.
+
+Frida:
+  Dynamic instrumentation and runtime inspection framework for authorized tests.
+
+Capstone:
+  Instruction decoding library useful for disassembly and analysis tooling.
+
+Intel Pin:
+  Dynamic binary instrumentation framework for instruction-level analysis.
+
+PE format:
+  Windows executable format defining headers, sections, imports, exports, and
+  related loader metadata.
+
+JIT:
+  Just-in-time compilation that generates machine code while a program runs.
+
+Virtual machine / bytecode:
+  A custom execution model that interprets an instruction representation.
+
+Exception handler:
+  Application logic invoked when a supported runtime exception is raised.
+
+Memory protection:
+  Permissions governing whether memory pages may be read, written, or executed.
+
+Scope note
+----------
+This reference intentionally presents the technologies, concepts, and defensive
+engineering lessons at a reusable educational level. It does not provide a
+step-by-step workflow for defeating a third-party licensing system, replaying
+device identity data, evading runtime integrity checks, or removing a commercial
+protector. For deeper hands-on work, use a toy protector and application you own,
+with explicit test cases and observable expected outcomes.

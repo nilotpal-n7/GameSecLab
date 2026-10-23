@@ -31,17 +31,20 @@ packaged Shipping build 5–10 GB · temp headroom ~20 GB.
 ---
 
 ## Step 1 — Visual Studio: add the game workload (10 min)
+
 1. Open **Visual Studio Installer** → VS 2026 Enterprise → **Modify**.
 2. Tick the workload **Game development with C++**. Keep **Desktop development with C++** (already there).
 3. Install. Your MSVC (14.51) and Windows 11 SDK (26100) already meet UE 5.8's requirements.
 
 ## Step 2 — Epic Games Launcher + account (20 min + sign-in)
+
 1. Download the **Epic Games Launcher** from <https://www.epicgames.com/store/download> and install it.
 2. Sign in (or make a free Epic account). This is *your* account — I won't enter credentials for you.
 3. If downloads fail with SSL/certificate errors, the Fortinet firewall that blocked Veloren's download
    server may be interfering — try another network.
 
 ## Step 3 — Install Unreal Engine 5.8 (1–3 hr download, big)
+
 1. Launcher → **Unreal Engine** → **Library** → **+** next to Engine Versions → pick **5.8.x** → Install.
 2. **Options (click to trim size):** you can untick **Starter Content**, **Templates**, and the
    platform **Target Platforms** you don't need (keep Windows). **Leave "Editor symbols for debugging"
@@ -49,6 +52,7 @@ packaged Shipping build 5–10 GB · temp headroom ~20 GB.
 3. Install to a drive with room (C: is fine here).
 
 ## Step 4 — Get Lyra and create the project (30–60 min)
+
 1. The Fab listing is <https://www.fab.com/listings/93faede1-4434-47c0-85f1-bf27c0820ad0> →
    **Add to My Library** (free; your Epic account).
 2. Launcher → **Unreal Engine → Library → Fab Library** → **Lyra Starter Game** → **Create Project**.
@@ -58,7 +62,9 @@ packaged Shipping build 5–10 GB · temp headroom ~20 GB.
    If VS is set up right, it compiles automatically; if prompted to rebuild modules, click **Yes**.
 
 ## Step 5 — Package a Shipping build (30–90 min)
+
 This is the artifact we attack. **Shipping** = release config (no editor, no console by default).
+
 1. In the Lyra editor: **Platforms (toolbar) → Windows → Build Configuration → Shipping**.
 2. **Platforms → Windows → Package Project** (pick target **LyraGame** if asked).
 3. Output folder: **`C:\Tools\GameSecLab\targets\Lyra\`** (create it). Packaging cooks content + builds the exe.
@@ -70,7 +76,9 @@ This is the artifact we attack. **Shipping** = release config (no editor, no con
 > to a real online match.
 
 ## Step 6 — Phase 0 recon on the packaged build (quick, do with me)
+
 Once packaged, we repeat Phase 0 on Lyra and compare to Veloren:
+
 ```powershell
 $L = "C:\Tools\GameSecLab\targets\Lyra\Windows\LyraGame"   # adjust to real path
 Get-ChildItem $L -Recurse -Filter *.exe | Get-AuthenticodeSignature | Format-Table Status,Path
@@ -78,6 +86,7 @@ Get-ChildItem $L -Recurse -Filter *.exe | Get-AuthenticodeSignature | Format-Tab
 Get-ChildItem "$L\Content\Paks"           # .pak / .utoc / .ucas — FModel checks encryption
 Get-ChildItem $L -Recurse -Include *.pdb  # should be NONE in a clean Shipping build
 ```
+
 Paste that back and we'll write a Lyra RECON section.
 
 ---
@@ -85,6 +94,7 @@ Paste that back and we'll write a Lyra RECON section.
 ## After Lyra is built — the Unreal phases
 
 **Phase 1 — map the game live (the big UE payoff):**
+
 - **UE4SS** (experimental build, UE 5.8) → live object/reflection explorer + Lua console. Install into the
   packaged game's `Binaries\Win64\`. Walk `PlayerController → Pawn → find Health/ammo/score by name`.
 - **Dumper-7** → inject to dump C++ headers with offsets for every class. Then a Python parser turns the
@@ -93,12 +103,14 @@ Paste that back and we'll write a Lyra RECON section.
 - **FModel** → browse paks, check AES pak encryption/signing.
 
 **Phase 3 proper — hook `ProcessEvent`:**
+
 - Every `UFunction` call in Unreal funnels through `UObject::ProcessEvent(UFunction* fn, void* params)`.
   Hook it once with Frida and you see **every** gameplay call by name — the grown-up version of the Veloren
   `change_by` logger. Then modify args/return (e.g. zero incoming damage in `ApplyDamage`).
 - Build an **AOB/signature** for ProcessEvent so it survives rebuilds (offsets don't).
 
 ## Tools to fetch when we start Phase 1 (all into `C:\Tools\`)
+
 | Tool | Source | Note |
 | --- | --- | --- |
 | UE4SS (experimental) | github.com/UE4SS-RE/RE-UE4SS releases | pick the experimental build for UE 5.8 |

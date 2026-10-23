@@ -49,6 +49,7 @@ Each item: **what**, **why (which attack it answers)**, **how (UE specifics)**. 
      hook/debugger detection, EAC via Epic Online Services. -->
 
 ## Anti-tamper / anti-debug (from the virtualization side-track)
+
 - [ ] **Don't trust libc for anti-debug.** Why: an LD_PRELOAD `ptrace` stub defeated a virtualized check in
       one line. How: call `syscall(SYS_ptrace,...)` directly (no symbol to override), and read `/proc/self/status`
       TracerPid via raw syscalls.
