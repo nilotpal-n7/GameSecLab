@@ -44,3 +44,5 @@ reaforge/llm_reply.txt
 reaforge/__pycache__/
 reaforge/bridge/
 capstone/*.exe
+capstone/*.i64
+capstone/ida_decompile.txt
