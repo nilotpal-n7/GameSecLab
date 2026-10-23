@@ -35,3 +35,10 @@ vmlab/keycheck_ad
 vmlab/keycheck_ad_vm
 !vmlab/keycheck_ad.c
 !vmlab/keycheck_ad_vm.c
+
+# REAForge generated/runtime files (keep code + README, drop outputs)
+reaforge/capabilities.json
+reaforge/facts.json
+reaforge/llm_prompt.txt
+reaforge/llm_reply.txt
+reaforge/__pycache__/
