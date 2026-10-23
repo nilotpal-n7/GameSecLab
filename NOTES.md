@@ -215,3 +215,13 @@ Full annotated evidence in `RECON.md`. Key takeaways:
 - Already installed: gcc 16 (msys64), Ghidra (C:\Tools\ghidra, use jdk-23), WSL Ubuntu 24.04. Only Tigress to add (WSL).
 - Built toy `vmlab/keycheck.c` (check_key hashes a 10-char key -> magic 0x32629093; key RELAB-2026). Plain
   build verified (WIN/LOSE). Lesson: phases/vmtrack_01_virtualize.md.
+
+## 2026-10-23 — vmtrack staged end-to-end (user away; ready to recover)
+- Tigress 3.1-bin installed in WSL (~/tigress31/tigress/3.1; env in ~/.bashrc; needs --Environment=x86_64:Linux:Gcc:4.6).
+- Virtualized check_key -> keycheck_vm (Virtualize, 416 lines, magic 0x32629093 still visible) and keycheck_vm2
+  (EncodeLiterals+EncodeArithmetic+Virtualize, 638 lines). Plain ELF keycheck_plain_elf = answer key. All behave identically.
+- Ghidra project vmlab/ghidra_proj/KeyCheck.gpr: all 3 imported + auto-analyzed (headless, jdk-23).
+  Set Ghidra JAVA_HOME_OVERRIDE -> jdk-23 so ghidraRun.bat launches (system java is 17).
+- Deliverable skeleton: vmlab/recovery_notes.md (exercises A-D). Lesson updated: phases/vmtrack_01_virtualize.md.
+- Nuance for the lesson: plain Virtualize hides control flow but NOT literals -> 0x32629093 leaks; searching the
+  scalar is a valid first lead, but the skill is recovering the ALGORITHM (dispatcher + opcode map).

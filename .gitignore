@@ -24,3 +24,10 @@ desktop.ini
 vmlab/*.exe
 vmlab/keycheck_vm
 vmlab/keycheck_vm.c
+vmlab/ghidra_proj/
+vmlab/keycheck_plain_elf
+vmlab/keycheck_vm
+vmlab/keycheck_vm2
+vmlab/a.out
+!vmlab/keycheck_vm.c
+!vmlab/keycheck_vm2.c

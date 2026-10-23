@@ -42,20 +42,23 @@ won't be — that contrast is the whole lesson.
 
 ---
 
-## Step 1 — install Tigress in WSL (15 min)
-The download is **gated behind a name/email + license form** (can't wget it; a direct GET returns the form
-HTML). Download it in a normal browser, then install the `.deb` in WSL.
-1. Browser → <https://tigress.wtf/download.html> → Linux package `tigress_3.3.3-1_any.deb` → fill name/email,
-   accept the license, submit. You get `tigress_3.3.3-1_any.deb.zip` in `C:\Users\nilot\Downloads`.
-2. In **Ubuntu** (WSL):
-   ```bash
-   cd ~ && mkdir -p tigress_dl && cd tigress_dl
-   cp /mnt/c/Users/nilot/Downloads/tigress_3.3.3-1_any.deb.zip .
-   unzip -o tigress_3.3.3-1_any.deb.zip
-   sudo dpkg --force-architecture -i tigress_3.3.3-1_any.deb      # installs to /usr/local/bin/tigresspkg/3.3.3
-   ```
-3. Verify: `/usr/local/bin/tigresspkg/3.3.3/check.sh` then `tigress --version`. A C compiler is already present
-   in WSL (gcc). The `.deb` install puts `tigress` on PATH; no manual `TIGRESS_HOME` needed.
+## Step 1 — Tigress install — DONE (2026-10-23)
+Installed the **3.1 binary** distribution (you downloaded that instead of the `.deb`; it works the same).
+- Extracted to `~/tigress31/tigress/3.1` in WSL; `TIGRESS_HOME` + PATH persisted in `~/.bashrc`, so `tigress`
+  is on PATH in every new Ubuntu shell.
+- Every Tigress command needs `--Environment=x86_64:Linux:Gcc:4.6`.
+- Self-test passed (virtualized Tigress's own `test1.c` and ran it).
+
+## Step 2 — virtualize `check_key` — DONE
+Produced in `vmlab/` (behaviour identical to the plain build):
+```bash
+# (for reference; already run) from /mnt/c/Tools/GameSecLab/vmlab
+tigress --Environment=x86_64:Linux:Gcc:4.6 --Transform=Virtualize --Functions=check_key \
+        --out=keycheck_vm.c keycheck.c && gcc -w -O2 -o keycheck_vm keycheck_vm.c
+```
+- `keycheck_plain_elf` — plain Linux build (answer key).
+- `keycheck_vm` — Virtualize only (30 → 416 lines of interpreter; magic `0x32629093` still visible).
+- `keycheck_vm2` — EncodeLiterals + EncodeArithmetic + Virtualize (638 lines; harder).
 
 ## Step 2 — virtualize `check_key` (10 min)
 From the project dir inside WSL (your Windows C: is at `/mnt/c`):
@@ -69,16 +72,12 @@ gcc -O2 -o keycheck_vm keycheck_vm.c      # Linux ELF; runs in WSL
 Open `keycheck_vm.c` in a text editor: `check_key` is now a **bytecode interpreter** — a big switch/loop
 over an array of numbers. The original arithmetic is gone from the source. That is virtualization.
 
-## Step 3 — recover it in Ghidra (the real exercise)
-1. Ghidra → new project → import **both** `keycheck_plain.exe` and the `keycheck_vm` ELF.
-2. Analyze `keycheck_plain` first — find `check_key`, read the clean decompile. That's your answer key.
-3. Analyze `keycheck_vm` — find `check_key`. Now you see the **VM**: a dispatch loop reading a bytecode
-   array and a `switch` over opcodes. Your job:
-   - locate the **interpreter loop** and the **opcode handlers** (add, xor, mul, load, compare…),
-   - find the **bytecode array** and the **magic constant** `0x32629093`,
-   - reconstruct the algorithm and confirm it matches the plain version.
-4. Write it up in `vmlab/recovery_notes.md`: how you found the dispatcher, the opcode map you built, and the
-   recovered logic. **That write-up is the portfolio piece.**
+## Step 3 — recover it in Ghidra — STAGED, your turn
+A Ghidra project is pre-built with all three binaries imported and auto-analyzed:
+`vmlab/ghidra_proj/KeyCheck.gpr`. Ghidra is already pointed at jdk-23 (your system `java` is 17, too old),
+so just launch `C:\Tools\ghidra\ghidraRun.bat` and open that project.
+Then follow **`vmlab/recovery_notes.md`** — read the plain `check_key` (answer key), then find the VM
+dispatcher + opcode handlers in `keycheck_vm`, and write up the recovery. **That write-up is the portfolio piece.**
 
 ## Step 4 — add anti-debug, then beat it (stretch)
 Add a self-check to `keycheck.c` (Linux: `ptrace(PTRACE_TRACEME,0,0,0) == -1` means "being debugged"),
