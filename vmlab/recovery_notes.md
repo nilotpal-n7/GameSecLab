@@ -90,3 +90,10 @@ Anti-RE noticed: **opcode diversification** (0x23 & 0x9a both multiply, etc.) an
 (`default: goto` re-enters the switch to hide the loop). Both are techniques Denuvo also uses.
 
 TODO (to confirm): read `_1_check_key_$array` bytes in order; diff recovered logic vs `keycheck_plain_elf` check_key.
+
+### CONFIRMED against answer key (2026-10-24)
+- Bytecode `_1_check_key_$array` @ 0x104020 starts with 0xC5 = push &key — matches the opcode map (first op).
+- `keycheck_plain_elf` check_key decompile == recovered VM logic:
+    acc=0x1505; do { acc = ((acc*33) ^ key[i]) + i*7; i7+=7; } while(i7 != 0x46 /*70=7*10*/); return acc==0x32629093;
+- Compiler details learned: **strength reduction** (i*7 kept as a running +7 counter, no multiply) and a
+  **disguised loop bound** (`while(i7 != 70)` instead of `i<10`). Virtualized -> recovered -> verified: full circle.
