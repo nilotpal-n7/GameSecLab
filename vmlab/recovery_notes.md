@@ -55,3 +55,38 @@ check. That's Denuvo's layered anti-debug in miniature.
 ## The answer (don't peek until you've tried B)
 `check_key`: `acc=0x1505; for i in 0..9: acc=(acc*33)^key[i]; acc+=i*7; return acc==0x32629093`.
 Correct key `RELAB-2026`. Success = your recovered opcode trace computes exactly this.
+
+---
+
+## RECOVERED (2026-10-24) — keycheck_vm opcode map
+
+Dispatcher: `check_key` = `while(true) switch(*puVar5)` where **puVar5 = PC** (starts at
+`&_1_check_key_$array` = bytecode) and **puVar6 = SP** (stack at `local_168`). Stack machine:
+push = sp+=2, binary op pops 2 / pushes 1.
+
+| Opcode(s) | Operation | Maps to |
+| --- | --- | --- |
+| 0x7b,0xa3 / 0xfe | push 4/8-byte constant | 0x1505, 33, 7, 10, 0x32629093 |
+| 0xc5 | push &arg (key) | `key` |
+| 0x5b | push &local | `i`, `acc` |
+| 0xfa | load byte via ptr | `key[i]` |
+| 0xa8 | (byte) zero-extend | uchar(key[i]) |
+| 0x23,0x9a | multiply (uint) | `*33`, `i*7` |
+| 0x88 | XOR | `^ key[i]` |
+| 0x3a,0x84 | add | `acc += …` |
+| 0xf7 | less-than | loop `i<10` |
+| 0x67 | equal | `== 0x32629093` |
+| 0x13 | not-equal | `len != 10` |
+| 0x2a | branch-if-true | loop back-edge |
+| 0x1 | unconditional jump | — |
+| 0x51 | CALL extern (1=strlen) | `strlen(key)` |
+| 0x5a | return top | `return` |
+| 0x7,100,0x56,0xcb,0xfc… | store / load / convert | `acc`,`i` mem ops |
+
+Recovered logic (from handlers alone, no bytecode trace needed):
+`len=strlen(key); if(len!=10) return 0; acc=0x1505; for i in 0..9: acc=(acc*33)^key[i]; acc+=i*7; return acc==0x32629093;`
+
+Anti-RE noticed: **opcode diversification** (0x23 & 0x9a both multiply, etc.) and **threaded dispatch**
+(`default: goto` re-enters the switch to hide the loop). Both are techniques Denuvo also uses.
+
+TODO (to confirm): read `_1_check_key_$array` bytes in order; diff recovered logic vs `keycheck_plain_elf` check_key.
