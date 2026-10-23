@@ -47,3 +47,10 @@ Each item: **what**, **why (which attack it answers)**, **how (UE specifics)**. 
 
 <!-- Later phases add: server RPC WithValidation, movement/speed-hack correction,
      hook/debugger detection, EAC via Epic Online Services. -->
+
+## Anti-tamper / anti-debug (from the virtualization side-track)
+- [ ] **Don't trust libc for anti-debug.** Why: an LD_PRELOAD `ptrace` stub defeated a virtualized check in
+      one line. How: call `syscall(SYS_ptrace,...)` directly (no symbol to override), and read `/proc/self/status`
+      TracerPid via raw syscalls.
+- [ ] **Layer independent anti-debug checks** (TracerPid, rdtsc timing, 0xCC scan, parent-pid, multiple ptrace
+      sites), each inside the VM + literal-encoded, so defeating one isn't enough. No single point of failure.

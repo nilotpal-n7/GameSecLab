@@ -31,3 +31,7 @@ vmlab/keycheck_vm2
 vmlab/a.out
 !vmlab/keycheck_vm.c
 !vmlab/keycheck_vm2.c
+vmlab/keycheck_ad
+vmlab/keycheck_ad_vm
+!vmlab/keycheck_ad.c
+!vmlab/keycheck_ad_vm.c

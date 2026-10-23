@@ -111,3 +111,21 @@ Same VM skeleton (puVar8=PC over `_3_check_key_$array`, puVar7=SP, while/switch/
 Recovery = same target as vm1; peel MBA back to `(acc*33)^key[i]+i*7; ==0x32629093`. Magic still literal
 in the binary (quick confirm). Lesson: Virtualize hides control flow, EncodeArithmetic hides the data math;
 stacked (+encoded compares) = Denuvo-style layered cost. Deep MBA is where SMT simplifiers earn their keep.
+
+---
+
+## Anti-debug stretch (2026-10-24) — keycheck_ad / keycheck_ad_vm
+Added `if (ptrace(PTRACE_TRACEME,0,0,0) < 0) return 0;` to check_key, then virtualized it.
+Results (WSL):
+- normal run: WIN (plain + vm)
+- under gdb: LOSE — debugger detected even though check_key is virtualized (anti-debug lives in the VM)
+- under gdb + `LD_PRELOAD=noptrace.so` (fake ptrace returns 0): **WIN** — bypassed
+
+**Lesson:** virtualization protects the *logic*, not the *external-call boundary*. The anti-debug calls libc
+`ptrace`; the VM invokes it via a call opcode, so intercepting `ptrace` (LD_PRELOAD) defeats it without
+touching the obfuscated code. Other bypasses: patch/NOP the branch, `gdb catch syscall ptrace` + `return 0`,
+fake `/proc/self/status` TracerPid.
+
+**Defensive takeaway (-> FIXLIST / Phase 5):** weak because it trusted libc. Harden by: raw `syscall(SYS_ptrace)`
+(no symbol to preload), layer many independent checks (TracerPid, rdtsc timing, 0xCC breakpoint scan, parent
+check), and keep them inside the VM + encoded. No single point of failure = the Denuvo model.
