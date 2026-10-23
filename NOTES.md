@@ -205,3 +205,13 @@ Full annotated evidence in `RECON.md`. Key takeaways:
 
 **Env reminders:** frida CLI not on PATH (use the python module); download.veloren.net blocked by Fortinet
 (Epic downloads may hit the same); 15.4 GB RAM is tight for UE compiles.
+
+## 2026-10-23 — New side track: virtualization & anti-tamper (legal Denuvo-technique study)
+- User wanted to study Denuvo. Denuvo on a shipping game = DRM circumvention (illegal, DMCA §1201), declined
+  repeatedly across reframes (own game / buy it / "open-source game with Denuvo" (doesn't exist) / college project).
+- Legal path that teaches the SAME skills: virtualize your OWN C function with **Tigress** (WSL), then recover
+  it in **Ghidra**. Answer key available (compile plain + virtualized). Later: a GPL id-Software (Doom/Quake)
+  function for the "real commercial game" story.
+- Already installed: gcc 16 (msys64), Ghidra (C:\Tools\ghidra, use jdk-23), WSL Ubuntu 24.04. Only Tigress to add (WSL).
+- Built toy `vmlab/keycheck.c` (check_key hashes a 10-char key -> magic 0x32629093; key RELAB-2026). Plain
+  build verified (WIN/LOSE). Lesson: phases/vmtrack_01_virtualize.md.

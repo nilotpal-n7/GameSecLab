@@ -47,6 +47,7 @@ C:\Tools\GameSecLab\
 - [ ] Lyra setup — build UE 5.8 Shipping build of Lyra (see phases/lyra_setup.md) — NEXT, user's hands-on
 - [ ] Phase 4 — Debugger & deeper RE (x64dbg + Ghidra)
 - [ ] Phase 5 — Anti-cheat synthesis (ANTICHEAT_MAP.md, FIXLIST.md)
+- [~] Side track — Virtualization & anti-tamper (Tigress + Ghidra on your own code; legal Denuvo-technique study) — see phases/vmtrack_01_virtualize.md
 
 ## Tool install status (all go in `C:\Tools\<Name>`)
 

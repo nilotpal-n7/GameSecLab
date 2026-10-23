@@ -19,3 +19,8 @@ dumps/**
 .vscode/
 Thumbs.db
 desktop.ini
+
+# vmlab: keep source + notes, ignore built binaries
+vmlab/*.exe
+vmlab/keycheck_vm
+vmlab/keycheck_vm.c
