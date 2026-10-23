@@ -233,3 +233,18 @@ Full annotated evidence in `RECON.md`. Key takeaways:
   the Unreal target; uses VS2026 + x64dbg already here). Plan: phases/capstone_protect_and_break.md.
 - Note O-MVLL is iOS/Android only -> use Hikari/Pluto for x64. Legal line: own code only; external test later
   = Tigress Challenge / FLARE-On (pro-made, legal). Honest ceiling: still not Denuvo-scale, but real VM/anti-tamper.
+
+## 2026-10-24 — REAForge (AI RE orchestrator) + tool install sweep
+- Built reaforge/ (tool_registry, llm_backend[3 modes], orchestrator skeleton, README, scope guard).
+- LLM modes: (1) API multi-provider anthropic/openai/gemini; (2) Bridge = Claude Code auto-answers a file
+  mailbox while driving the session (honest limit: only while a session drives it); (3) Custom (user's own tool
+  via stdin/stdout). Ollama optional — recommended qwen2.5-coder:7b for 15GB RAM. No API keys set yet.
+- Installed free RE core: capstone, unicorn, keystone, lief, r2pipe (pefile/frida already). ScyllaHide v1.4
+  installed into x64dbg plugins (x32+x64). 
+- Protectors present (user installed demos): VMProtect Demo (C:\Program Files\VMProtect Demo\VMProtect.exe +
+  VMProtect_Con.exe CLI), Themida (C:\Tools\ThemidaDemo\Themida64.exe). OSS fallback = Tigress (have).
+- Still to build when needed: NoVmp+VTIL (VS build), OLLVM x64 fork (Pluto/Hikari), angr/triton (heavy).
+- REA repo (morluto/rea): real MIT MCP RE tool, but claims ~372k stars for a 6-mo-old repo (treat as
+  unverified/likely inflated). Runs third-party agent code via npx/install.sh -> NOT auto-installed; evaluate
+  sandboxed later if wanted. We build our own (reaforge) as the core.
+- Fixed pre-existing WSL ~/.bashrc syntax error (unquoted (x86) PATH dump, line 120; backup saved).
