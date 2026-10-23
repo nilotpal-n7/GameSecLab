@@ -97,3 +97,17 @@ TODO (to confirm): read `_1_check_key_$array` bytes in order; diff recovered log
     acc=0x1505; do { acc = ((acc*33) ^ key[i]) + i*7; i7+=7; } while(i7 != 0x46 /*70=7*10*/); return acc==0x32629093;
 - Compiler details learned: **strength reduction** (i*7 kept as a running +7 counter, no multiply) and a
   **disguised loop bound** (`while(i7 != 70)` instead of `i<10`). Virtualized -> recovered -> verified: full circle.
+
+---
+
+## keycheck_vm2 (EncodeLiterals + EncodeArithmetic + Virtualize) — 2026-10-24
+Same VM skeleton (puVar8=PC over `_3_check_key_$array`, puVar7=SP, while/switch/threaded-dispatch).
+**Delta from vm1:** EncodeArithmetic added bitwise/arith primitives and rewrote the math as MBA:
+- new opcodes: negate 0x2a; SHL 0x4d/0x6f; SHR 0x4e/0x53/0x73; OR 0x42/0xa7; AND 0xa6/0xb4;
+  SUB 0x6b/0x94; LE 0x2b. (XOR/ADD/MUL/const/loadchar/strlen/return/branch still present, diversified.)
+- **No eq/ne opcode:** comparisons became arithmetic — `acc==magic` -> `acc ^ magic` then branch-if-zero (0x5f);
+  `len!=10` -> sub/xor then nonzero test.
+- MBA identities used: `x*33=(x<<5)+x`; `a+b=(a^b)+((a&b)<<1)`; `a^b=(a|b)-(a&b)`.
+Recovery = same target as vm1; peel MBA back to `(acc*33)^key[i]+i*7; ==0x32629093`. Magic still literal
+in the binary (quick confirm). Lesson: Virtualize hides control flow, EncodeArithmetic hides the data math;
+stacked (+encoded compares) = Denuvo-style layered cost. Deep MBA is where SMT simplifiers earn their keep.
