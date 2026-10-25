@@ -38,8 +38,9 @@ Source: From several official commercial websites' free educational docs.
 
 ## What to install (when we reach each step)
 
-- **Intel Pin 4.0** (free DBI) — <https://www.intel.com/content/www/us/en/developer/articles/tool/pin-a-binary-instrumentation-tool-downloads.html>
-  (Windows kit uses LLVM clang-cl; grab at step #12).
+- **Intel Pin 4.4** (free DBI) — INSTALLED at `C:\Tools\PIN\...\pin.exe`. Starter tool
+  `reaforge/pintools/recon_trace.cpp`; build/run guide `phases/pin_lab.md` (Windows kit uses LLVM clang-cl;
+  build at step #12).
 - **NoVmp + VTIL** — build in VS2026 for step #5 (VMProtect devirtualization).
 - Everything else (#7–#15) we **write ourselves** in C — that's the point: our own VEH/IAT/DLL-hijack/shadow-page/
   HWID-record-replay harness becomes a reusable part of REAForge.

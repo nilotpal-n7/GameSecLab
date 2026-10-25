@@ -272,4 +272,20 @@ Full annotated evidence in `RECON.md`. Key takeaways:
 - Added capstone phase C5 (full bypass chain on a RE-like version of license_app): multi-source HWID +
   anti-tamper CRC + VMProtect, then our own DLL-hijack/IAT/VEH/shadow-page/VirtualProtect-hook/RDTSC/HWID
   record-replay harness + Intel Pin tracing + NoVmp devirt. Harness becomes reusable REAForge tooling.
-- To install when needed: Intel Pin 4.0 (free DBI, step #12), NoVmp+VTIL (build, step #5). Rest we write in C.
+- To install when needed: NoVmp+VTIL (build, step #5). Rest we write in C.
+
+## 2026-10-25 — Intel Pin installed + environment layout decided
+
+- **Intel Pin 4.4** installed at `C:\Tools\PIN\pin-external-4.4-99977-g54fbb8814-clang-windows\pin.exe`
+  (the doc said "4.0"; actual is 4.4). REAForge detects it. Starter pintool written:
+  `reaforge/pintools/recon_trace.cpp` (instr count + CPUID/RDTSC/RDTSCP address trace = C5 step 3). Build
+  needs VS2026/clang-cl — deferred until we reach C5 step 3. Guide: `phases/pin_lab.md`.
+- **Environments mapped** -> `ENVIRONMENTS.md`. Windows-native = primary workbench (targets are PE);
+  **WSL BlackArch (`archlinux`)** = the specialized Linux RE arsenal (radare2/rizin/cutter/gdb/ropper/
+  ROPgadget/clang/nasm/ghidra); **WSL Ubuntu** = plain build box, now redundant for the lab; **Docker** =
+  disposable build/detonation sandboxes. Rule: one home per Linux RE tool (BlackArch), don't duplicate.
+- **Tigress no longer installed** in either distro (WSL was reset; `~/tigress31` + `.bashrc` entry gone).
+  Low-impact (capstone is VMProtect/Themida/OLLVM on Windows); reinstall into ONE distro if resuming vmlab.
+- Fixed `reaforge/tool_registry.py`: it only probed Ubuntu and mis-counted "command not found" as installed.
+  Now probes both distros and validates the path. New neutral reference added:
+  `binary_protection_instrumentation_reference.txt` (defensive/authorized-lab framing of the same tech).

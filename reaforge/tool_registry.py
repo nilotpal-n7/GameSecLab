@@ -26,7 +26,18 @@ PATHS = {
     "pin":      [r"C:\Tools\PIN\pin-external-4.4-99977-g54fbb8814-clang-windows\pin.exe", r"C:\Tools\PIN\pin.exe"],
 }
 PY_LIBS = ["capstone", "unicorn", "keystone", "lief", "pefile", "r2pipe", "frida", "angr", "triton"]
-WSL_TOOLS = {"tigress": "tigress --version", "gdb": "gdb --version", "radare2": "r2 -v"}
+
+# WSL layout (see ENVIRONMENTS.md): Ubuntu = plain build box + Tigress;
+# archlinux = BlackArch, the specialized Linux RE arsenal.
+import re as _re
+WSL_DISTROS = ["Ubuntu", "archlinux"]
+WSL_TOOLS = {
+    "Ubuntu":    ["gcc", "gdb", "tigress"],
+    "archlinux": ["gcc", "clang", "gdb", "radare2", "rizin", "cutter",
+                  "ghidra", "ropper", "ROPgadget", "nasm"],
+}
+# Strips OSC (shell-integration) + CSI escape noise some interactive distros emit.
+_ANSI = _re.compile(r"\x1b\][^\x07]*(?:\x07|\x1b\\)|\x1b\[[0-9;?]*[A-Za-z]")
 
 
 def _first_existing(paths):
@@ -44,14 +55,31 @@ def detect_py_lib(mod):
         return None
 
 
-def detect_wsl(cmd):
+def _which_in(distro, tool):
+    """Path of `tool` inside a WSL distro, or None. Validated: the probe must exit 0
+    AND emit an actual path — so 'command not found' is no longer mistaken for found."""
     try:
-        out = subprocess.run(["wsl", "-d", "Ubuntu", "bash", "-lic", cmd],
+        out = subprocess.run(["wsl", "-d", distro, "bash", "-lic",
+                              f"command -v {tool} 2>/dev/null || true"],
                              capture_output=True, text=True, timeout=25)
-        line = (out.stdout or out.stderr).strip().splitlines()
-        return line[0] if line else None
     except Exception:
         return None
+    if out.returncode != 0:
+        return None
+    for raw in (out.stdout or "").splitlines():
+        line = _ANSI.sub("", raw).strip()
+        if line.startswith("/") and "not found" not in line:
+            return line
+    return None
+
+
+def _distro_up(distro):
+    try:
+        out = subprocess.run(["wsl", "-d", distro, "bash", "-lic", "true"],
+                             capture_output=True, text=True, timeout=20)
+        return out.returncode == 0
+    except Exception:
+        return False
 
 
 def collect():
@@ -60,8 +88,12 @@ def collect():
         caps["native"][name] = _first_existing(paths)
     for lib in PY_LIBS:
         caps["python_libs"][lib] = detect_py_lib(lib)
-    for name, cmd in WSL_TOOLS.items():
-        caps["wsl"][name] = detect_wsl(cmd)
+    for distro in WSL_DISTROS:
+        up = _distro_up(distro)
+        caps["wsl"][distro] = {"installed": up, "tools": {}}
+        if up:
+            for tool in WSL_TOOLS.get(distro, []):
+                caps["wsl"][distro]["tools"][tool] = _which_in(distro, tool)
     # AI backends
     caps["ai_backends"]["anthropic_api_key"] = bool(os.environ.get("ANTHROPIC_API_KEY"))
     caps["ai_backends"]["ollama"] = _probe_ollama()
@@ -83,11 +115,17 @@ def main():
     caps = collect()
     (HERE / "capabilities.json").write_text(json.dumps(caps, indent=2))
     print("== REAForge capability report ==")
-    for section in ("native", "python_libs", "wsl"):
+    for section in ("native", "python_libs"):
         print(f"\n[{section}]")
         for k, v in caps[section].items():
             mark = "OK " if v else "-- "
             print(f"  {mark}{k:12} {v if v else 'not found'}")
+    print("\n[wsl]")
+    for distro, info in caps["wsl"].items():
+        print(f"  {distro} ({'installed' if info['installed'] else 'NOT INSTALLED'})")
+        for tool, path in info.get("tools", {}).items():
+            mark = "OK " if path else "-- "
+            print(f"    {mark}{tool:12} {path if path else 'not found'}")
     print("\n[ai_backends]")
     for k, v in caps["ai_backends"].items():
         print(f"  {k}: {v}")

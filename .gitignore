@@ -46,3 +46,8 @@ reaforge/bridge/
 capstone/*.exe
 capstone/*.i64
 capstone/ida_decompile.txt
+
+# Intel Pin lab artifacts
+*.log
+**/obj-intel64/
+**/obj-ia32/
