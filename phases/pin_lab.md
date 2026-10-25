@@ -20,25 +20,25 @@ Pin injects analysis code into a live process; never attach it to someone else's
 Counts instructions and logs the runtime address of every `cpuid` / `rdtsc` / `rdtscp`. Those are the
 hardware-fingerprint and timing anchors in a protected binary.
 
-## Build (Windows — needs VS2026 / clang-cl, the kit's documented path)
+## Build — one command (WORKING, validated 2026-10-26)
 
-The kit ships a template under `source\tools\MyPinTool\`. Easiest route: drop our source in and reuse its
-build files.
+`reaforge/pintools/build.bat <tool.cpp>` builds any pintool. No VS ClangCL component needed — it drives
+**Pin's own `make`** (whose `pin-clang-cl++` / `pin-ld` wrappers are bash scripts) with our **Hikari clang-cl**
++ **msys64 make** on PATH, inside a VS2026 env (for the Windows SDK libs). Source stays in the repo; it stages
+into `%PIN%\source\tools\REAForge\`, builds, and copies the `.dll` back here.
 
-```bash
-set PIN=C:\Tools\PIN\pin-external-4.4-99977-g54fbb8814-clang-windows
-copy C:\Tools\GameSecLab\reaforge\pintools\recon_trace.cpp %PIN%\source\tools\MyPinTool\
+```bat
+cmd /c "C:\Tools\GameSecLab\reaforge\pintools\build.bat recon_trace.cpp"
+REM -> reaforge\pintools\recon_trace.dll
 ```
 
-Then either:
+Prereqs (all already installed): Pin 4.4, Hikari clang-cl (`C:\Tools\ollvm\install\bin`), msys64 make
+(`C:\Tools\msys64\usr\bin`), VS2026 (vcvars64). The vcxproj/MSBuild route does **not** work (VS has no ClangCL
+toolset) — use `build.bat`.
 
-- **Visual Studio:** open `%PIN%\source\tools\MyPinTool\MyPinTool-clang.vcxproj`, set the source to
-  `recon_trace.cpp`, build **Release x64** → produces `obj-intel64\recon_trace.dll`; or
-- **Command line (VS "x64 Native Tools" prompt):** from that folder,
-  `make obj-intel64/recon_trace.dll` using the kit's `makefile` (clang-cl toolchain).
-
-> We build this **when we reach C5 step 3** — it needs your VS hands and we're currently at C0→C1. The source
-> is ready and reviewed; no need to build it early.
+> Why the kit's wrappers matter: `pin-clang-cl++` and `pin-ld` are `#!/bin/bash` scripts that add the PIN_CRT /
+> XED include+lib flags. That's why we build through `make` (run under msys sh), not by calling cl/clang-cl
+> directly from cmd.
 
 ## Run (once built)
 
