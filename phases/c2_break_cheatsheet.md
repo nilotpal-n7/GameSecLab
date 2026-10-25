@@ -29,6 +29,7 @@ runtime. We do **not** devirtualize the VM (NoVmp can't touch 3.11; manual VM re
 ## Step A — ScyllaHide (defeat the anti-debug)
 
 **Plugins → ScyllaHide → Options** → profile preset **`x64dbg`** → OK. What the hides do:
+
 - **PEB `BeingDebugged` / `NtGlobalFlag`** → the two cheapest "am I debugged?" flags; hidden so VMProtect's
   checks read "no".
 - **`NtQueryInformationProcess` (ProcessDebugPort/Flags/Object)** → the OS's official "is there a debugger" query.
@@ -46,6 +47,7 @@ bypass by forcing LICENSED anyway.)*
 ## Step C — reach OEP (past the packer)
 
 Packed code unpacks itself in memory, then jumps to the **OEP** (Original Entry Point = your real `main`-side code).
+
 - Press **F9** through x64dbg's system breakpoints until you land in the program.
 - The demo watermark messagebox appearing is a good sign you're at/near real execution.
 - (Options → Preferences → Events: a breakpoint on **"Entry Breakpoint"** stops you at the unpacked entry.)
@@ -58,13 +60,15 @@ Packed code unpacks itself in memory, then jumps to the **OEP** (Original Entry 
 - **F2** on that conditional jump to breakpoint it.
 
 **The exact branch (recovered from the clean build `license_app_c2.exe`, imagebase 0x140000000):**
-```
+
+```x86asm
 ...113d:  e8 be fe ff ff   call 0x140001000     ; call check_license (virtualized in the protected build)
 ...1142:  85 c0            test eax,eax         ; test the VM's return value
 ...1144:  74 2c            je   0x140001172     ; ZF=1 → INVALID path    <-- THE BRANCH to flip
 ...1146:  48 8d 0d ...     lea  rcx,[0x140017369]  ; "LICENSED"
 ...114d:  e8 ...           call <print>         ; prints LICENSED
 ```
+
 In the protected binary the addresses differ (packed + relocated) but the shape is identical: the `"LICENSED"`
 string-ref lands you at the `lea`; scroll up two instructions to `test eax,eax` / `je` — that `je` is the target.
 Byte-pattern to eyeball: `85 C0` (test eax,eax) immediately followed by `74 xx` (je) or `75 xx` (jne).
@@ -72,6 +76,7 @@ Byte-pattern to eyeball: `85 C0` (test eax,eax) immediately followed by `74 xx` 
 ## Step E — the runtime bypass (no byte patch)
 
 Run with the wrong key (F9) until the branch breakpoint hits, then **either**:
+
 - flip the **Zero Flag (ZF)** in the Flags pane (double-click ZF) so the jump goes the LICENSED way, **or**
 - set **EAX = 1** (double-click EAX in the registers pane) before the `test`.
 Continue (F9) → it prints **LICENSED** on a wrong key. Integrity CRC stays happy because **no bytes changed**.
@@ -79,6 +84,7 @@ Continue (F9) → it prints **LICENSED** on a wrong key. Integrity CRC stays hap
 ## (Optional) Step F — Scylla dump, if you want the unpacked image
 
 Plugins → **Scylla** (or the Scylla tab): with the process stopped at OEP →
+
 - **IAT Autosearch** → **Get Imports** (rebuilds the import table the packer hid), then
 - **Dump** → **Fix Dump** → saves an unpacked `.exe` you can open statically in IDA/Ghidra.
 This is how you'd feed a devirtualizer or do static VM analysis — not needed for the register-flip bypass.

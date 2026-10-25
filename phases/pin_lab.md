@@ -31,6 +31,7 @@ copy C:\Tools\GameSecLab\reaforge\pintools\recon_trace.cpp %PIN%\source\tools\My
 ```
 
 Then either:
+
 - **Visual Studio:** open `%PIN%\source\tools\MyPinTool\MyPinTool-clang.vcxproj`, set the source to
   `recon_trace.cpp`, build **Release x64** → produces `obj-intel64\recon_trace.dll`; or
 - **Command line (VS "x64 Native Tools" prompt):** from that folder,

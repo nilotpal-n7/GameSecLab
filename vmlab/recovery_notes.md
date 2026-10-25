@@ -4,7 +4,9 @@ Everything is staged. Open the Ghidra project and work top to bottom. Fill in yo
 this file IS the portfolio deliverable.
 
 ## What's in the box (all built & analyzed 2026-10-23)
+
 In `vmlab/`:
+
 - `keycheck.c` — the source (one function `check_key`).
 - `keycheck_plain_elf` — plain build = **the answer key** (readable in Ghidra in seconds).
 - `keycheck_vm` — Tigress **Virtualize** only (logic hidden; magic constant still visible).
@@ -15,20 +17,25 @@ In `vmlab/`:
 All three binaries behave identically: key `RELAB-2026` → WIN, anything else → LOSE.
 
 ## Open it
+
 - Launch `C:\Tools\ghidra\ghidraRun.bat` (already pointed at jdk-23). File → Open Project →
   `C:\Tools\GameSecLab\vmlab\ghidra_proj\KeyCheck.gpr`.
 - Double-click `keycheck_plain_elf` first, then `keycheck_vm`, then `keycheck_vm2`.
 
 ## Exercise A — read the answer key (`keycheck_plain_elf`)
+
 1. Symbol Tree → Functions → `check_key`. Open the Decompiler (Window → Decompiler).
 2. You should see, cleanly: `len==10` check, a loop doing `acc = acc*33 ^ key[i]; acc += i*7`, seed `0x1505`,
    compare to `0x32629093`. Write the decompiled pseudocode here:
-   ```
+
+   ```text
    (paste plain check_key decompile)
    ```
 
 ## Exercise B — find the VM (`keycheck_vm`)
+
 Now the same function is an interpreter. Your job:
+
 1. Open `check_key` in the decompiler. It's a **dispatch loop** over an array of numbers (the bytecode) with
    a big `switch` / jump table (the opcode handlers). Find:
    - the **interpreter loop** (a `while` reading a program-counter into a byte/int array),
@@ -38,21 +45,25 @@ Now the same function is an interpreter. Your job:
    **Search → For Scalars → 0x32629093**, then look at **References** to it — that lands you near the final
    compare. Work backwards from there.
 3. Record: where's the loop? how many opcodes? which handler does the `*33` and the `^`?
-   ```
+
+   ```text
    (your opcode map + where the magic compare happens)
    ```
 
 ## Exercise C — the harder one (`keycheck_vm2`)
+
 Same idea, but arithmetic is rewritten into bit tricks and literals are (meant to be) encoded. Note what's
 harder, and whether the constant still leaks. The *method* is identical: find the dispatcher, map opcodes.
 
 ## Exercise D (stretch) — anti-debug
+
 Add to `keycheck.c` (Linux): near the top of `check_key`, a self-check —
 `if (ptrace(PTRACE_TRACEME,0,0,0) == -1) return 0;` (needs `#include <sys/ptrace.h>`). Re-run the Tigress
 commands (see `phases/vmtrack_01_virtualize.md`), then practice bypassing it: run under `gdb`, or NOP the
 check. That's Denuvo's layered anti-debug in miniature.
 
 ## The answer (don't peek until you've tried B)
+
 `check_key`: `acc=0x1505; for i in 0..9: acc=(acc*33)^key[i]; acc+=i*7; return acc==0x32629093`.
 Correct key `RELAB-2026`. Success = your recovered opcode trace computes exactly this.
 
@@ -92,6 +103,7 @@ Anti-RE noticed: **opcode diversification** (0x23 & 0x9a both multiply, etc.) an
 TODO (to confirm): read `_1_check_key_$array` bytes in order; diff recovered logic vs `keycheck_plain_elf` check_key.
 
 ### CONFIRMED against answer key (2026-10-24)
+
 - Bytecode `_1_check_key_$array` @ 0x104020 starts with 0xC5 = push &key — matches the opcode map (first op).
 - `keycheck_plain_elf` check_key decompile == recovered VM logic:
     acc=0x1505; do { acc = ((acc*33) ^ key[i]) + i*7; i7+=7; } while(i7 != 0x46 /*70=7*10*/); return acc==0x32629093;
@@ -101,8 +113,10 @@ TODO (to confirm): read `_1_check_key_$array` bytes in order; diff recovered log
 ---
 
 ## keycheck_vm2 (EncodeLiterals + EncodeArithmetic + Virtualize) — 2026-10-24
+
 Same VM skeleton (puVar8=PC over `_3_check_key_$array`, puVar7=SP, while/switch/threaded-dispatch).
 **Delta from vm1:** EncodeArithmetic added bitwise/arith primitives and rewrote the math as MBA:
+
 - new opcodes: negate 0x2a; SHL 0x4d/0x6f; SHR 0x4e/0x53/0x73; OR 0x42/0xa7; AND 0xa6/0xb4;
   SUB 0x6b/0x94; LE 0x2b. (XOR/ADD/MUL/const/loadchar/strlen/return/branch still present, diversified.)
 - **No eq/ne opcode:** comparisons became arithmetic — `acc==magic` -> `acc ^ magic` then branch-if-zero (0x5f);
@@ -115,8 +129,10 @@ stacked (+encoded compares) = Denuvo-style layered cost. Deep MBA is where SMT s
 ---
 
 ## Anti-debug stretch (2026-10-24) — keycheck_ad / keycheck_ad_vm
+
 Added `if (ptrace(PTRACE_TRACEME,0,0,0) < 0) return 0;` to check_key, then virtualized it.
 Results (WSL):
+
 - normal run: WIN (plain + vm)
 - under gdb: LOSE — debugger detected even though check_key is virtualized (anti-debug lives in the VM)
 - under gdb + `LD_PRELOAD=noptrace.so` (fake ptrace returns 0): **WIN** — bypassed

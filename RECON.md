@@ -163,7 +163,7 @@ All `.debug_*` sections ≈ **160 MB** of the 249 MB file. Each is flagged `DEBU
 
 Demangled examples *[follow-up, via `c++filt`]*:
 
-```
+```rust
 veloren_common::comp::health::Health::new
 veloren_common::comp::health::Health::change_by      <- likely the funnel for ALL damage/healing
 veloren_common::combat::Attack::with_damage
@@ -196,7 +196,7 @@ veloren_common::combat::DamageKind (deserialize)
 
 Disassembly of `Health::change_by` @ `0x140f4c940`, store site `0x140f4d9b3`:
 
-```
+```x86asm
 mov 0x58(%rcx),%eax        ; eax = self.maximum           -> maximum at +0x58
 ...mulss <0x43800000=256.0> ; fixed-point x256 scaling
 cmp %r15d,%eax
@@ -204,7 +204,7 @@ cmovb %eax,%r15d           ; clamp new current to maximum
 mov %r15d,0x50(%rcx)       ; self.current = clamped        -> current at +0x50   (rcx = &mut self)
 ```
 
-```
+```x86asm
 Health:  +0x00 last_change(HealthChange)  ... damage_contributors(HashMap)
          +0x50 current u32 (x256)  +0x54 base_max u32 (x256)  +0x58 maximum u32 (x256)  +0x5C bools
 Energy:  +0x00 current u32 (x256)  +0x04 base_max u32 (x256)  +0x08 maximum u32 (x256)  +0x0C regen_rate f32 (raw)

@@ -4,6 +4,7 @@
 into `check_license`, which Hex-Rays decompiled cleanly. This is the "before" measurement for the capstone.
 
 ## Recovered `check_license` (IDA Hex-Rays, verbatim logic)
+
 ```c
 GetVolumeInformationA("C:\\", 0,0, &serial, 0,0,0,0);
 v4 = serial ^ 0x1505;                 // acc = machine_id ^ 0x1505
@@ -18,14 +19,17 @@ return strtoul(key,0,16) == v4;
 ```
 
 ## Keygen (reconstructed from the decompile only): `keygen_recovered.c`
+
 Reads C: volume serial, recomputes v4, prints the 8-hex key. Verified:
 `keygen_recovered.exe` -> `75685AB2` -> `license_app.exe 75685AB2` -> **LICENSED** (matches original keygen).
 
 ## How this was done (headless, via REAForge)
+
 `idat.exe -A -S reaforge/ida_decompile.py license_app_ida.exe` -> wrote the pseudocode automatically.
 So IDA is now a scriptable step in the toolchain, not just a GUI.
 
 ## Baseline takeaway
+
 Symbols + no obfuscation + inlined logic = one decompile, one keygen. Next layers raise this cost:
 C1 (OLLVM flattening) -> control flow obscured; C2 (VMProtect) -> logic virtualized (expect the
 keygen recovery to go from minutes to much longer / need dump+devirtualize).

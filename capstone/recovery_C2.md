@@ -11,15 +11,18 @@ instructions *looked*; C2 removes the native arithmetic entirely and runs it on 
   `always_inline` into `check_license`, whose body is wrapped in
   `VMProtectBeginVirtualization("check_license") … VMProtectEnd()` so the arithmetic lands inside the VM.
 - **Build (marker build):**
+
   ```bash
   clang license_app_c2.c -O2 -I"<VMP>\Include\C" "<VMP>\Lib\Windows\VMProtectSDK64.lib" -o license_app_c2.exe
   ```
+
 - **Protect — done by hand in the VMProtect GUI** (the learning step; not the CLI). Opened
   `license_app_c2.exe`, the SDK marker auto-added `check_license` → set **Compilation Type = Virtualization**,
   and enabled **Pack**, **Memory Protection** (integrity CRC), **Import Protection**, and
   **Detection: Debugger = User+Kernel**. Output: `license_app_c2.vmp.exe`.
 
 ### Verification
+
 | check | result |
 | --- | --- |
 | marker found & virtualized | `Loading [V] 140001010 … "check_license"` |
@@ -60,6 +63,7 @@ Recommended: **1 + 2** together (unpack, then manually recover the VM) — that 
 RE workflow. NoVmp (4) only if you specifically want to see the version wall firsthand.
 
 ## Artifacts (git-ignored binaries)
+
 `license_app_c2.c` (committed), `license_app_c2.exe` (marker build), `license_app_c2_vmp.exe` (virtualized +
 packed). Rebuild per the commands above (copy `VMProtectSDK64.dll` beside the marker build to run it
 pre-protection).

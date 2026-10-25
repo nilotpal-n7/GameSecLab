@@ -28,6 +28,7 @@ shows.)
 ## What each pass did to the recovery
 
 ### 1. String encryption (`-irobf-cse`) — defeated the recon anchor
+
 Plaintext scan of the two builds:
 
 | string | clean build | C1 build |
@@ -39,13 +40,17 @@ so the first headless pass (anchored on strings) produced an **empty** result �
 Cost: a recon step, not a wall.
 
 ### 2. Integer-constant encryption (`-irobf-cie`) — hid the literals, still foldable
+
 C0 `check_license` (clean, Hex-Rays):
+
 ```c
 acc = volume_serial ^ 0x1505;
 for (i=0;i<8;i++){ acc = (33*acc) ^ ((volume_serial>>4*i)&0xF); acc += i*7; }
 return strtoul(key,16) == acc;
 ```
+
 C1 `check_license` (= `sub_140001000`) — same shape, every literal replaced by a global ± immediate:
+
 ```c
 VolumeSerialNumber[0] = ...;
 GetVolumeInformationA(RootPathName, 0, ...);
@@ -55,6 +60,7 @@ v4 = ... ((VolumeSerialNumber[0] ^ (dword_14002400C - 672300167))   // the 0x150
           * ...                                                      // (loop unrolled x8 at -O2)
 return (unsigned int)sub_140006900(key, 0, ...) == v4;              // strtoul(key,16)
 ```
+
 The constants `0x1505`, `33`, `0xF`, the shifts and `+i*7` are no longer visible. **But** each `dword_140024XXX`
 is a **statically-initialized global**, so the real value folds out by reading `.data`:
 
@@ -68,6 +74,7 @@ is a **statically-initialized global**, so the real value folds out by reading `
 IDA/Ghidra does this automatically.) Cost: one const-fold pass, then the algorithm reads exactly as C0.
 
 ### 3. Control-flow flattening (`-irobf-cff`) + indirect branches (`-irobf-indbr`) — inflated the graph
+
 - 59 `while(1)` state-dispatchers appear across the binary; `main` is flattened.
 - Anchoring on `main` and pulling one level of callees reached **510 functions / 34,585 lines** of pseudocode
   (indirect branches hide the real call targets, so the reachable set explodes) — vs **1 function / ~15 lines**
@@ -94,5 +101,6 @@ literals are recoverable by constant-folding static globals; the flattening is n
 embedded VM, so there is no longer a native arithmetic DAG to fold — you must recover the VM first.
 
 ## Artifacts (git-ignored: binaries + the 34k-line dump)
+
 `license_app_c1.exe`, `license_app_clang_clean.exe`, `ida_decompile_c1.txt`. Rebuild with the command above;
 re-dump with `reaforge/ida_decompile_c1.py`.

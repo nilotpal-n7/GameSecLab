@@ -5,7 +5,7 @@ DIE + pefile run 2026-10-26. Compared against the unprotected marker build `lice
 
 ## 1. Sections & entropy — `diec -e license_app_c2.vmp.exe`
 
-```
+```txt
 Total 7.78: packed
   .text   0 bytes        .rdata 0 bytes      .data 0 bytes     (original code/data EMPTIED)
   .fptable/.'FI 0 bytes
@@ -20,7 +20,7 @@ in cleartext in memory, after the stub unpacks it. This is why the break is **dy
 
 ## 2. Imports — pefile, clean vs protected
 
-```
+```txt
 license_app_c2.exe      : 74 imports  (VMProtectSDK64.dll + KERNEL32.dll)
 license_app_c2.vmp.exe  :  8 imports  (KERNEL32 only — minimal loader set)
 ```
@@ -32,7 +32,7 @@ Imports / Fix Dump"** rebuilds if you choose to unpack.
 
 ## 3. Strings — plaintext scan, clean vs protected
 
-```
+```txt
 license_app_c2.exe      : LICENSED   INVALID LICENSE   (plaintext)
 license_app_c2.vmp.exe  : (none)
 ```
