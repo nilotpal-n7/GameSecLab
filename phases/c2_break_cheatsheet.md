@@ -57,6 +57,18 @@ Packed code unpacks itself in memory, then jumps to the **OEP** (Original Entry 
   `jz/jne` choosing the LICENSED vs INVALID path.
 - **F2** on that conditional jump to breakpoint it.
 
+**The exact branch (recovered from the clean build `license_app_c2.exe`, imagebase 0x140000000):**
+```
+...113d:  e8 be fe ff ff   call 0x140001000     ; call check_license (virtualized in the protected build)
+...1142:  85 c0            test eax,eax         ; test the VM's return value
+...1144:  74 2c            je   0x140001172     ; ZF=1 → INVALID path    <-- THE BRANCH to flip
+...1146:  48 8d 0d ...     lea  rcx,[0x140017369]  ; "LICENSED"
+...114d:  e8 ...           call <print>         ; prints LICENSED
+```
+In the protected binary the addresses differ (packed + relocated) but the shape is identical: the `"LICENSED"`
+string-ref lands you at the `lea`; scroll up two instructions to `test eax,eax` / `je` — that `je` is the target.
+Byte-pattern to eyeball: `85 C0` (test eax,eax) immediately followed by `74 xx` (je) or `75 xx` (jne).
+
 ## Step E — the runtime bypass (no byte patch)
 
 Run with the wrong key (F9) until the branch breakpoint hits, then **either**:
