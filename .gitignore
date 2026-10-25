@@ -54,3 +54,6 @@ capstone/ida_decompile.txt
 
 # Capstone C1 decompile dumps (large, regenerable)
 capstone/ida_decompile*.txt
+
+capstone/ida_unpacked*.txt
+capstone/*.imports.json
