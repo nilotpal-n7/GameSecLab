@@ -14,21 +14,20 @@ instructions *looked*; C2 removes the native arithmetic entirely and runs it on 
   ```bash
   clang license_app_c2.c -O2 -I"<VMP>\Include\C" "<VMP>\Lib\Windows\VMProtectSDK64.lib" -o license_app_c2.exe
   ```
-- **Protect (SDK markers, default options = virtualize + pack):**
-  ```bash
-  VMProtect_Con.exe license_app_c2.exe license_app_c2_vmp.exe
-  # -> Loading [V] 140001010 VMProtectMarker "check_license"  (found + virtualized)
-  ```
+- **Protect — done by hand in the VMProtect GUI** (the learning step; not the CLI). Opened
+  `license_app_c2.exe`, the SDK marker auto-added `check_license` → set **Compilation Type = Virtualization**,
+  and enabled **Pack**, **Memory Protection** (integrity CRC), **Import Protection**, and
+  **Detection: Debugger = User+Kernel**. Output: `license_app_c2.vmp.exe`.
 
 ### Verification
 | check | result |
 | --- | --- |
-| marker found & virtualized | `[V] 140001010 … "check_license"` |
-| semantics preserved through the VM | `…_vmp.exe 75685AB2` → `LICENSED`; junk → `INVALID LICENSE` |
-| SDK DLL dependency after protection | **none** (moved `VMProtectSDK64.dll` away, still runs) |
-| size | 143,360 → **1,305,088 bytes (910%)** |
-| DIE | `Protector: VMProtect[packed]`, total entropy **7.74** |
-| sections | original `.text/.rdata/.data` emptied; mangled-named packed section `~1.3 MB @ entropy 7.75` |
+| marker found & virtualized | `Loading [V] 140001010 … "check_license"` |
+| semantics preserved through the VM | `.\license_app_c2.vmp.exe 75685AB2` → `LICENSED`; junk → `INVALID LICENSE` |
+| SDK DLL dependency after protection | **none** |
+| size | 143,360 → **1,507,328 bytes (~1050%)** (heavier than CLI default — extra layers on) |
+| demo watermark | startup messagebox "protected with demo version of VMProtect" (Demo only) |
+| DIE | `Protector: VMProtect[packed]`, high-entropy packed section |
 
 ## Break side — the tooling reality (why the plan changes)
 
