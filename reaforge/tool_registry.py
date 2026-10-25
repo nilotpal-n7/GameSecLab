@@ -12,14 +12,14 @@ HERE = Path(__file__).resolve().parent
 # (name, kind, how-to-detect). path checks are Windows-first with sensible fallbacks.
 PATHS = {
     "ghidra":   [r"C:\Tools\ghidra\ghidraRun.bat", r"C:\Tools\ghidra\support\analyzeHeadless.bat"],
-    "x64dbg":   [r"C:\Tools\x96gdb\release\x96dbg.exe", r"C:\Tools\x96gdb\release\x64\x64dbg.exe"],
+    "x64dbg":   [r"C:\Tools\x96dbg\release\x96dbg.exe", r"C:\Tools\x96dbg\release\x64\x64dbg.exe"],
     "die":      [r"C:\Tools\DIE\diec.exe", r"C:\Tools\DIE\die.exe"],
     "gcc":      [r"C:\Tools\msys64\ucrt64\bin\gcc.exe"],
     "ollvm_clang": [r"C:\Tools\ollvm\install\bin\clang.exe"],  # Hikari/Arkari OLLVM fork (capstone C1)
     "ida":      [r"C:\Program Files\IDA Professional 9.1\ida.exe"],
     "ida_headless": [r"C:\Program Files\IDA Professional 9.1\idat.exe"],
-    "scyllahide": [r"C:\Tools\x96gdb\release\x64\plugins\ScyllaHideX64DBGPlugin.dp64",
-                   r"C:\Tools\x96gdb\release\x32\plugins\ScyllaHideX64DBGPlugin.dp32"],
+    "scyllahide": [r"C:\Tools\x96dbg\release\x64\plugins\ScyllaHideX64DBGPlugin.dp64",
+                   r"C:\Tools\x96dbg\release\x32\plugins\ScyllaHideX64DBGPlugin.dp32"],
     "novmp":    [r"C:\Tools\NoVmp\NoVmp.exe"],
     "vmprotect":[r"C:\Program Files\VMProtect Demo\VMProtect.exe", r"C:\Tools\VMProtect\VMProtect.exe"],
     "vmprotect_con":[r"C:\Program Files\VMProtect Demo\VMProtect_Con.exe"],

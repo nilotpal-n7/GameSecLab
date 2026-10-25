@@ -55,7 +55,7 @@ C:\Tools\GameSecLab\
 | Tool | Phase | Status |
 | --- | --- | --- |
 | Ghidra | 4 | already installed (`C:\Tools\ghidra`) |
-| x64dbg | 4 | installed (`C:\Tools\x96gdb` — folder name is a typo of x64dbg; `release\x96dbg.exe` launcher) |
+| x64dbg | 4 | installed (`C:\Tools\x96dbg` — folder name is a typo of x64dbg; `release\x96dbg.exe` launcher) |
 | Detect It Easy (DIE) | 0 | already installed |
 | objdump / strings / c++filt | 0 | already in msys64 (`C:\Tools\msys64\ucrt64\bin`) |
 | Cheat Engine 7.7 | 2 | installed system-wide (`C:\Program Files\Cheat Engine`; includes `Tutorial-x86_64.exe`) |

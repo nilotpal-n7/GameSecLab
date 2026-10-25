@@ -29,13 +29,13 @@ virtualization + anti-tamper, and unpacking/devirtualizing them is a real, in-de
 
 **Platform shift:** this capstone is **Windows x64 PE** (not WSL/ELF) — VMProtect/Themida protect PE files.
 That's good: it matches your real target (Unreal games are Windows PE) and uses tools you already have
-(Visual Studio 2026, x64dbg at `C:\Tools\x96gdb`).
+(Visual Studio 2026, x64dbg at `C:\Tools\x96dbg`).
 
 ## The BREAK stack (reverse your own protected binary) — the real skill set
 
 | Step | Tool (status) |
 | --- | --- |
-| Run + observe, defeat anti-debug | **x64dbg** (have: `C:\Tools\x96gdb`) + **ScyllaHide** plugin (to install) |
+| Run + observe, defeat anti-debug | **x64dbg** (have: `C:\Tools\x96dbg`) + **ScyllaHide** plugin (to install) |
 | Dump the unpacked image from memory | **Scylla** (ships with x64dbg) |
 | Static analysis / decompile | **Ghidra** (have: `C:\Tools\ghidra`) |
 | Devirtualize VMProtect x64 (3.0–3.5) | **NoVmp** (GPL, built on **VTIL**) + **vmpfix** |

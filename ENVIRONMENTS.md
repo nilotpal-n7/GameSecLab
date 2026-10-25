@@ -38,7 +38,7 @@ workbench and everything else is a supporting role.
    No Linux Pin needed.
 5. **Non-lab tools in `C:\Tools`** (ffmpeg, terraform, scrcpy, platform-tools, nginx, vcpkg, yt-dlp, …) are
    your general toolbox — **out of scope, untouched.** The RE-relevant subset is:
-   `{DIE, PIN, ReClass.NET, ThemidaDemo, ghidra, msys64, x96gdb (= x64dbg)}`.
+   `{DIE, PIN, ReClass.NET, ThemidaDemo, ghidra, msys64, x96dbg (= x64dbg)}`.
 
 ## Open gap (your call)
 
