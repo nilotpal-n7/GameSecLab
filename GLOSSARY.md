@@ -40,6 +40,36 @@ Plain-words definitions. Add a term the first time you meet it.
   bytecode run by an embedded VM (VMProtect, Themida). Makes static analysis much harder.
 - **DRM** — copy protection (e.g. Denuvo, Steam DRM). Not the same as anti-cheat.
 - **Anti-cheat** — software that detects/prevents tampering with a running game (EAC, BattlEye, Vanguard).
+- **Mutation vs Virtualization vs Ultra** (VMProtect compilation types) — *Mutation* rewrites code into
+  equivalent-but-messy **native** x86 (fast, weakest); *Virtualization* converts it to **bytecode for an embedded
+  VM** (slow, strong); *Ultra* = mutate then virtualize (strongest).
+- **VM dispatcher / handler / bytecode** — a virtualized function becomes an array of bytecode and a loop (the
+  *dispatcher*) that reads each opcode and jumps to a small *handler* that performs it. Recovering the function =
+  identifying the handlers and replaying the bytecode (**devirtualization**).
+- **Packer stub / OEP** — a packer replaces the real entry with a *stub* that decrypts the image in memory, then
+  jumps to the **OEP (Original Entry Point)** = where the real program starts. Static tools see only the stub.
+- **Memory Protection (integrity CRC)** — the protector hashes its own code at runtime; any **byte patch** = CRC
+  mismatch = it bails. Defeat by editing a **register/flag at runtime** (no bytes change) instead of patching.
+- **Import Protection / IAT** — the Import Address Table is the list of DLL functions a PE uses. Protectors hide
+  it and resolve imports in the stub, so the on-disk IAT is tiny; **Scylla** rebuilds it from a running process.
+- **Watermark (demo)** — a nag messagebox/banner a trial protector injects (VMProtect Demo). Cosmetic, not a
+  protection layer.
+
+## Dynamic analysis / debugging / unpacking
+
+- **Debugger (x64dbg)** — run a process one instruction at a time, set breakpoints, read/edit registers + memory.
+  User-mode; our target's "Kernel" detection is about kernel debuggers, not x64dbg itself.
+- **Anti-debug checks** — ways a program notices a debugger: **PEB `BeingDebugged`** and **`NtGlobalFlag`** (cheap
+  flags), **`NtQueryInformationProcess`** (ProcessDebugPort/Flags), **`NtSetInformationThread` (HideFromDebugger)**,
+  **`NtQuerySystemInformation` (KdDebuggerEnabled)** (kernel). Timing (`rdtsc`) is another.
+- **ScyllaHide** — an x64dbg plugin that hooks those APIs so the checks read "no debugger". Needed before a
+  protected binary will even run under the debugger.
+- **Scylla** — dumps a running (unpacked) process image to disk and rebuilds its IAT (**IAT Autosearch → Get
+  Imports → Dump → Fix Dump**), turning an in-memory unpacked program back into a static-analyzable `.exe`.
+- **ZF (Zero Flag) / register edit** — flipping a CPU flag or register value live in the debugger to change a
+  branch outcome, **without** modifying bytes (so integrity CRCs don't trip). The core C2 bypass move.
+- **NoVmp / VTIL** — an (abandoned, 2021) automatic VMProtect **devirtualizer** for VMProtect x64 **3.0–3.5**
+  (fork NoVmpy ≤3.6), needs an **unpacked** input. Does **not** handle modern versions (our target is 3.11).
 
 ## Unreal Engine
 
