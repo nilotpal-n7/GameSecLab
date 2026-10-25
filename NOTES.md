@@ -289,3 +289,17 @@ Full annotated evidence in `RECON.md`. Key takeaways:
 - Fixed `reaforge/tool_registry.py`: it only probed Ubuntu and mis-counted "command not found" as installed.
   Now probes both distros and validates the path. New neutral reference added:
   `binary_protection_instrumentation_reference.txt` (defensive/authorized-lab framing of the same tech).
+
+## 2026-10-25 — Capstone C1 done (OLLVM compile-time obfuscation)
+
+- Installed **Hikari/Arkari OLLVM fork** (Ridter/Hikari, clang 21.1.0, x64-windows-msvc) to `C:\Tools\ollvm`
+  (REAForge: `ollvm_clang`). No clang was on the box before; stock clang has no obf passes anyway.
+- Rebuilt `license_app.c` with `-irobf-cff` (flatten), `-irobf-cse` (string-enc), `-irobf-cie` (int-const-enc),
+  `-irobf-indbr`. Flag is `cff` not `fla` in this fork. 143,872 -> 153,600 bytes; semantics preserved
+  (C0 keygen 75685AB2 still -> LICENSED).
+- Re-reversed via `reaforge/ida_decompile_c1.py` (string anchors gone, so anchor on `main`). Findings in
+  `capstone/recovery_C1.md`: strings encrypted (recon anchor gone), constants became `dwordX±K` but FOLD back
+  to 0x1505/33/0xF from static `.data` (proved with pefile), flatten+indbr ballooned the reachable set to
+  510 fns / 34,585 lines vs C0's 1 fn / ~15 lines. Honest takeaway: obfuscation raised analysis cost, did NOT
+  change the algorithm — same keygen works. That's why C2 (VMProtect) is the real step up.
+- Tool/flag note: `clang -mllvm -irobf -mllvm -irobf-cff ...`; clang auto-found MSVC 14.51 + Win11 SDK.

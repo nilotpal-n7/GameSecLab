@@ -51,3 +51,6 @@ capstone/ida_decompile.txt
 *.log
 **/obj-intel64/
 **/obj-ia32/
+
+# Capstone C1 decompile dumps (large, regenerable)
+capstone/ida_decompile*.txt
