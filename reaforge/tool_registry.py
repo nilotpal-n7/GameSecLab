@@ -28,8 +28,18 @@ PATHS = {
     "vmprotect_con":[r"C:\Program Files\VMProtect Demo\VMProtect_Con.exe"],
     "themida":  [r"C:\Tools\ThemidaDemo\Themida64.exe", r"C:\Tools\ThemidaDemo\Themida.exe"],
     "pin":      [r"C:\Tools\PIN\pin-external-4.4-99977-g54fbb8814-clang-windows\pin.exe", r"C:\Tools\PIN\pin.exe"],
+    "procmon":  [r"C:\Tools\ProcessMonitor\Procmon64.exe", r"C:\Tools\ProcessMonitor\Procmon.exe"],
+    "pe_bear":  [r"C:\Tools\PE-bear\PE-bear.exe", r"C:\Tools\_downloads\research\pe-bear\PE-bear.exe"],
 }
 PY_LIBS = ["capstone", "unicorn", "keystone", "lief", "pefile", "r2pipe", "frida", "angr", "triton"]
+
+# Research source checkouts we build on / build from (presence detected, not an exe).
+RESEARCH = {
+    "vmp-lazy-unpack": r"C:\Tools\_downloads\research\vmp-lazy-unpack",  # VMProtect emulation-unpack env
+    "vtil-core":       r"C:\Tools\_downloads\research\vtil-core",        # VTIL IR (build NoVmp for VMProtect <=3.6)
+    "pe-bear-src":     r"C:\Tools\_downloads\research\pe-bear",          # PE-bear source (build for the GUI PE editor)
+    "mba-tools":       r"C:\Tools\_downloads\research\mba-tools",        # GAMBA / SiMBA MBA simplifiers
+}
 
 # WSL layout (see ENVIRONMENTS.md): Ubuntu = plain build box + Tigress;
 # archlinux = BlackArch, the specialized Linux RE arsenal.
@@ -88,9 +98,11 @@ def _distro_up(distro):
 
 
 def collect():
-    caps = {"native": {}, "python_libs": {}, "wsl": {}, "ai_backends": {}}
+    caps = {"native": {}, "python_libs": {}, "research_repos": {}, "wsl": {}, "ai_backends": {}}
     for name, paths in PATHS.items():
         caps["native"][name] = _first_existing(paths)
+    for name, path in RESEARCH.items():
+        caps["research_repos"][name] = path if os.path.isdir(path) else None
     for lib in PY_LIBS:
         caps["python_libs"][lib] = detect_py_lib(lib)
     for distro in WSL_DISTROS:
@@ -120,11 +132,11 @@ def main():
     caps = collect()
     (HERE / "capabilities.json").write_text(json.dumps(caps, indent=2))
     print("== REAForge capability report ==")
-    for section in ("native", "python_libs"):
+    for section in ("native", "python_libs", "research_repos"):
         print(f"\n[{section}]")
         for k, v in caps[section].items():
             mark = "OK " if v else "-- "
-            print(f"  {mark}{k:12} {v if v else 'not found'}")
+            print(f"  {mark}{k:16} {v if v else 'not found'}")
     print("\n[wsl]")
     for distro, info in caps["wsl"].items():
         print(f"  {distro} ({'installed' if info['installed'] else 'NOT INSTALLED'})")
