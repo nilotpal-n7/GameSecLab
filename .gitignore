@@ -57,3 +57,8 @@ capstone/ida_decompile*.txt
 
 capstone/ida_unpacked*.txt
 capstone/*.imports.json
+
+# Dead Cells 32-bit DLL benchmark artifacts (large/generated)
+capstone/*.snap
+capstone/dll32_trace.txt
+capstone/*.vmp
