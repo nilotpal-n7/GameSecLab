@@ -118,6 +118,69 @@ def main():
             uc.emu_start(check_license, RET_SENTINEL, timeout=120 * 1000 * 1000)
             return uc.reg_read(ux.UC_X86_REG_RAX) & 0xffffffff
 
+        if os.environ.get("RECOVER"):
+            # BLIND key recovery: feed a unique marker key, trace check_license, capture every
+            # value that meets the marker in a compare/arith op (candidates for `want`), then
+            # self-validate each via the oracle. No prior knowledge of the algorithm.
+            from capstone import Cs, CS_ARCH_X86, CS_MODE_64, x86
+            md = Cs(CS_ARCH_X86, CS_MODE_64); md.detail = True
+            ser = int(sys.argv[2], 16) if len(sys.argv) > 2 else 0x12345678
+            MARKER = 0x13371337                         # got = strtoul("13371337")
+            N2U = {}
+            for n in ("rax","rbx","rcx","rdx","rsi","rdi","rbp","rsp","r8","r9","r10","r11","r12","r13","r14","r15",
+                      "eax","ebx","ecx","edx","esi","edi","ebp","esp","r8d","r9d","r10d","r11d","r12d","r13d","r14d","r15d"):
+                N2U[n] = getattr(ux, "UC_X86_REG_" + n.upper())
+            def opval(insn, op):
+                try:
+                    if op.type == x86.X86_OP_REG:
+                        nm = insn.reg_name(op.reg)
+                        return uc.reg_read(N2U[nm]) & 0xffffffff if nm in N2U else None
+                    if op.type == x86.X86_OP_IMM:
+                        return op.imm & 0xffffffff
+                    if op.type == x86.X86_OP_MEM:
+                        m = op.mem; a = m.disp
+                        if m.base: a += uc.reg_read(N2U.get(insn.reg_name(m.base), 0)) if insn.reg_name(m.base) in N2U else 0
+                        if m.index: a += (uc.reg_read(N2U[insn.reg_name(m.index)]) * m.scale) if insn.reg_name(m.index) in N2U else 0
+                        return struct.unpack("<I", uc.mem_read(a & 0xffffffffffffffff, 4))[0]
+                except Exception:
+                    return None
+                return None
+            cands = []
+            def trace(uc_, address, size, ud):
+                try: insn = next(md.disasm(bytes(uc_.mem_read(address, size)), address), None)
+                except Exception: return
+                if insn is None or len(insn.operands) < 2: return
+                vals = [opval(insn, o) for o in insn.operands]
+                if MARKER in vals:
+                    for v in vals:
+                        if v is not None and v != MARKER:
+                            cands.append(v)
+            h = uc.hook_add(UC_HOOK_CODE, trace, None, mapped_start, mapped_end)
+            call_check(ser, f"{MARKER:08X}")
+            uc.hook_del(h)
+            uniq = list(dict.fromkeys(cands))
+            print(f"\n== BLIND recovery (serial={ser:#010x}) ==")
+            print(f"traced {len(cands)} marker-adjacent values, {len(uniq)} unique candidates")
+            recovered = None
+            for c in uniq:
+                if call_check(ser, f"{c:08X}") == 1:
+                    recovered = c; break
+            if recovered is not None:
+                print(f"  RECOVERED valid key = {recovered:08X}  (self-validated: VM -> LICENSED)")
+                print(f"  cross-check vs C0 formula: {c0_expected_key(ser):08X}  "
+                      f"{'MATCH' if recovered == c0_expected_key(ser) else 'DIFFER'}")
+            else:
+                print("  no candidate self-validated (compare is MBA-hidden; needs symbolic/MBA tooling)")
+            return
+
+        if os.environ.get("MEASURE"):
+            ic = [0]
+            h = uc.hook_add(UC_HOOK_CODE, lambda *a: ic.__setitem__(0, ic[0] + 1))
+            r = call_check(0x12345678, "7A3B3935")
+            uc.hook_del(h)
+            print(f"MEASURE: check_license executed {ic[0]} instructions, returned {r}")
+            return
+
         # Battery: for several serials, the VM must accept exactly C0's key and reject others.
         print("\n== devirtualizer validation battery (VM result vs C0 formula) ==")
         ok = True

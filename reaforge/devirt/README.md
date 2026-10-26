@@ -62,5 +62,29 @@ python C:\Tools\GameSecLab\reaforge\devirt\devirt_oep.py C:\Tools\GameSecLab\cap
 `emulate_checklicense.py` (the standalone Unicorn attempt) is kept as the record of why the loader env is
 required (it runs the VM but can't resolve imports alone).
 
-### Stretch (truly blind): symbolize the serial on the single concrete path to emit the formula as C — angr is
-installed; the trace is now trivially reachable from the OEP snapshot.
+## Blind key recovery — `RECOVER` mode (zero prior knowledge)
+
+`devirt_oep.py` (RECOVER=1) recovers the valid key with **no knowledge of the algorithm** (C0 is used only to
+cross-check, never to recover):
+
+1. Feed a unique marker key so `got = strtoul("13371337")` is known.
+2. Trace `check_license` (~206k instrs) with Capstone; capture every value that meets the marker in a
+   compare/arith operand — these are candidates for `want = expected_key(serial)`.
+3. **Self-validate** each candidate through the oracle (feed it back as the key → does the VM say LICENSED?).
+
+Result (serial `0xAABBCCDD`): 12 candidates → **recovered `3E988000`, self-validated (VM → LICENSED), and it
+MATCHES the C0 formula.** A fully autonomous blind break — the secret pulled straight out of the virtualized
+function.
+
+```
+cd C:\Tools\_downloads\research\vmp-lazy-unpack
+set RECOVER=1 && python C:\Tools\GameSecLab\reaforge\devirt\devirt_oep.py <packed.exe> <serial_hex>
+```
+
+### What "blind" does and doesn't give us
+- **Does:** the valid key for any serial, with no algorithm knowledge (concolic marker-tracing + oracle
+  self-validation). This is the practical break.
+- **Doesn't (yet):** the clean closed-form *formula* as C. The VM applies MBA (architecture doc §2.4), so the
+  raw symbolic AST is correct but bloated; reducing it to `(acc*33)^((mid>>4i)&0xF)…` needs an MBA simplifier
+  (Syntia/QSynth/MBA-Blast) — the documented research frontier. Full hand-rolled symbolic execution (Triton's
+  job) is the engine for that.
