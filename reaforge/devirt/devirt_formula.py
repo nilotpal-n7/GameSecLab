@@ -206,6 +206,20 @@ def main():
             a=A(0); n=a.size()//8; res=claripy.Concat(*[claripy.Extract(i*8+7,i*8,a) for i in range(n)])
         elif mn=="xchg":
             setdst(insn,ops[0],A(1)); setdst(insn,ops[1],A(0)); return
+        elif mn=="movabs": res=A(1)
+        elif mn in ("shrd","shld"):
+            a=A(0); b=ext(A(1),A(0).size()); bits=a.size()
+            c=A(2); cnt=((c.args[0] if not c.symbolic else 0) & (bits-1))
+            if cnt==0: res=a
+            elif mn=="shrd": res=claripy.LShR(a,cnt) | (b << (bits-cnt))
+            else: res=(a << cnt) | claripy.LShR(b,(bits-cnt))
+            dst=ops[0]
+        elif mn=="bt": return
+        elif mn in ("bts","btr","btc"):
+            a=A(0); bi=A(1)
+            if bi.symbolic: unhandled[mn]=unhandled.get(mn,0)+1; return
+            k=(bi.args[0]) & (a.size()-1); mask=claripy.BVV(1<<k, a.size())
+            res=(a|mask) if mn=="bts" else ((a & ~mask) if mn=="btr" else (a^mask)); dst=ops[0]
         elif mn in ("cmp","test","call","jmp","ret","nop"): return
         else:
             unhandled[mn]=unhandled.get(mn,0)+1; return

@@ -87,21 +87,21 @@ A taint-symbolic tracer (claripy): symbolize the serial, propagate symbolic expr
 registers/memory along the single concrete path (full al/ax/eax/rax aliasing, mem byte-tracking, push/pop
 stack-machine moves, ~25 x86 ops), and capture `want = expected_key(serial)` where it meets the concrete marker.
 
-It now propagates taint cleanly through 140+ instructions with no crashes — and empirically reveals **exactly
-why clean symbolic recovery of VMProtect 3.11 is unsolved in public tooling**: the VM's MBA lowers the tiny hash
-into hundreds of **flag-dependent** bit ops that a simple taint engine can't model. The unhandled-mnemonic
-census from a real run (serial 0xAABBCCDD):
+It propagates taint cleanly through 140+ instructions with no crashes. The MBA lowers the tiny hash into
+hundreds of bit ops; we modeled the **flag-free** ones (full-register aliasing, mem bytes, push/pop,
+`shrd`x536 / `shld` / `bt` / `bts` / `btr`, ~30 ops), which **dissolved most of the wall**. What remains is the
+irreducible, **flag-dependent** core on the serial's path (real run, serial 0xAABBCCDD):
 
 ```
-shrd:536  bt:68  shld:13  btc:8  btr:4  bts:1  bsf:3  rcl:5  adc:3  xadd:1
-cmov{ns,l,o,g,e,ne,no}:~15   set{le,np,g,ge}:~24   movabs:1
+set{le,np}:20   cmov{ns,l,o,g}:~8   rcl:5   adc:2   bsf:3   btc:2
 ```
 
-`adc`/`rcl`/`cmov`/`set`/`shrd` all depend on the **symbolic EFLAGS** (CF/ZF/SF/OF/PF). Modeling those for every
-arithmetic op = a full symbolic-x86 engine (Triton's job), and the resulting AST is MBA-bloated and needs an MBA
-simplifier (Syntia/QSynth/MBA-Blast) to collapse to `(acc*33)^((mid>>4i)&0xF)…`. That two-part requirement
-(full symbolic flags + MBA simplification) is precisely where the unreleased 2026 academic prototypes (Pushan,
-VMPredator, VMSpec) live. **We reached the frontier with our own tool and characterized it exactly.**
+`adc`/`rcl` (carry), `cmov`/`set` (condition selection) and `bsf` all require the **symbolic EFLAGS**
+(CF/ZF/SF/OF/PF) computed from every arithmetic op — i.e. a full symbolic-x86 engine (Triton's job). Then the
+AST is MBA-bloated and needs an MBA simplifier (Syntia/QSynth/MBA-Blast) to collapse to the clean closed form.
+That two-part requirement (symbolic flags + MBA simplification) is **precisely where the unreleased 2026
+academic prototypes (Pushan, VMPredator, VMSpec) operate** — we drove our own engine right up to that exact
+boundary. (The practical break — the key itself — we already have blind, via `RECOVER` mode.)
 
 ### What "blind" does and doesn't give us
 - **Does:** the valid key for any serial, with no algorithm knowledge (concolic marker-tracing + oracle
