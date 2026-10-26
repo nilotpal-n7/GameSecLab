@@ -1,6 +1,6 @@
 # RECON — C2 protected binary (`license_app_c2.vmp.exe`)
 
-Static recon of your VMProtect build, Phase-0 style: **command → key output → what it means.** Evidence from
+Static recon of your VMProtect build, static-recon style: **command → key output → what it means.** Evidence from
 DIE + pefile run 2026-10-26. Compared against the unprotected marker build `license_app_c2.exe`.
 
 ## 1. Sections & entropy — `diec -e license_app_c2.vmp.exe`

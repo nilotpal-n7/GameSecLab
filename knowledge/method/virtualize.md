@@ -111,6 +111,6 @@ then reverse-engineered it out with Ghidra"* — the Denuvo-on-a-real-game story
 
 ## Ties back to the course
 
-This is the attacker side of **Phase 5** (anti-tamper/anti-cheat synthesis). Understanding how a VM-obfuscated
+This is the attacker side of **anti-cheat synthesis** (anti-tamper/anti-cheat synthesis). Understanding how a VM-obfuscated
 function looks in a disassembler is exactly what you need to decide how to harden your *own* games — and what
 is worth the performance cost vs. what a determined attacker recovers anyway.

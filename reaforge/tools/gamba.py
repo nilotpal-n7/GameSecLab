@@ -2,7 +2,7 @@
 r"""Apply Denuvo's GAMBA (published general-MBA simplifier) to our VMProtect 3.11 hash.
 
 Purpose: demonstrate, with a real published tool, the intra-round vs inter-round split from
-docs/Non-Linear_&_Multi-Round_MBA_Deobfuscation.md:
+knowledge/vmprotect_3.11/mba_deobfuscation.md:
   * GAMBA (linear-isolation + SiMBA + variable substitution) DOES collapse intra-round MBA, e.g.
     the shift-encoded multiply (acc<<5)+acc -> 33*acc.
   * GAMBA alone does NOT roll the 8-round loop (no inductive recurrence synthesis) -> the unrolled

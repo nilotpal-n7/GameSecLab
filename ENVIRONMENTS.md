@@ -1,8 +1,7 @@
 # ENVIRONMENTS — which box does what (and what to declutter)
 
 Decided 2026-10-25 from a live probe of every environment. The capstone targets are **Windows x64 PE**
-binaries (`license_app.exe`, then VMProtect/Themida-packed builds), so Windows-native is the primary
-workbench and everything else is a supporting role.
+binaries, so Windows-native is the primary workbench and everything else is a supporting role.
 
 ## The four environments
 
@@ -30,8 +29,7 @@ workbench and everything else is a supporting role.
 
 1. **One home per Linux RE tool — BlackArch.** Do **not** install radare2/angr/ropper/etc. on Ubuntu too.
 2. **Ghidra is duplicated** (Windows `C:\Tools\ghidra` **and** BlackArch `/usr/sbin/ghidra`). Windows is
-   canonical (GUI + the existing `vmlab/ghidra_proj`). Keep BlackArch's only for headless Linux-ELF runs; it
-   costs nothing (part of the blackarch group) so no need to remove it.
+   canonical (GUI). Keep BlackArch's only for headless Linux-ELF runs; it costs nothing (part of the blackarch group) so no need to remove it.
 3. **gcc exists in 3 places** (msys64 / Ubuntu / BlackArch) — not clutter: each builds for a different target
    (Windows PE vs Linux ELF). Leave them.
 4. **Intel Pin → Windows only.** The DBI target (`license_app.exe`) is PE, so the Windows Pin kit is correct.
@@ -40,18 +38,5 @@ workbench and everything else is a supporting role.
    your general toolbox — **out of scope, untouched.** The RE-relevant subset is:
    `{DIE, PIN, ReClass.NET, ThemidaDemo, ghidra, msys64, x96dbg (= x64dbg)}`.
 
-## Open gap (your call)
-
-- **Tigress is no longer installed** in either WSL distro (`~/tigress31` is gone; `.bashrc` has no entry — the
-  distro was reset at some point). The capstone pivoted to VMProtect/Themida/OLLVM on Windows, where Tigress
-  is only a "research-grade extra", so this is low-impact. If you want the old `vmlab` Tigress track back,
-  reinstall it into **one** distro (BlackArch preferred) — not both.
-
-## Declutter actions I did NOT take without you (destructive)
-
-- Retiring/unregistering the Ubuntu distro.
-- Removing BlackArch's `ghidra` package.
-- Reinstalling Tigress.
-
-Say the word and I'll do any of these. REAForge's `tool_registry.py` now probes **both** WSL distros
+REAForge's `tool_registry.py` now probes **both** WSL distros
 correctly (it used to only see Ubuntu and mis-reported "command not found" as installed).

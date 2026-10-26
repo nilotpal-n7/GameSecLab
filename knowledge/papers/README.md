@@ -16,8 +16,8 @@ Collected for study of software **we own or are authorized to test**. Add the so
 
 | File | Why it matters here |
 | --- | --- |
-| `Architectural_Analysis_&_Academic_Deobfuscation_of_VMProtect_3.11_(2026).md` | Maps 3.11's VM/anti-tamper/anti-debug internals — explains why x64dbg, Pin, and our single-step bypass all failed (it's RDTSC timing + direct syscalls + checksumming, not the old single-step). |
-| `vmp311_analysis_and_pipeline.md` | **My analysis + the new break pipeline:** emulation-unpack (vmp-lazy-unpack) → devirtualize (Pushan). Ties every failed attempt to a root cause. |
+| `vmprotect311_deobfuscation.md` | Maps 3.11's VM/anti-tamper/anti-debug internals — explains why x64dbg, Pin, and our single-step bypass all failed (it's RDTSC timing + direct syscalls + checksumming, not the old single-step). |
+| `vmp311_pipeline.md` | **My analysis + the new break pipeline:** emulation-unpack (vmp-lazy-unpack) → devirtualize (Pushan). Ties every failed attempt to a root cause. |
 | `Pushan…2603.18355.pdf` | **Verified** (ASU+CISPA, Mar 2026) trace-free VM deobfuscator → C pseudocode; vs VMProtect/Themida/Tigress. |
 | `VMPredator…2605.30902.pdf` | Core-structure semantic-anchor devirtualization (May 2026). |
 | `VMSpec…2610.29566.pdf` | Decompiler-based VM analysis (Oct 2026). |

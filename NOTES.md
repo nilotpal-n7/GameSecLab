@@ -1,4 +1,4 @@
-# NOTES — running learning log
+# NOTES — running lab log
 
 Newest entries at the bottom. Write in your own words: what you did, what you saw, why it matters.
 
@@ -6,300 +6,93 @@ Newest entries at the bottom. Write in your own words: what you did, what you sa
 
 ## 2026-10-22 — Setup
 
-### Why not the Khazan install?
-
-The first look at `C:\Games\The First Berserker - Khazan` showed it is the commercial game, not
-a personal project:
-
-- `KZ.exe` carries a valid Authenticode signature from **Neople Inc.** (DigiCert-issued).
-- The UE project name is `BBQ` (`BBQ\Binaries\Win64\BBQ-Win64-Shipping.exe`), Steam app 2829250.
-- `Clean_HV_Files.bat` removes FitGirl-repack and Denuvo-bypass files (`DenuvOwO.nfo`,
-  `hyperkd.sys`, `SimpleSvm.sys`, a `steamclient64.dll` emulator, a `winmm.dll` proxy loader).
-
-**Recon lesson already learned:** before running a single tool, three things told the whole
-story — the code-signing certificate, the folder/project names, and leftover files. Real
-analysts always start with "what is this, and where did it come from?"
-
-**Security lesson:** hypervisor-based Denuvo bypasses require turning OFF Virtualization-Based
-Security and Memory Integrity (HVCI) and loading a kernel/hypervisor driver from a crack —
-that is ring -1 code from an anonymous source. Checked: VBS and HVCI are running again and no
-crack drivers are registered.
-
-### Targets chosen
-
-- **Veloren v0.18.0** — open-source (GPL) 3D action RPG: melee, dodge-roll, health, energy
-  (stamina). Single-player runs a *real server* inside your process -> perfect for seeing
-  server authority overwrite client cheats.
-- **Lyra Starter Game** — Epic's free UE5 sample, packaged as Shipping. Used for the
-  Unreal-specific lessons (reflection, GObjects/GNames, ProcessEvent).
-
 ### Network note
 
-`download.veloren.net` is intercepted by a **Fortinet FortiGate** TLS-inspection firewall on
-this network (cert issuer `CN=FGT37DTK18800193`, not trusted by Windows). Did NOT disable
-certificate checks. Got the official v0.18.0 build from Veloren's GitLab release instead.
-That is itself a lesson: a man-in-the-middle box re-signing TLS is exactly what certificate
-validation exists to catch.
+`download.veloren.net` is intercepted by a **Fortinet FortiGate** TLS-inspection firewall on this
+network (cert issuer `CN=FGT37DTK18800193`, not trusted by Windows). Did NOT disable certificate
+checks — got the official build from a GitLab/GitHub release mirror instead. That is itself a lesson:
+a man-in-the-middle box re-signing TLS is exactly what certificate validation exists to catch.
 
-### Re-downloading the target (targets/ is git-ignored)
-
-- Source: GitLab release v0.18.0 -> "Windows (x86_64)" asset
-  `https://gitlab.com/veloren/veloren/-/jobs/12844032151/artifacts/download`
-- Saved as `targets\Veloren\_download\veloren-v0.18.0-windows-x86_64.zip` (464,592,174 bytes)
-- SHA256 `71F07893D842F871C63C726095A92AFAEAE77941AF1D7186E54195032E335866`
-- Extracted to `targets\Veloren\v0.18.0` (`veloren-voxygen.exe`, `veloren-server-cli.exe`, `assets\`)
+> The early Veloren memory-analysis work (live scan, server-vs-client proof, ECS struct recovery,
+> Frida hooks) now lives as reusable method under `categories/voxel_rust/` and `knowledge/method/`.
 
 ---
 
-## 2026-10-22 — Phase 0: static recon of Veloren
+## 2026-10-23 — Side track: virtualization & anti-tamper (legal Denuvo-technique study)
 
-Full annotated evidence in `RECON.md`. Key takeaways:
+- Denuvo on a shipping game = DRM circumvention (illegal, DMCA §1201), declined repeatedly across
+  reframes. Legal path that teaches the SAME skills: virtualize your OWN C function with **Tigress**
+  (WSL), then recover it in **Ghidra**. Answer key available (compile plain + virtualized).
+- Built toy `vmlab/keycheck.c` (check_key hashes a 10-char key -> magic 0x32629093; key RELAB-2026).
+  Plain build verified (WIN/LOSE). Guide: `knowledge/method/virtualize.md`.
 
-- **Built with:** Rust + MinGW-w64 (GNU). Two proofs: DIE says `Compiler: MinGW` / `Language: Rust`,
-  and the bundled `libgcc_s_seh-1.dll` / `libstdc++-6.dll` / `libwinpthread-1.dll`.
-- **Not packed.** Total entropy 6.35, `.text` 6.22. DIE's red `Protection: Generic` and
-  `Packer: Generic` were **false positives** (24 sections because of DWARF; `.pdata` is a dense address
-  table). Lesson: a heuristic is a hint — confirm with entropy + section names.
-- **Huge debug leak:** ~160 MB of DWARF `.debug_*` sections + 160,307 symbols (67,559 Rust). The 13 MB
-  DIE "overlay" is the COFF symbol table (`PointerToSymbolTable` = overlay offset `0x0ebae800`).
-  `veloren_common::comp::health::Health::change_by` is probably where all damage and healing go -> target for Phases 3/4.
-- **ASLR + high-entropy ASLR + NX on** -> addresses move every run -> pointer paths in Phase 2.
-- **Data:** 2,826 plain-text `.ron` files (abilities, items). E.g. `sword/agile_cascade.ron`:
-  `damage: 11`, `energy_cost_per_strike: 5`. Player max health/energy are computed in code, not RON.
-- **`VELOREN_ASSETS_OVERRIDE`** env var redirects asset loading -> clean way to test modified data.
-- **Embedded server:** single-player runs the same server code locally -> I am the authority offline;
-  online, `server.veloren.net` computes everything itself.
-- **Re-ran everything myself.** New from that run:
-  - Server exe = same build but **no OpenGL** -> headless authority.
-  - My `_ZN` count was 91,226 vs 67,559 earlier: mine also matched section/pointer names that *contain*
-    Rust names (`.text$_ZN...`). Know what a regex counts before quoting a number.
-  - Health is an **ECS component** (`specs::storage::MaskedStorage<Health>`), not a field on a player
-    object. Damage flows attack -> `HealthChangeEvent` -> system -> `Health::change_by`.
-  - Single-player = two copies of game state in one process (embedded server + client). Phase 2 is about
-    finding the server's copy.
+## 2026-10-23 — vmtrack staged end-to-end
 
-## 2026-10-22 — Phase 1-by-hand on Veloren (no UE tools, used debug info + source + disasm)
-
-- `gdb ptype/o Health` fails: build is **line-tables-only DWARF** (`debug=1`) — function names yes,
-  Rust struct layouts no (556,850 subprograms, 0 Rust structure_types; the 149 are C runtime).
-- Recovered the layout anyway: function symbols + open-source `health.rs`/`energy.rs` (pulled from GitLab
-  at tag v0.18.0) + reading `[rcx+off]` in `Health::change_by`. **Claude verified against the binary:**
-  - `current` @ **+0x50** (`mov %r15d,0x50(%rcx)`), `maximum` @ **+0x58** (clamp source).
-  - **x256 fixed point** (constant `0x43800000` = 256.0): memory = displayed*256; 100 HP -> 25600.
-  - `Energy` = 16 bytes: current/base_max/maximum u32 (x256) + regen_rate f32 (raw).
-  - Fixed the first-pass guess: `last_change` is at +0x00, not +0x30.
-- This is effectively Phase 1 done for Veloren: debug info replaced UE4SS/Dumper-7. On a stripped AAA
-  binary you'd get here via Dumper-7 (Phase 1) or breakpoints (Phase 4) instead.
-- Phase 2 lesson written using these offsets (`phases/phase2_memory_editing.md`).
-
-## 2026-10-22 — Phase 0: static recon of Veloren (earlier)
-
-- Gotchas: Rust strings aren't null-terminated (junk like `energy_rH3`); PowerShell truncates columns
-  (use `-ExpandProperty` / `Format-List`); DIE GUI hides Entropy until **Advanced** is ticked;
-  CLI needs `-u` for heuristics.
-
-## 2026-10-22 — Phase 2: found health, proved which copy is real
-
-- First scan `25600` (100 HP, 4 Bytes, exact) -> filtered with damage -> **3 hits**: two at `8351`
-  (= 32.62 HP, HUD showed 33 because it rounds) and one at `0` (noise, ignored).
-- Both real hits end in **`...050`** = struct base + `0x50` -> the Phase 1 offset confirmed live.
-  This run: **A = `292DED88050`**, **B = `29513580050`** (addresses change every launch: ASLR/heap).
-- **B is the client (display) copy:** setting it to 50 changed the HUD instantly; the next server update overwrote it.
-- **A is the server (authoritative) copy.** Proof: set A to 100 (25600), HUD stayed 70 (no sync), took a
-  hit of **60.2** -> HUD showed **39.84** (`10199`/256) = 100 - 60.2. If A were fake, it would have been
-  70.29 - 60.2 = **10.1**. The server computed damage from *my edited value*.
-- **Why editing A didn't move the HUD:** Cheat Engine writes memory directly, skipping `change_by` /
-  `DerefMut`, so `DerefFlaggedStorage` never marked Health as changed and the server sent nothing. The
-  next *real* change (damage) went through the game's code, got flagged, and synced A's value to B.
-- Lesson: a client-side edit changes only what you see; an edit to the authority changes reality.
-  Online, the authority is on someone else's machine.
-- Next: freeze A for god mode, then pointer scan (step 2.5) to survive relaunch.
-- **God mode works (froze A at 25600):** each hit, the bar drops to 100 - damage, then the *next* hit
-  starts from 100 again. The server computes damage from the frozen 100 and sends the result (flagged
-  change); Cheat Engine then silently rewrites the real value to 100 (no flag, no sync), so the bar keeps
-  showing the last sent number until the next hit.
-- Weakness of freezing: Cheat Engine rewrites on a timer (~every 100 ms). A single hit bigger than 100 HP,
-  or two hits in the same frame, lands before the rewrite -> you can still die. A robust god mode patches
-  the *code* (`Health::change_by`) instead of the *data*: that's Phase 3.
-- **Pointer scan dead end:** two compare scans (plain; then thread stacks as static, offset 65535, level 6)
-  both gave **0 paths**. Rust keeps the world on a thread, not in globals; Health is an ECS list slot; and
-  the run-1 pointermap had no stack info to compare against. ECS slot paths would be fragile anyway.
-- **What writes to this address** (debugger) on the server health: one instruction, 23 writes:
-  `7FF7E362D9B3  44 89 79 50  mov [rcx+50],r15d` — the **same** instruction found statically at
-  `0x140F4D9B3`. Static analysis and live debugging agree.
-- **ASLR measured:** RVA `0xF4D9B3` is fixed; this launch the module base was `0x7FF7E26E0000` instead of the
-  preferred `0x140000000`. Code addresses are stable as *module+RVA*; heap data (Health) is not.
-- Lesson: when data has no stable pointer path, anchor on the **code** that touches it. That's Phase 3.
-  Write-up: `dumps/veloren_health_pointer.md`.
-- **ReClass mapped the whole Health struct (96 bytes = 0x60).** `last_change` 0x00–0x27 (time f64 @0x10
-  confirmed by it advancing, amount f32 @0x20 = last damage), HashMap 0x28–0x4F (ptr, mask 7, growth 6,
-  items 1, seed), current/base_max/maximum @0x50/54/58, bools @0x5C–0x5E. At +0x60 the next NPC's Health
-  starts: the ECS VecStorage seen directly in memory. Full table in `dumps/veloren_health_pointer.md`.
-- **Recording decoded every byte of `last_change` (0x00–0x27)** against v0.18.0 source:
-  attacker = `DamageContributor::Group{entity_uid 1224, group ENEMY=u32::MAX}`; two damage types
-  alternating — `Attack(Melee)` hits of -5.4/-10.85 (precise=1) and `Buff(Bleeding)` ticks of -0.271
-  (BuffKind #34 = 0x22). Byte 0x27 flips between 00 and 40: padding junk, never initialised.
-- Lessons: Rust packs enums as *tag + payload* (and uses spare tag values for `None`); **padding bytes
-  hold garbage**, so never fingerprint/compare structs with raw memcmp including padding.
-- **Phase 2 closed.** Anti-cheat review in `phases/phase2_anticheat_review.md`: every attack we ran
-  (attach, value scan, freeze, pointer scan/code anchor, ReClass) mapped to detection signal + defense,
-  split client-side (cost-raising, always defeatable) vs server-side (real). The one proven-real defense:
-  server-authoritative state — froze the server copy and it worked; froze the client copy and the next
-  sync overwrote it. FIXLIST gained field-hash integrity + handle/tool/DR detection (as telemetry).
-- **Phase 3 warm-up (Frida) prepared.** Hook the verified store `veloren-voxygen.exe+0xF4D9B3`
-  (`mov [rcx+0x50],r15d`): rcx=Health*, r15d=new current, [rcx+0x50]=old, [rcx+0x58]=max. Chose the store,
-  not the function entry, because Rust's ABI + inlining make entry args unreliable. Scripts:
-  `change_by_logger.js` (observe all health changes — fires for every ECS entity) and
-  `change_by_block_damage.js` (zero damage; all-entities by default, `ONLY_ENTITY` to target the player).
-  Driver `run_hook.py` (frida 17 module; frida CLI not on PATH). Lesson preview: shared choke point needs a
-  player filter; inline hooks are detectable via prologue-integrity checks. Lesson: `phases/phase3_warmup_veloren.md`.
-
-## 2026-10-22 — Phase 3 warm-up: change_by logger ran (180 events)
-
-- **Hook worked first try.** base `0x7FF7E26E0000` + RVA `0xF4D9B3` = `0x7FF7E362D9B3`; same instruction as
-  Phase 0/1 static and Phase 2 debugger. Static analysis, debugger, and Frida all agree on one address.
-- **Player = `0x3204EDA8000`** (max 100) — exact match to the ReClass struct base from Phase 2.
-- **One function serves ALL entities.** 14+ distinct Health addresses in 180 events (player, several max=50
-  trash mobs dying to 0.0, a max=320 boss `...8540`, max=85/65 others). THE reason a hook here needs a filter.
-- **ECS stride 0x60 confirmed live:** every entity address = player_base + n*0x60 (slots 0,2,14,17,25,...,149).
-  Matches the "+0x60 = next entity" finding from ReClass — now proven across 14 entities.
-- **Damage types readable from deltas:** -0.1/-0.2 = DoT (bleed/poison) ticks; -5.4/-14.5/-35.2 = hits;
-  +5.0/+7.5/+1.3 = heals/regen; `-0.0` lines = sub-0.05 ticks rounding to 0 but still a write.
-- Next: `change_by_block_damage.js` with `ONLY_ENTITY` = this run's player base to block only the player's
-  damage (run-specific; a stable player filter is Phase 3 proper).
-- **Root cause of the "blocker did nothing" scare: the game was idle, not a broken hook.** A QPC probe
-  fired ~46k times in 6s from the same (background) Frida env -> hooks placed here DO fire. change_by fired
-  ~0 while on a death/menu screen. A clean 45s block run during active play: calls=35, dmg=16, blocked=16 —
-  hook fires, block branch runs, r15 rewritten. Lesson: when a hook shows zero, check the target is actually
-  exercising that code before suspecting the hook. (Also: Frida 17 renamed APIs — `Module.findExportByName`
-  is gone; use `Module.getGlobalExportByName` / `module.getExportByName`.)
-- Fixed run_hook.py timed mode to os._exit instead of session.detach (detach hung on this target).
-- **Modify half CONFIRMED working.** No-timer run during real combat: calls=329, dmg=315, blocked=315,
-  and in-game NOTHING lost health (player or enemies, HUD showed no decrease). So `this.context.r15 = old`
-  at the store site is honored — mid-function register modification works via Frida Interceptor. The whole
-  warm-up (observe -> modify) is validated on Veloren. The one wrinkle: it blocks EVERY entity (ECS shared
-  choke point) -> a real cheat needs a player filter (ONLY_ENTITY), which is Phase 3 proper on Unreal.
-- **Player-only filter WORKS (selective cheat).** Can't tell the player from the hook, so identify BY
-  BEHAVIOUR: calibrate phase counts damage per entity while the user takes hits without attacking; the
-  only/most-damaged entity is the player -> lock it. Live: locked PLAYER=0x3204E718000 max=100 (auto-found
-  fresh this run), then blocked=392 on that entity only. In-game: player HP held at 28 under attack while
-  enemies still took damage and died. This is the ECS "identify your entity" skill that Phase 3 on Unreal
-  formalises. Script: `scripts/frida/change_by_block_player.js`.
-
-## 2026-10-23 — Session pause: where we are
-
-**Done so far (all committed):**
-
-- Phase 0 (Veloren): full annotated recon — RECON.md.
-- Phase 1-by-hand (Veloren): recovered Health/Energy layout from debug info + source + disasm (no UE tools).
-- Phase 2 (Veloren): CE scan (x256), server-vs-client copy proof, god mode via freeze, pointer-scan dead end,
-  code anchor (change_by @ +0xF4D9B3), full ReClass struct (scripts/reclass/veloren_health.rcnet),
-  anti-cheat review (phases/phase2_anticheat_review.md).
-- Phase 3 warm-up (Veloren): Frida hooks — logger, all-entity block, auto-calibrating player-only block
-  (all validated live). scripts/frida/.
-
-**Next (user's hands-on, hours, mostly unattended): build Lyra.**
-
-- Follow phases/lyra_setup.md: VS workload -> Epic Launcher -> UE 5.8 -> Lyra (Fab, supports 5.0-5.8, free)
-  -> package Shipping build into targets/Lyra/.
-- Then with Claude: Phase 0 recon on Lyra, Phase 1 (UE4SS + Dumper-7 -> offsets.json), Phase 3 (ProcessEvent),
-  Phase 4 (x64dbg + Ghidra on the damage routine), Phase 5 (ANTICHEAT_MAP.md).
-
-**Env reminders:** frida CLI not on PATH (use the python module); download.veloren.net blocked by Fortinet
-(Epic downloads may hit the same); 15.4 GB RAM is tight for UE compiles.
-
-## 2026-10-23 — New side track: virtualization & anti-tamper (legal Denuvo-technique study)
-
-- User wanted to study Denuvo. Denuvo on a shipping game = DRM circumvention (illegal, DMCA §1201), declined
-  repeatedly across reframes (own game / buy it / "open-source game with Denuvo" (doesn't exist) / college project).
-- Legal path that teaches the SAME skills: virtualize your OWN C function with **Tigress** (WSL), then recover
-  it in **Ghidra**. Answer key available (compile plain + virtualized). Later: a GPL id-Software (Doom/Quake)
-  function for the "real commercial game" story.
-- Already installed: gcc 16 (msys64), Ghidra (C:\Tools\ghidra, use jdk-23), WSL Ubuntu 24.04. Only Tigress to add (WSL).
-- Built toy `vmlab/keycheck.c` (check_key hashes a 10-char key -> magic 0x32629093; key RELAB-2026). Plain
-  build verified (WIN/LOSE). Lesson: phases/vmtrack_01_virtualize.md.
-
-## 2026-10-23 — vmtrack staged end-to-end (user away; ready to recover)
-
-- Tigress 3.1-bin installed in WSL (~/tigress31/tigress/3.1; env in ~/.bashrc; needs --Environment=x86_64:Linux:Gcc:4.6).
-- Virtualized check_key -> keycheck_vm (Virtualize, 416 lines, magic 0x32629093 still visible) and keycheck_vm2
-  (EncodeLiterals+EncodeArithmetic+Virtualize, 638 lines). Plain ELF keycheck_plain_elf = answer key. All behave identically.
-- Ghidra project vmlab/ghidra_proj/KeyCheck.gpr: all 3 imported + auto-analyzed (headless, jdk-23).
-  Set Ghidra JAVA_HOME_OVERRIDE -> jdk-23 so ghidraRun.bat launches (system java is 17).
-- Deliverable skeleton: vmlab/recovery_notes.md (exercises A-D). Lesson updated: phases/vmtrack_01_virtualize.md.
-- Nuance for the lesson: plain Virtualize hides control flow but NOT literals -> 0x32629093 leaks; searching the
-  scalar is a valid first lead, but the skill is recovering the ALGORITHM (dispatcher + opcode map).
+- Tigress 3.1-bin installed in WSL. Virtualized check_key -> `keycheck_vm` (Virtualize, magic still
+  visible) and `keycheck_vm2` (EncodeLiterals+EncodeArithmetic+Virtualize). Plain ELF = answer key.
+- Ghidra project `vmlab/ghidra_proj/KeyCheck.gpr`: all imported + auto-analyzed (headless, jdk-23).
+- Deliverable skeleton: `vmlab/recovery_notes.md` (exercises A-D). Guide: `knowledge/method/virtualize.md`.
+- Nuance: plain Virtualize hides control flow but NOT literals -> 0x32629093 leaks; the real skill is
+  recovering the ALGORITHM (dispatcher + opcode map), not grepping the scalar.
 
 ## 2026-10-24 — Capstone decided: pro-tool protect-and-break (legal Denuvo analog)
 
-- User wants commercial-grade depth, not toy layers. Plan: protect OWN program with the real industry tools
-  (VMProtect demo + Themida/WinLicense demo + an OLLVM x64 fork Hikari/Pluto), then reverse own output with
-  the pro RE stack (x64dbg+ScyllaHide, Scylla dump, NoVmp/VTIL devirt, Triton/angr). Windows x64 PE (matches
-  the Unreal target; uses VS2026 + x64dbg already here). Plan: phases/capstone_protect_and_break.md.
-- Note O-MVLL is iOS/Android only -> use Hikari/Pluto for x64. Legal line: own code only; external test later
-  = Tigress Challenge / FLARE-On (pro-made, legal). Honest ceiling: still not Denuvo-scale, but real VM/anti-tamper.
+- Protect OWN program with the real industry tools (VMProtect demo + Themida/WinLicense demo + an
+  OLLVM x64 fork), then reverse own output with the pro RE stack (x64dbg+ScyllaHide, Scylla dump,
+  NoVmp/VTIL devirt, Triton/angr). Windows x64 PE. Plan: `targets/license_app/protect_and_break.md`.
 
 ## 2026-10-24 — REAForge (AI RE orchestrator) + tool install sweep
 
-- Built reaforge/ (tool_registry, llm_backend[3 modes], orchestrator skeleton, README, scope guard).
-- LLM modes: (1) API multi-provider anthropic/openai/gemini; (2) Bridge = Claude Code auto-answers a file
-  mailbox while driving the session (honest limit: only while a session drives it); (3) Custom (user's own tool
-  via stdin/stdout). Ollama optional — recommended qwen2.5-coder:7b for 15GB RAM. No API keys set yet.
-- Installed free RE core: capstone, unicorn, keystone, lief, r2pipe (pefile/frida already). ScyllaHide v1.4
-  installed into x64dbg plugins (x32+x64).
-- Protectors present (user installed demos): VMProtect Demo (C:\Program Files\VMProtect Demo\VMProtect.exe +
-  VMProtect_Con.exe CLI), Themida (C:\Tools\ThemidaDemo\Themida64.exe). OSS fallback = Tigress (have).
-- Still to build when needed: NoVmp+VTIL (VS build), OLLVM x64 fork (Pluto/Hikari), angr/triton (heavy).
-- REA repo (morluto/rea): real MIT MCP RE tool, but claims ~372k stars for a 6-mo-old repo (treat as
-  unverified/likely inflated). Runs third-party agent code via npx/install.sh -> NOT auto-installed; evaluate
-  sandboxed later if wanted. We build our own (reaforge) as the core.
-- Fixed pre-existing WSL ~/.bashrc syntax error (unquoted (x86) PATH dump, line 120; backup saved).
+- Built `reaforge/` (tool_registry, llm_backend[3 modes], orchestrator skeleton, README, scope guard).
+- LLM modes: (1) API multi-provider; (2) Bridge = Claude Code auto-answers a file mailbox while
+  driving the session; (3) Custom (user's own tool via stdin/stdout). Ollama optional. No API keys set.
+- Installed free RE core: capstone, unicorn, keystone, lief, r2pipe (pefile/frida already). ScyllaHide
+  v1.4 into x64dbg plugins. Protectors present: VMProtect Demo, Themida. OSS fallback = Tigress.
 
 ## 2026-10-24 — Capstone C0 built + bridge mode proven
 
-- C0 target capstone/license_app.c: hardware-bound license (C: volume serial -> expected_key -> 8-hex compare).
-  Built license_app.exe + keygen.exe; verified LICENSED with keygen's key (this machine: 75685AB2).
-- IDA Professional 9.1 found + registered (C:\Program Files\IDA Professional 9.1\ida.exe, idat.exe headless).
-- **Bridge mode end-to-end:** `REAFORGE_LLM=bridge python reaforge/orchestrator.py recon license_app.exe` ->
-  wrote facts.json, posted bridge/pending.json, Claude Code wrote reply_<id>.json, orchestrator printed the
-  AI plan and exited. Automatic while a Claude Code session drives it (the design goal).
+- C0 target `targets/license_app/src/license_app.c`: hardware-bound license (C: volume serial ->
+  expected_key -> 8-hex compare). Built + verified LICENSED with keygen's key.
+- IDA Professional 9.1 found + registered (`idat.exe` headless).
+- **Bridge mode end-to-end:** `REAFORGE_LLM=bridge python reaforge/orchestrator.py recon <exe>` wrote
+  facts.json, posted a bridge request, Claude Code answered it automatically, orchestrator printed the
+  plan. Automatic while a Claude Code session drives it (the design goal).
 
-## 2026-10-24 — Folded in the RE-crack
+## 2026-10-24 — Folded in the RE-crack techniques
 
-- Educational transcript analyzed -> phases/re_techniques_reference.md: 3 RE layers (HWID+token,
-  anti-tamper CRC, VMProtect VM) and the 15-step attacker stack, each mapped to a LEGAL reproduction on our
-  OWN VMProtect-protected binary + the tool for it. RE obfuscator = VMProtect = what we have.
-- Added capstone phase C5 (full bypass chain on a RE-like version of license_app): multi-source HWID +
-  anti-tamper CRC + VMProtect, then our own DLL-hijack/IAT/VEH/shadow-page/VirtualProtect-hook/RDTSC/HWID
-  record-replay harness + Intel Pin tracing + NoVmp devirt. Harness becomes reusable REAForge tooling.
-- To install when needed: NoVmp+VTIL (build, step #5). Rest we write in C.
+- Educational transcript analyzed -> `knowledge/method/re_techniques.md`: 3 RE layers (HWID+token,
+  anti-tamper CRC, VMProtect VM) and the attacker stack, each mapped to a LEGAL reproduction on our
+  OWN VMProtect-protected binary + the tool for it.
+- Added capstone layer C5 (full bypass chain): multi-source HWID + anti-tamper CRC + VMProtect, then
+  our own DLL-hijack/IAT/VEH/shadow-page/VirtualProtect-hook/RDTSC/HWID record-replay harness + Intel
+  Pin tracing + NoVmp devirt. Harness becomes reusable REAForge tooling.
 
 ## 2026-10-25 — Intel Pin installed + environment layout decided
 
-- **Intel Pin 4.4** installed at `C:\Tools\PIN\pin-external-4.4-99977-g54fbb8814-clang-windows\pin.exe`
-  (the doc said "4.0"; actual is 4.4). REAForge detects it. Starter pintool written:
-  `reaforge/pintools/recon_trace.cpp` (instr count + CPUID/RDTSC/RDTSCP address trace = C5 step 3). Build
-  needs VS2026/clang-cl — deferred until we reach C5 step 3. Guide: `phases/pin_lab.md`.
-- **Environments mapped** -> `ENVIRONMENTS.md`. Windows-native = primary workbench (targets are PE);
-  **WSL BlackArch (`archlinux`)** = the specialized Linux RE arsenal (radare2/rizin/cutter/gdb/ropper/
-  ROPgadget/clang/nasm/ghidra); **WSL Ubuntu** = plain build box, now redundant for the lab; **Docker** =
-  disposable build/detonation sandboxes. Rule: one home per Linux RE tool (BlackArch), don't duplicate.
-- **Tigress no longer installed** in either distro (WSL was reset; `~/tigress31` + `.bashrc` entry gone).
-  Low-impact (capstone is VMProtect/Themida/OLLVM on Windows); reinstall into ONE distro if resuming vmlab.
-- Fixed `reaforge/tool_registry.py`: it only probed Ubuntu and mis-counted "command not found" as installed.
-  Now probes both distros and validates the path. New neutral reference added:
-  `binary_protection_instrumentation_reference.txt` (defensive/authorized-lab framing of the same tech).
+- **Intel Pin 4.4** at `C:\Tools\PIN\...\pin.exe`. REAForge detects it. Starter pintool
+  `reaforge/pintools/recon_trace.cpp` (instr count + CPUID/RDTSC/RDTSCP address trace). Build needs
+  VS2026/clang-cl. Guide: `knowledge/method/pin_lab.md`.
+- **Environments mapped** -> `ENVIRONMENTS.md`. Windows-native = primary workbench; **WSL BlackArch**
+  = the specialized Linux RE arsenal; **WSL Ubuntu** = plain build box; **Docker** = disposable
+  sandboxes. Rule: one home per Linux RE tool (BlackArch), don't duplicate.
+- Fixed `reaforge/tool_registry.py`: probes both distros now and validates the path. Added the neutral
+  reference `knowledge/binary_protection.txt` (defensive/authorized-lab framing of the same tech).
 
 ## 2026-10-25 — Capstone C1 done (OLLVM compile-time obfuscation)
 
-- Installed **Hikari/Arkari OLLVM fork** (Ridter/Hikari, clang 21.1.0, x64-windows-msvc) to `C:\Tools\ollvm`
-  (REAForge: `ollvm_clang`). No clang was on the box before; stock clang has no obf passes anyway.
-- Rebuilt `license_app.c` with `-irobf-cff` (flatten), `-irobf-cse` (string-enc), `-irobf-cie` (int-const-enc),
-  `-irobf-indbr`. Flag is `cff` not `fla` in this fork. 143,872 -> 153,600 bytes; semantics preserved
-  (C0 keygen 75685AB2 still -> LICENSED).
-- Re-reversed via `reaforge/ida_decompile_c1.py` (string anchors gone, so anchor on `main`). Findings in
-  `capstone/recovery_C1.md`: strings encrypted (recon anchor gone), constants became `dwordX±K` but FOLD back
-  to 0x1505/33/0xF from static `.data` (proved with pefile), flatten+indbr ballooned the reachable set to
-  510 fns / 34,585 lines vs C0's 1 fn / ~15 lines. Honest takeaway: obfuscation raised analysis cost, did NOT
-  change the algorithm — same keygen works. That's why C2 (VMProtect) is the real step up.
-- Tool/flag note: `clang -mllvm -irobf -mllvm -irobf-cff ...`; clang auto-found MSVC 14.51 + Win11 SDK.
+- Installed **Hikari/Arkari OLLVM fork** (clang 21.1.0, x64-windows-msvc) to `C:\Tools\ollvm`.
+- Rebuilt `license_app.c` with `-irobf-cff` (flatten), `-irobf-cse` (string-enc), `-irobf-cie`
+  (int-const-enc), `-irobf-indbr`. 143,872 -> 153,600 bytes; semantics preserved (keygen still LICENSED).
+- Re-reversed via `reaforge/ida/decompile.py` (string anchors gone, so anchor on `main`). Findings in
+  `targets/license_app/recovery/recovery_C1.md`: strings encrypted, constants became `dwordX±K` but
+  FOLD back to 0x1505/33/0xF from static `.data` (proved with pefile), flatten+indbr ballooned the
+  reachable set to 510 fns / 34,585 lines vs C0's ~15. Honest takeaway: obfuscation raised analysis
+  cost, did NOT change the algorithm — same keygen works. That's why C2 (VMProtect) is the real step up.
+
+## 2026-10-26..27 — C2 VMProtect 3.11 broken + consolidation
+
+- C2 (`targets/license_app/.../license_app_c2.vmp.exe`) and the Dead Cells `libhl.vmp.dll` benchmark
+  both devirtualized end-to-end: validated, blind-recovered, round-peeled, and SMT-proven. See
+  `targets/license_app/README.md` and `targets/dead_cells/README.md`.
+- Repo consolidated into three layers — generic `reaforge/core` engine, reusable `categories/`, and
+  per-title `targets/` — with ruff linting and x86/x64×EXE/DLL smoke tests. See the root `README.md`.

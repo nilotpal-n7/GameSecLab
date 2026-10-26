@@ -1,6 +1,6 @@
 # VMProtect 3.11 — analysis of the architecture doc, verified tooling, and our break pipeline
 
-My analysis of `Architectural_Analysis_&_Academic_Deobfuscation_of_VMProtect_3.11_(2026).md`, with every
+My analysis of `vmprotect311_deobfuscation.md`, with every
 referenced paper/tool **downloaded and verified real** (not hallucinated), tied back to our own break attempts.
 
 ## 1. Why our earlier attempts failed — now fully explained
@@ -34,7 +34,7 @@ we fully control, where no check (debugger flags, CPUID, RDTSC clock, page permi
 
 ## 3. The new break pipeline (routes around the wall)
 
-```
+```text
 license_app_c2.vmp.exe
   │  (1) vmp-lazy-unpack  — Unicorn emulation; defeats anti-debug/anti-DBI/timing/checksum by construction
   ▼
@@ -50,10 +50,13 @@ This is the capstone's real payoff: **emulation-based unpacking** is how modern 
 in 2026 pipelines, and it sidesteps every runtime defense we documented.
 
 ## 4. Next action (needs your OK — external code)
+
 Running `vmp-lazy-unpack` on our binary was blocked by the sandbox (it's freshly-downloaded third-party code).
 To proceed, either approve running it, or run it yourself:
+
 ```powershell
 cd C:\Tools\_downloads\research\vmp-lazy-unpack
 python -m unpack "C:\Tools\GameSecLab\capstone\license_app_c2.vmp.exe"
 ```
+
 Then we analyze the dumped image (IDA/our scripts) and, if needed, devirtualize with Pushan.

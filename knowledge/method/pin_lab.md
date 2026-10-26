@@ -2,7 +2,7 @@
 
 **Installed:** Pin **4.4** at
 `C:\Tools\PIN\pin-external-4.4-99977-g54fbb8814-clang-windows\pin.exe` (REAForge detects it as `pin`).
-The reference `../binary_protection_instrumentation_reference.txt` §6 and `re_techniques_reference.md`
+The reference `../binary_protection.txt` §6 and `re_techniques.md`
 step #12 both point here.
 
 **Scope:** authorized targets only — your own `license_app.exe`, CTF/crackmes, owned games you may mod.
@@ -24,7 +24,7 @@ hardware-fingerprint and timing anchors in a protected binary.
 
 `reaforge/pintools/build.bat <tool.cpp>` builds any pintool. No VS ClangCL component needed — it drives
 **Pin's own `make`** (whose `pin-clang-cl++` / `pin-ld` wrappers are bash scripts) with our **Hikari clang-cl**
-+ **msys64 make** on PATH, inside a VS2026 env (for the Windows SDK libs). Source stays in the repo; it stages
+**msys64 make** on PATH, inside a VS2026 env (for the Windows SDK libs). Source stays in the repo; it stages
 into `%PIN%\source\tools\REAForge\`, builds, and copies the `.dll` back here.
 
 ```bat
@@ -59,7 +59,7 @@ the native cpuid/rdtsc the VM can't hide is what this surfaces.
 2. Same after the C1/C2 protections → watch the count explode (DBI makes the obfuscation cost visible).
 3. Compare `-O0` vs `-O2` builds on a deterministic input.
 
-## Next Pin tools to add (later phases)
+## Next Pin tools to add (later)
 
 - `callTrace` — log calls to a named routine (C5: watch the license check fire).
 - `virtualloc_shadow` — hook `VirtualAlloc`/`VirtualProtect` to catch JIT'd regions, then instrument them

@@ -11,6 +11,7 @@ int hl_hash_utf8(const char *name){ int h=0; while(*name){ h=223*h+(unsigned)*na
 ```
 
 Two semantics matter and are reproduced in `ref_hash`:
+
 - `(unsigned)*name` **sign-extends** the signed `char` (`0xFF` -> `0xFFFFFFFF`),
 - the final `%=` is a **signed** modulo.
 

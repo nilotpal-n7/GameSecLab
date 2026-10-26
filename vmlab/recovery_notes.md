@@ -9,9 +9,8 @@ In `vmlab/`:
 
 - `keycheck.c` — the source (one function `check_key`).
 - `keycheck_plain_elf` — plain build = **the answer key** (readable in Ghidra in seconds).
-- `keycheck_vm` — Tigress **Virtualize** only (logic hidden; magic constant still visible).
-- `keycheck_vm2` — Tigress **EncodeLiterals + EncodeArithmetic + Virtualize** (harder).
-- `keycheck_vm.c`, `keycheck_vm2.c` — the generated interpreter source (peek if stuck, but try the binary first).
+- `keycheck_vm` — Tigress **EncodeLiterals + EncodeArithmetic + Virtualize** (harder).
+- `keycheck_vm.c` — the generated interpreter source (peek if stuck, but try the binary first).
 - `ghidra_proj/KeyCheck.gpr` — Ghidra project with all three imported **and auto-analyzed**.
 
 All three binaries behave identically: key `RELAB-2026` → WIN, anything else → LOSE.
@@ -20,7 +19,7 @@ All three binaries behave identically: key `RELAB-2026` → WIN, anything else �
 
 - Launch `C:\Tools\ghidra\ghidraRun.bat` (already pointed at jdk-23). File → Open Project →
   `C:\Tools\GameSecLab\vmlab\ghidra_proj\KeyCheck.gpr`.
-- Double-click `keycheck_plain_elf` first, then `keycheck_vm`, then `keycheck_vm2`.
+- Double-click `keycheck_plain_elf` first, then `keycheck_vm`.
 
 ## Exercise A — read the answer key (`keycheck_plain_elf`)
 
@@ -50,16 +49,11 @@ Now the same function is an interpreter. Your job:
    (your opcode map + where the magic compare happens)
    ```
 
-## Exercise C — the harder one (`keycheck_vm2`)
-
-Same idea, but arithmetic is rewritten into bit tricks and literals are (meant to be) encoded. Note what's
-harder, and whether the constant still leaks. The *method* is identical: find the dispatcher, map opcodes.
-
-## Exercise D (stretch) — anti-debug
+## Exercise C (stretch) — anti-debug
 
 Add to `keycheck.c` (Linux): near the top of `check_key`, a self-check —
 `if (ptrace(PTRACE_TRACEME,0,0,0) == -1) return 0;` (needs `#include <sys/ptrace.h>`). Re-run the Tigress
-commands (see `phases/vmtrack_01_virtualize.md`), then practice bypassing it: run under `gdb`, or NOP the
+commands (see `knowledge/method/virtualize.md`), then practice bypassing it: run under `gdb`, or NOP the
 check. That's Denuvo's layered anti-debug in miniature.
 
 ## The answer (don't peek until you've tried B)
@@ -112,7 +106,7 @@ TODO (to confirm): read `_1_check_key_$array` bytes in order; diff recovered log
 
 ---
 
-## keycheck_vm2 (EncodeLiterals + EncodeArithmetic + Virtualize) — 2026-10-24
+## keycheck_vm (EncodeLiterals + EncodeArithmetic + Virtualize) — 2026-10-24
 
 Same VM skeleton (puVar8=PC over `_3_check_key_$array`, puVar7=SP, while/switch/threaded-dispatch).
 **Delta from vm1:** EncodeArithmetic added bitwise/arith primitives and rewrote the math as MBA:
@@ -142,6 +136,6 @@ Results (WSL):
 touching the obfuscated code. Other bypasses: patch/NOP the branch, `gdb catch syscall ptrace` + `return 0`,
 fake `/proc/self/status` TracerPid.
 
-**Defensive takeaway (-> FIXLIST / Phase 5):** weak because it trusted libc. Harden by: raw `syscall(SYS_ptrace)`
+**Defensive takeaway (-> FIXLIST / anti-cheat synthesis):** weak because it trusted libc. Harden by: raw `syscall(SYS_ptrace)`
 (no symbol to preload), layer many independent checks (TracerPid, rdtsc timing, 0xCC breakpoint scan, parent
 check), and keep them inside the VM + encoded. No single point of failure = the Denuvo model.

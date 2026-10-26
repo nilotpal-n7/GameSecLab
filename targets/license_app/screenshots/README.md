@@ -1,6 +1,6 @@
 # screenshots/ — key evidence for verification & presentation
 
-Milestone screenshots kept for the write-up / portfolio. Naming: `<phase>_<nn>_<what>.png`.
+Milestone screenshots kept for the write-up / portfolio. Naming: `<layer>_<nn>_<what>.png`.
 
 ## C2 — VMProtect virtualization break
 

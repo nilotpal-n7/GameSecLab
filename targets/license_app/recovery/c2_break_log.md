@@ -5,6 +5,7 @@ virtualize + pack + memory-protection + User/Kernel debugger detection). Evidenc
 `reaforge/pintools/`.
 
 ## Attempt 1 — x64dbg + ScyllaHide (ring-3 debugger)
+
 - Default ScyllaHide "VMProtect" profile → **"A debugger has been found"** (`screenshots/c2_02…`).
 - Maxed the profile to 36+ hooks → **still detected** (`screenshots/c2_03…`).
 - x64dbg exception config (pass `EXCEPTION_SINGLE_STEP 0x80000004` to debuggee) → **still detected**.
@@ -13,6 +14,7 @@ virtualize + pack + memory-protection + User/Kernel debugger detection). Evidenc
   can't cover this. Explained in `docs/pdf_analysis.md`.
 
 ## Attempt 2 — Intel Pin (DBI instead of a debugger)
+
 Rationale: Pin JIT-recompiles the target, it is not a debugger, so debugger-API checks don't apply. But the
 PDF (Table 1) says VMProtect also has **anti-DBI** = the same single-step technique, which trips Pin too.
 
@@ -21,6 +23,7 @@ Hikari clang-cl + msys make (the MSBuild/ClangCL route fails in VS2026). Validat
 (2.7M instrs, 17 cpuid traced).
 
 **Result on the protected binary** (`reaforge/pintools/vmp_probe.cpp` → `vmp_probe.log`):
+
 | observation | value |
 | --- | --- |
 | instructions executed before death | **~792,000,000** (vs 2.7M clean) — the whole VM runs |
@@ -35,6 +38,7 @@ instrumentation. The kill happens *late* (after the VM executes), via a path tha
 not a visible exception.
 
 ## Where this leaves us (honest)
+
 - VMProtect 3.11 defeats **both** a ring-3 debugger (x64dbg+ScyllaHide) **and** plain Pin. This is a real,
   documented result — modern VMProtect anti-analysis is strong, and public tooling lags it by years.
 - **Beating it = open research.** The academic bypass (re-raise the single-step exception from the DBI tool)
@@ -43,6 +47,7 @@ not a visible exception.
   additional vectors. Uncertain effort.
 
 ## Options from here
+
 1. **Attempt the single-step re-raise pintool** (the paper's method) — honor the DBI path; research gamble on 3.11.
 2. **Bank this + the Pin toolchain**, rebuild C2 with **Debugger detection OFF** (keep virtualize + pack +
    memory-protection), and learn the rest of the break now: reach OEP, Scylla-dump, find the native `test/je`,

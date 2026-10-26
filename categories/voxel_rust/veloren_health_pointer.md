@@ -1,4 +1,4 @@
-# Veloren v0.18.0 — reaching Health.current (Phase 2 deliverable)
+# Veloren v0.18.0 — reaching Health.current
 
 Build: `veloren-voxygen.exe` SHA256 `D9F6311A46EDFED0FB6EC0E1B6561F468C4B4B9C0C78CFCE2ED84784A8BFDC3C`
 
@@ -29,11 +29,11 @@ are fragile (the slot index depends on spawn order).
 ## What works instead: the code, not the data
 
 Cheat Engine's "Find out what writes to this address" caught **one** instruction writing the server health,
-**23 times**: `mov [rcx+50],r15d` at `7FF7E362D9B3`. It's the same instruction found statically in Phase 0/1
+**23 times**: `mov [rcx+50],r15d` at `7FF7E362D9B3`. It's the same instruction found statically in static recon
 (`0x140F4D9B3`): **RVA `0xF4D9B3` is stable across launches; only the module base moves.**
 
 So the stable "address" of health in this game is: *the code location `veloren-voxygen.exe+F4D9B3`, plus
-whatever `RCX` holds when it runs.* Using that is a code-hook technique — Phase 3.
+whatever `RCX` holds when it runs.* Using that is a code-hook technique — function hooking.
 
 ## Full Health layout, mapped live in ReClass (server copy, god mode frozen)
 

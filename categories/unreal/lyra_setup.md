@@ -1,11 +1,11 @@
-# Lyra setup — build the Unreal target for Phases 1 and 3
+# Lyra setup — build the Unreal target (offset recovery + hooking)
 
 Goal: a **packaged Shipping build of Epic's Lyra Starter Game** in `C:\Tools\GameSecLab\targets\Lyra\`,
 then treat it as a black box like a store-bought Unreal game. This unlocks the Unreal half of the course:
 
-- **Phase 0 (UE recon):** version, paks, Shipping markers — on a real UE5 exe.
-- **Phase 1:** UE4SS + Dumper-7 dump every class and offset automatically (what you did by hand on Veloren).
-- **Phase 3 proper:** hook `UObject::ProcessEvent`, Unreal's universal choke point.
+- **UE static recon:** version, paks, Shipping markers — on a real UE5 exe.
+- **offset recovery:** UE4SS + Dumper-7 dump every class and offset automatically (what you did by hand on Veloren).
+- **function hooking:** hook `UObject::ProcessEvent`, Unreal's universal choke point.
 
 **Time: ~4–8 hours, mostly unattended** (downloads, compiling, shader building, packaging).
 
@@ -75,9 +75,9 @@ This is the artifact we attack. **Shipping** = release config (no editor, no con
 > a **single-player / practice or bot match** only. As always in this lab: never attach tools while connected
 > to a real online match.
 
-## Step 6 — Phase 0 recon on the packaged build (quick, do with me)
+## Step 6 — static recon on the packaged build (quick, do with me)
 
-Once packaged, we repeat Phase 0 on Lyra and compare to Veloren:
+Once packaged, we repeat static recon on Lyra and compare to Veloren:
 
 ```powershell
 $L = "C:\Tools\GameSecLab\targets\Lyra\Windows\LyraGame"   # adjust to real path
@@ -91,9 +91,9 @@ Paste that back and we'll write a Lyra RECON section.
 
 ---
 
-## After Lyra is built — the Unreal phases
+## After Lyra is built — the Unreal work
 
-**Phase 1 — map the game live (the big UE payoff):**
+**offset recovery — map the game live (the big UE payoff):**
 
 - **UE4SS** (experimental build, UE 5.8) → live object/reflection explorer + Lua console. Install into the
   packaged game's `Binaries\Win64\`. Walk `PlayerController → Pawn → find Health/ammo/score by name`.
@@ -102,14 +102,14 @@ Paste that back and we'll write a Lyra RECON section.
   debug-info + ReClass work you did by hand.
 - **FModel** → browse paks, check AES pak encryption/signing.
 
-**Phase 3 proper — hook `ProcessEvent`:**
+**function hooking — hook `ProcessEvent`:**
 
 - Every `UFunction` call in Unreal funnels through `UObject::ProcessEvent(UFunction* fn, void* params)`.
   Hook it once with Frida and you see **every** gameplay call by name — the grown-up version of the Veloren
   `change_by` logger. Then modify args/return (e.g. zero incoming damage in `ApplyDamage`).
 - Build an **AOB/signature** for ProcessEvent so it survives rebuilds (offsets don't).
 
-## Tools to fetch when we start Phase 1 (all into `C:\Tools\`)
+## Tools to fetch when we start offset recovery (all into `C:\Tools\`)
 
 | Tool | Source | Note |
 | --- | --- | --- |

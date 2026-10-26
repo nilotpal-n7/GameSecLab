@@ -16,6 +16,7 @@ NoVmp) target old VMProtect (<3.8) and would give poor/no output on 3.11. Off-th
 devirtualization of our 3.11 function is not currently possible.
 
 ## Realistic ways to still recover `check_license`
+
 1. **Manual VM devirtualization** — the dump is unpacked, so the VM entry/dispatcher/handlers in `.G#b` are
    statically visible. For one tiny function this is tractable and is the core RE skill (ref: Rolles WOOT'09,
    `docs/Rolles_…WOOT2009.pdf`). Hard but tool-independent.

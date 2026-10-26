@@ -9,18 +9,19 @@
 
 ---
 
-
-No public tool devirtualizes VMProtect 3.11 (see `docs/devirt_tooling_availability_2026.md`), so we build one.
+No public tool devirtualizes VMProtect 3.11 (see `knowledge/vmprotect_3.11/devirt_tooling_availability.md`), so we build one.
 Approach: **concolic emulation along a single concrete path** — emulate the VM'd function directly (no path
 explosion, unlike angr on the whole VM; no debugger, unlike Pin which 3.11 detects by timing).
 
 ## What works (`emulate_checklicense.py`)
+
 - Maps the unpacked dump's PE headers + all sections into **Unicorn**, sets up stack / key buffer /
   `KUSER_SHARED_DATA` / a TEB via GS, stubs `GetVolumeInformationA`, lazy-maps stray pages.
 - **The VM interpreter executes end-to-end with no divergence** (mapping the PE headers fixed the rolling-key
   self-checksum reads — that was the key insight). We can drive `check_license`'s VM at will.
 
 ## The wall we hit
+
 `check_license` → `machine_id()` → `GetVolumeInformationA`, but **VMProtect import protection resolves APIs by
 walking `PEB→Ldr`**, not via the rebuilt `.idata` (our IAT hook fired 0 times). With no Windows loader
 environment, the VM's resolver walks a zeroed PEB → null → execution derails → garbage return.
@@ -30,6 +31,7 @@ environment, the VM's resolver walks a zeroed PEB → null → execution derails
 `vmp-lazy-unpack` already implements (it ships `ntdll.dll` + `catalog.json` of exports).
 
 ## Options to finish
+
 1. **Build the loader env into our harness** — PEB/LDR + a minimal kernel32/ntdll export table + resolver +
    API stubs. Most educational; a real subsystem (several iterations).
 2. **Reuse `vmp-lazy-unpack`'s harness** — it already sets up the env + API hooks; extend it to keep emulating
@@ -51,20 +53,23 @@ driver logic on top:
    volume serial**, then call the VM'd `check_license(key)` from the live state and read the verdict.
 
 ### Result — validation battery (5 serials): **ALL PASS**
-```
+
+```text
 serial=0x12345678  key=7A3B3935 -> 1   wrong -> 0   PASS
 serial=0xAABBCCDD  key=3E988000 -> 1   wrong -> 0   PASS
 serial=0xDEADBEEF  key=593BA6C6 -> 1   wrong -> 0   PASS
 serial=0x00000000  key=B8BF23C9 -> 1   wrong -> 0   PASS
 serial=0xFFFFFFFF  key=4E25F1B6 -> 1   wrong -> 0   PASS
 ```
+
 For every serial the VM accepts **exactly** the key the C0 formula predicts and rejects wrong keys — proving
 (a) the devirtualizer faithfully emulates the VMProtect 3.11 VM, and (b) the VM computes the C0 algorithm
 (independent cross-validation). We now have an **executable model / keygen oracle** for the virtualized
 function: `expected_key(serial) = c0_expected_key(serial)`, confirmed by the real VM.
 
 Run:
-```
+
+```bash
 cd C:\Tools\_downloads\research\vmp-lazy-unpack
 python C:\Tools\GameSecLab\reaforge\devirt\devirt_oep.py C:\Tools\GameSecLab\capstone\license_app_c2.vmp.exe
 ```
@@ -86,7 +91,7 @@ Result (serial `0xAABBCCDD`): 12 candidates → **recovered `3E988000`, self-val
 MATCHES the C0 formula.** A fully autonomous blind break — the secret pulled straight out of the virtualized
 function.
 
-```
+```bash
 cd C:\Tools\_downloads\research\vmp-lazy-unpack
 set RECOVER=1 && python C:\Tools\GameSecLab\reaforge\devirt\devirt_oep.py <packed.exe> <serial_hex>
 ```
@@ -96,21 +101,25 @@ set RECOVER=1 && python C:\Tools\GameSecLab\reaforge\devirt\devirt_oep.py <packe
 A hand-built taint-symbolic engine (claripy): symbolize the serial, propagate symbolic expressions through
 tainted registers/memory along the single concrete path, and capture `want = expected_key(serial)` where it
 meets the concrete marker. It implements, from scratch:
+
 - full al/ax/eax/rax **register aliasing**, byte-granular **memory** tracking, **push/pop** stack-machine moves;
 - ~40 x86 ops incl. the MBA set `shrd`(x536)/`shld`/`bt`/`bts`/`btr`/`btc`/`bsf`/`rcl`/`movabs`;
 - a full **symbolic EFLAGS** model (CF/ZF/SF/OF/PF computed per arithmetic op) driving `cmp`/`test`/`adc`/`sbb`/
   `cmov<cc>`/`set<cc>` — the flag-dependent core the MBA leans on.
 
 **Result (blind — zero prior knowledge; C0 used only to cross-check):**
-```
+
+```text
 VALIDATED: symbolic want(serial) reproduces key 3E988000 for serial 0xAABBCCDD
 cross-validation on 4 more serials vs C0: [True, True, True, True]  -> ALL CORRECT
 ```
+
 We recovered `expected_key(serial)` as a **correct symbolic expression**, proven on 5 independent serials. z3/
 claripy simplify compacts it (AST depth 81->52; ~853->509 z3 nodes) and the `+i*7` round structure is visible
 (`0x31 + (0x56a + (0x483 + …`), but it stays in **MBA form** (shift-encoded `*33`, bit-sliced `&0xF`).
 
 ### The clean source form — the true frontier
+
 Collapsing the MBA to literally `(acc*33)^((serial>>4i)&0xF)+i*7` is **not** reachable off-the-shelf: it is an
 8-round **nonlinear** hash (not a single linear-MBA expression), so the linear-MBA simplifiers (Denuvo's GAMBA,
 SiMBA, MBA-Blast — GitHub-only) don't apply, and z3 keeps bitvector form. That is exactly the open problem the

@@ -6,7 +6,9 @@
 ---
 
 > ## ⚠️ Scope & Authorization (GameSecLab hard rules — read first)
+>
 > This benchmark is **only** valid, and **only** performed in this lab, as a *controlled ground-truth* exercise:
+>
 > * **✅ Authorized targets:** binaries you wrote yourself, open-source binaries you build from source (DevilutionX, OpenMW, Veloren, a HashLink/C build of your own Haxe project), and **DRM-free** commercial binaries **you own** — each protected by **applying VMProtect 3.11 yourself**, then analyzed. This is the same pattern as the `license_app` capstone: you own both the clean and the protected binary, so you have ground truth.
 > * **🚫 Out of scope — never:** defeating, unpacking, or circumventing the **shipping protection / DRM / anti-cheat of a third-party commercial product**. The live titles in §1.2 (Genshin, ZZZ, Hi-Fi RUSH, MapleStory/BlackCipher, Arknights/ACE, Witcher 3, etc.) are listed as **architectural context only** — to understand how VMProtect is deployed in the wild — **not** as things to attack. Attacking their protection or anti-cheat is prohibited regardless of framing.
 > * **🔒 Dead Cells file-access rule:** the installed game lives in a restricted folder. Only `ModTools\` and `lang\` are accessible to the assistant. Any operation on `deadcells.exe`, `libhl.dll`, `res.pak`, saves or logs is delivered to **you** as a command to run in your own terminal — the assistant never reads or scans those files.
@@ -304,22 +306,26 @@ PE section/entropy scan of the installed build (user ran it; assistant did not t
 Per the access rule, the assistant will not read `deadcells.exe` / `libhl.dll` / `res.pak`. Run these yourself from the Dead Cells directory and paste back only what you're comfortable sharing (redact anything sensitive):
 
 Confirm the HashLink bytecode is embedded in the exe (looks for the `HLB` module magic):
+
 ```bash
 powershell -NoProfile -Command "$b=[IO.File]::ReadAllBytes('deadcells.exe'); $m=[Text.Encoding]::ASCII.GetBytes('HLB'); for($i=0;$i -lt $b.Length-3;$i++){ if($b[$i]-eq$m[0]-and$b[$i+1]-eq$m[1]-and$b[$i+2]-eq$m[2]){ 'HLB magic at offset 0x{0:X}' -f $i; break } }"
 ```
 
 Static DRM / packer / compiler check (needs Detect It Easy — `diec` CLI from horsicq/Detect-It-Easy):
+
 ```bash
 diec deadcells.exe
 diec libhl.dll
 ```
 
 Ground-truth PE metrics before any VMProtect pass (needs VS `dumpbin`):
+
 ```bash
 dumpbin /headers /imports libhl.dll > C:\Tools\GameSecLab\capstone\deadcells_libhl_baseline.txt
 ```
 
 Unpack assets with the **official** tool (sanctioned modding, not DRM circumvention):
+
 ```bash
 ModTools\PAKTool.exe
 ```
@@ -340,6 +346,7 @@ HL_PRIM int hl_hash_utf8( const char *name ) {   // exported (HL_API) from libhl
 This is a self-contained arithmetic hash (multiply-accumulate by 223 + a non-power-of-2 modulo) — the same shape as the `license_app` capstone, but inside a real shipping game library. The multiply and the `% 0x1FFFFF7B` will generate rich VMProtect MBA, exercising the full de-MBA pipeline, and equivalence is checkable against the source above. (`hl_hash_gen` is the same core plus a cache lookup — messier; `hl_hash_utf8` is the clean pure-arithmetic variant. Confirm the constants match your Aug-2024 build, though this hash has been stable for years.)
 
 **Packing step (your VMProtect 3.11 GUI — lab division of labor):**
+
 * Load `libhl.dll` (+ `.map`/exports auto-resolve).
 * `Functions for Protection`: add exports **`hl_hash_utf8`** (primary) and optionally `hl_hash_gen`, `hl_hash`.
 * Compilation type **Ultra (Mutation + Virtualization)**; **Lock to Key = No**.
@@ -352,7 +359,7 @@ This is a self-contained arithmetic hash (multiply-accumulate by 223 + a non-pow
 
 The user packed `libhl.dll` → `libhl.vmp.dll` (VMProtect 3.11 Ultra + pack; confirmed: `.vmp0/.vmp1/.vmp2`, entry in `.vmp2`, `.vmp2` entropy 7.90, `.text` raw stripped). Driver `reaforge/devirt/devirt_dll32.py` (built on `vmp-lazy-unpack`, 32-bit) reaches the unpacked state and cold-calls the virtualized `hl_hash_utf8`:
 
-```
+```text
 == devirtualizer validation battery (virtualized hl_hash_utf8 vs HashLink source) ==
   b''              VM=0x00000000  src=0x00000000  PASS
   b'a'             VM=0x00000061  src=0x00000061  PASS
@@ -366,6 +373,7 @@ ALL PASS -- the VM reproduces hl_hash_utf8 exactly on a real shipping VMProtect 
 ```
 
 **32-bit port obstacles solved** (the x64 `license_app` pipeline was x64-only):
+
 1. **Api-set imports** — `libhl` imports `api-ms-win-crt-*` / `-core-*` API-set DLLs absent from the catalog; VMProtect's Import Protection re-resolves the full set during unpack, so dropping them faults. Fix: synthesize each module's real export-name pool from `ucrtbase`/`kernelbase`/`kernel32` in `SysWOW64` (a superset).
 2. **DllMain entry** — a DLL needs the 32-bit `DllMain(hinst, DLL_PROCESS_ATTACH, 0)` `stdcall` frame or the unpacker returns into garbage.
 3. **`VirtualQuery`** — not in the kit's handler table (it has `NtQueryVirtualMemory`); added one built on the kit's `memory_basic_information`.
@@ -380,7 +388,7 @@ Run: `cd C:\Tools\_downloads\research\vmp-lazy-unpack && python reaforge\devirt\
 
 `reaforge/devirt/devirt_formula32.py` ports the x64 taint-symbolic engine to x86-32 (32-bit register aliasing, 4-byte `push`/`pop`, 1-operand `mul`/`imul` → `EDX:EAX`, full symbolic EFLAGS). Reusing the FAST post-unpack snapshot, it symbolizes an N-byte input, propagates claripy expressions through the VMProtect VM along the single concrete path, reads the symbolic output `h_out(b0..b_{N-1})`, and SMT-proves it against the closed form:
 
-```
+```text
 probe b'Play'              h_out=0x15335A99  ref=0x15335A99  ok
 probe b'\x01\x02\x03\x04'  h_out=0x00AABDC2  ref=0x00AABDC2  ok
 probe b'\xff\xff\xff\xff'  h_out=0xFF560640  ref=0xFF560640  ok

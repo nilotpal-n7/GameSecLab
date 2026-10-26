@@ -42,3 +42,6 @@ vmlab/ghidra_proj/
 .vscode/
 Thumbs.db
 desktop.ini
+
+# Python virtualenv (local; recreate with: python -m venv .venv + pip install -r requirements.txt)
+.venv/

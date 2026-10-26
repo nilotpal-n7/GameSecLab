@@ -1,6 +1,6 @@
-# Phase 3 warm-up — hooking Veloren's `Health::change_by` with Frida
+# Hooking Veloren's `Health::change_by` with Frida (warm-up)
 
-A gentle run-up to Phase 3 on a target you fully understand. You'll *observe* then *modify* a live
+A gentle run-up to function hooking on a target you fully understand. You'll *observe* then *modify* a live
 function, which is exactly what you'll do to Unreal's `ProcessEvent` later — just without the extra
 Unreal machinery.
 
@@ -11,7 +11,7 @@ inserts a detour at `addr`: when the CPU reaches it, your JavaScript runs first 
 registers via `this.context`), then the original code continues. No files are patched on disk; it's all in
 memory, and it's gone when the process exits.
 
-**Why hook `change_by`?** In Phase 2 you found that *all* damage and healing funnels through
+**Why hook `change_by`?** In memory editing you found that *all* damage and healing funnels through
 `Health::change_by`, and you verified the exact store `mov [rcx+0x50], r15d` at RVA `0xF4D9B3`. Hooking that
 one spot sees every health change in the game — the same "one choke point" idea as `ProcessEvent` on Unreal.
 
@@ -49,8 +49,8 @@ lands. Try to take a hit — you won't lose HP.
 
 **The lesson in the pain:** this also makes **enemies invincible**, because the hook fires for everyone.
 A real player-only cheat must **filter** to the player's Health pointer. The script has an `ONLY_ENTITY`
-constant — set it to your player's Health address (the `...000` base from Phase 2, found fresh this run) to
-affect only you. Finding "which entity is the player" automatically is the heart of Phase 3 proper.
+constant — set it to your player's Health address (the `...000` base from memory editing, found fresh this run) to
+affect only you. Finding "which entity is the player" automatically is the heart of function hooking.
 
 Restart the game to clear the hook.
 
@@ -60,7 +60,7 @@ Restart the game to clear the hook.
   can hash/compare `.text` against a known-good copy and spot the changed prologue (function-prologue
   integrity). Veloren does none of this; a protected game would.
 - **Where this goes on Unreal:** the same `Interceptor.attach` pattern, but the universal choke point is
-  `UObject::ProcessEvent`, and you read `UFunction*` + params instead of raw registers. That's Phase 3.
+  `UObject::ProcessEvent`, and you read `UFunction*` + params instead of raw registers. That's function hooking.
 
 ## FILES
 

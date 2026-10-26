@@ -1,4 +1,4 @@
-# Phase 0 — Static recon (target: Veloren v0.18.0)
+# Static recon (target: Veloren v0.18.0)
 
 Game folder: `C:\Tools\GameSecLab\targets\Veloren\v0.18.0`
 Time: ~1–2 hours. Do every step yourself. After each step, paste the FULL output to Claude
@@ -19,7 +19,7 @@ Before attacking a running game, a cheater (and an anti-cheat engineer) answers:
 4. **Where does the data live?** Stats defined in plain data files are easier to understand
    (and tamper with) than stats compiled into code.
 5. **Who decides the truth?** Client-only game vs. client+server. This decides whether a memory
-   edit "sticks" (Phase 2) — and it is the single most important anti-cheat question.
+   edit "sticks" (memory editing) — and it is the single most important anti-cheat question.
 
 Static = without running the program. Nothing here touches a live process, so nothing here is
 detectable by anti-cheat. That is why real cheat developers always do this first.
@@ -167,14 +167,14 @@ Open one of the matching `.ron` files in a text editor and read it. **Do not edi
 - Are stats compiled into the exe, or loaded from plain-text data files?
 - In single-player, both the client and the built-in server read these same local files.
   What happens if you change a value here and play single-player? What happens if you
-  join a public server with the same edit? (Answer before testing — we test in Phase 2.)
+  join a public server with the same edit? (Answer before testing — we test in memory editing.)
 - Compare with an Unreal game: assets packed inside `.pak` / `.utoc` / `.ucas`, possibly
   AES-encrypted. Which is easier to tamper with?
 
 ### Step 0.7 — Write it up
 
-Fill in `C:\Tools\GameSecLab\RECON.md` (skeleton already created). Add a NOTES.md entry and
-any new words to GLOSSARY.md. Then paste RECON.md to Claude for review.
+Write up your recon notes. Add a NOTES.md entry and
+any new words to GLOSSARY.md. Then paste your recon notes to Claude for review.
 
 ---
 
@@ -190,7 +190,7 @@ any new words to GLOSSARY.md. Then paste RECON.md to Claude for review.
 
 **The big lesson:** everything above only *slows down* an attacker. The Khazan install already
 showed that even Denuvo on a AAA game gets defeated. The only thing static protection cannot
-be stripped from is **logic that runs on a server you control** — keep that in mind for every phase.
+be stripped from is **logic that runs on a server you control** — keep that in mind for every stage.
 
 ---
 
@@ -212,6 +212,6 @@ Same questions, Unreal-specific signals — you will practice these on Lyra:
 
 ## 5. DELIVERABLE
 
-`C:\Tools\GameSecLab\RECON.md`, written by you, reviewed by Claude. Phase 0 is done when you can
+your recon notes, written by you, reviewed by Claude. Static recon is done when you can
 answer, without notes: *What is Veloren built with, is it protected, what did the developers
 leave in, where do stats live, and who is the authority on game state?*

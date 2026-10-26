@@ -227,7 +227,7 @@ VMProtect is a **stack machine**: the accumulator is spilled to `VSP` slots, so 
 
 With the generalized 5-parameter round template, the peeler recovers **8 rounds**, the seed, and the full schedule blindly — each round individually proven equivalent over all 2³² inputs:
 
-```
+```text
 base: acc_0 == 0x1505 ^ serial            (seed 0x1505 recovered blindly and PROVEN)
 round[i] PROVEN:  acc = ((acc*33 + K_i) ^ ((serial >> 4i) & 0xF)) + C_i
   multiplier M = 33          (all 8 rounds)   nibble schedule shift = 4i  (0,4,…,28)

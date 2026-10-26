@@ -44,29 +44,29 @@ That's good: it matches your real target (Unreal games are Windows PE) and uses 
 
 ---
 
-## Phased plan (each phase is build-one-layer then break-it)
+## Layered plan (each layer is build-one-layer then break-it)
 
-**Phase C0 — the target (you write it).** A small Windows C "licensed app": reads a serial, derives an
+**Layer C0 — the target (you write it).** A small Windows C "licensed app": reads a serial, derives an
 expected value from a **hardware ID** (`cpuid` + volume serial + MachineGuid), accepts/rejects. Compile
 clean in VS2026. This is our `check_key`, grown up and hardware-bound. Reverse it clean first (baseline).
 
-**Phase C1 — compile-time obfuscation (Hikari/Pluto OLLVM).** Rebuild with CFG flattening + string
+**Layer C1 — compile-time obfuscation (Hikari/Pluto OLLVM).** Rebuild with CFG flattening + string
 encryption. Reverse it in Ghidra: learn to see through flattening (recover the real control flow).
 
-**Phase C2 — VMProtect (the big one).** Protect the C1 binary with VMProtect demo: virtualize the license
+**Layer C2 — VMProtect (the big one).** Protect the C1 binary with VMProtect demo: virtualize the license
 check, enable packing + anti-debug + integrity. Then **break it**: x64dbg+ScyllaHide to run past anti-debug,
 Scylla to dump, NoVmp/VTIL to devirtualize the protected function, recover the logic.
 
-**Phase C3 — Themida + hardware licensing (WinLicense).** Re-protect with Themida, add a hardware-locked
+**Layer C3 — Themida + hardware licensing (WinLicense).** Re-protect with Themida, add a hardware-locked
 serial. Break: HWBP-on-VirtualProtect unpack, dump, devirtualize; and study how the hardware check is done.
 
-**Phase C4 — write it up.** A per-layer report: what each protection does, how you defeated it, what was
+**Layer C4 — write it up.** A per-layer report: what each protection does, how you defeated it, what was
 easy vs. what needed symbolic execution. That document is the portfolio centerpiece.
 
 **Then → the external test:** a **Tigress Challenge** level or a **FLARE-On** VM challenge — pro-made targets
 to prove the skills transfer.
 
-## Install list (fetch when we reach each phase; all into `C:\Tools\`)
+## Install list (fetch when we reach each layer; all into `C:\Tools\`)
 
 - VMProtect demo — vmpsoft.com → Get Demo (Windows)
 - Themida/WinLicense demo — oreans.com (your name/email; eval license)
@@ -78,7 +78,7 @@ to prove the skills transfer.
 
 ## C5 — full "RE-like" bypass chain on our own target
 
-See `phases/re_techniques_reference.md` for the technique->tool map. Make `license_app` resemble
+See `knowledge/method/re_techniques.md` for the technique->tool map. Make `license_app` resemble
 RE, then reproduce the whole bypass chain legally on our own binary:
 
 1. **Make the target RE-like:** bind the license to **multiple HWID sources** (CPUID + C: volume serial +

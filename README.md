@@ -9,8 +9,7 @@ obfuscate code — so you can both understand the attacks and build the defenses
 ## Lab rules
 
 1. Single-player / offline only. Never attach tools to a game connected to a public server.
-2. Legit copies only — your own builds and your own protected binaries. No DRM / anti-cheat bypass of
-   third-party products. Every target analyzed here is one you own and have authorized (enforced by
+2. Every target analyzed here is one you own and have authorized (enforced by
    `reaforge/authorized_targets.json`).
 3. Every attack learned gets a matching defense noted in `knowledge/FIXLIST.md`.
 
@@ -47,11 +46,11 @@ targets/         PER-TITLE — one workspace per game (binaries + dumps gitignor
 knowledge/       REFERENCE — generic, title-independent
   papers/          academic PDFs (DBI, VM obfuscation, deobfuscation)
   vmprotect_3.11/  VMProtect 3.11 architecture + MBA deobfuscation analyses + pipeline
-  method/          phase-by-phase RE method (static recon, memory editing, Pin lab, ...)
-  GLOSSARY.md  FIXLIST.md  binary_protection_instrumentation_reference.txt
+  method/          technique-by-technique RE method (static recon, memory editing, Pin lab, ...)
+  GLOSSARY.md  FIXLIST.md  binary_protection.txt
 
 vmlab/           local Tigress/crackme lab ("child's play" — keycheck*, single and nested VM)
-NOTES.md  RECON.md  ENVIRONMENTS.md   running lab logs
+NOTES.md  ENVIRONMENTS.md   running lab logs
 ```
 
 ## Run the devirtualizer

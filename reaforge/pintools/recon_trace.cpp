@@ -10,7 +10,7 @@
 // VM), so they are reliable anchors for locating hardware-fingerprint and timing checks —
 // including ones in JIT'd/heap code that static analysis never sees.
 //
-// Build + run: see phases/pin_lab.md.
+// Build + run: see knowledge/method/pin_lab.md.
 
 #include "pin.H"
 #include <fstream>

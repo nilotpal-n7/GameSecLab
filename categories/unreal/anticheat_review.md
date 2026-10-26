@@ -1,6 +1,6 @@
-# Phase 2 — anti-cheat review (what we did, how a defender sees it)
+# Anti-cheat review (what we did, how a defender sees it)
 
-Phase 2 covered: scanning memory, writing/freezing a value, pointer scanning, "what writes to this
+memory editing covered: scanning memory, writing/freezing a value, pointer scanning, "what writes to this
 address", and rebuilding a struct in ReClass. For each, here is **the signal a defender can see** and
 **the defense**, split into *client-side* (raises attacker cost, always defeatable) vs *server-side*
 (the only thing that actually protects the game).
@@ -56,25 +56,25 @@ was the code that writes health — a hardware breakpoint caught `mov [rcx+50],r
 **Defender's view & defense:**
 
 - A **hardware breakpoint** sets the CPU debug registers (DR0–DR3, DR7). A process can read its own
-  `CONTEXT` and see them set -> a classic anti-debug check (Phase 4 covers this both ways).
+  `CONTEXT` and see them set -> a classic anti-debug check (debugger RE covers this both ways).
 - Code-anchored cheats depend on the instruction staying put. Shipping stripped + ASLR (both already true
   for us as *attacker friction*) and, for high-value functions, virtualization (VMProtect/Themida) make
-  that instruction hard to find and hook. Phase 3/5 territory.
+  that instruction hard to find and hook. hooking and anti-cheat territory.
 
 ## 5. ReClass struct rebuild
 
 **What happened:** reconstructed the 96-byte `Health` from debug symbols + source + live watching.
 
-**Defense:** this is the Phase 0 lesson cashed in — **ship stripped**. No symbols, no shipped source,
+**Defense:** this is the static recon lesson cashed in — **ship stripped**. No symbols, no shipped source,
 no public offsets => the attacker must do all of Section 4/5's work from scratch for every patch.
 
 ---
 
 ## The one-paragraph takeaway
 
-Everything in Phase 2 that a cheater does to the client, a developer can only *slow down* on the client:
+Everything in memory editing that a cheater does to the client, a developer can only *slow down* on the client:
 obfuscation, checksums, tool/handle/breakpoint detection, stripping, virtualization — each raises cost,
 none is a wall. We demonstrated the single exception directly: when we froze the **server's** health copy
 it worked, and when we froze the **client's** it was overwritten on the next sync. **Authoritative state on
-a server you control is the only defense in this phase that cannot be beaten from the client.** Design the
+a server you control is the only defense in this stage that cannot be beaten from the client.** Design the
 client so it may lie about its own health freely and nothing real changes.
