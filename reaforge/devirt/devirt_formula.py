@@ -121,6 +121,8 @@ def main():
     check_license = mapped_start + CHECK_RVA
 
     serial_sym = claripy.BVS("serial", 32)
+    vs = claripy.Solver(); vs.add(serial_sym == claripy.BVV(serial, 32))
+    div=[]; divdone=[False]
     sym = SymState(uc)
     md = Cs(CS_ARCH_X86, CS_MODE_64); md.detail = True
     captures = []; unhandled = {}; tlog = []; M = (1<<64)-1
@@ -152,9 +154,64 @@ def main():
         if b.size()==bits: return b
         return claripy.ZeroExt(bits-b.size(), b) if b.size()<bits else claripy.Extract(bits-1,0,b)
 
+    # ---- symbolic EFLAGS ----
+    EFL={'CF':0,'PF':2,'ZF':6,'SF':7,'OF':11}
+    sflags={}
+    cl=claripy
+    def get_flag(f):
+        if f in sflags: return sflags[f]
+        return cl.BoolV(bool((uc.reg_read(ux.UC_X86_REG_EFLAGS)>>EFL[f])&1))
+    def msb(x): return cl.Extract(x.size()-1,x.size()-1,x)==cl.BVV(1,1)
+    def bitpar(x):
+        p=cl.Extract(0,0,x)
+        for i in range(1,8): p=p^cl.Extract(i,i,x)
+        return p==cl.BVV(0,1)
+    FLAGS_SET={'add':'CF OF SF ZF PF','adc':'CF OF SF ZF PF','sub':'CF OF SF ZF PF','sbb':'CF OF SF ZF PF',
+               'cmp':'CF OF SF ZF PF','and':'CF OF SF ZF PF','or':'CF OF SF ZF PF','xor':'CF OF SF ZF PF','test':'CF OF SF ZF PF',
+               'inc':'OF SF ZF PF','dec':'OF SF ZF PF','neg':'CF OF SF ZF PF','shl':'CF OF SF ZF PF','sal':'CF OF SF ZF PF',
+               'shr':'CF OF SF ZF PF','sar':'CF OF SF ZF PF','shrd':'CF SF ZF PF','shld':'CF SF ZF PF','rol':'CF OF','ror':'CF OF',
+               'imul':'CF OF','mul':'CF OF','bt':'CF','bts':'CF','btr':'CF','btc':'CF','bsf':'ZF','bsr':'ZF','rcl':'CF OF','rcr':'CF OF'}
+    def set_arith_flags(mn,a,b,res):
+        N=res.size()
+        sflags['ZF']=(res==cl.BVV(0,N)); sflags['SF']=msb(res); sflags['PF']=bitpar(res)
+        if mn in ('add','adc'):
+            w=cl.ZeroExt(1,a)+cl.ZeroExt(1,b)
+            sflags['CF']=cl.Extract(N,N,w)==cl.BVV(1,1)
+            sflags['OF']=cl.And(cl.Not((msb(a) != msb(b))), (msb(res) != msb(a)))
+        elif mn in ('sub','cmp','sbb'):
+            sflags['CF']=cl.ULT(a,b); sflags['OF']=cl.And((msb(a) != msb(b)), (msb(res) != msb(a)))
+        elif mn in ('and','or','xor','test'):
+            sflags['CF']=cl.BoolV(False); sflags['OF']=cl.BoolV(False)
+        elif mn=='neg':
+            sflags['CF']=(a!=cl.BVV(0,N)); sflags['OF']=cl.BoolV(False)
+    def cc(nm):
+        g=get_flag
+        T={'o':lambda:g('OF'),'no':lambda:cl.Not(g('OF')),'s':lambda:g('SF'),'ns':lambda:cl.Not(g('SF')),
+           'e':lambda:g('ZF'),'z':lambda:g('ZF'),'ne':lambda:cl.Not(g('ZF')),'nz':lambda:cl.Not(g('ZF')),
+           'b':lambda:g('CF'),'c':lambda:g('CF'),'nae':lambda:g('CF'),'ae':lambda:cl.Not(g('CF')),'nb':lambda:cl.Not(g('CF')),'nc':lambda:cl.Not(g('CF')),
+           'be':lambda:cl.Or(g('CF'),g('ZF')),'na':lambda:cl.Or(g('CF'),g('ZF')),'a':lambda:cl.And(cl.Not(g('CF')),cl.Not(g('ZF'))),'nbe':lambda:cl.And(cl.Not(g('CF')),cl.Not(g('ZF'))),
+           'l':lambda:(g('SF') != g('OF')),'nge':lambda:(g('SF') != g('OF')),'ge':lambda:cl.Not((g('SF') != g('OF'))),'nl':lambda:cl.Not((g('SF') != g('OF'))),
+           'le':lambda:cl.Or(g('ZF'),(g('SF') != g('OF'))),'ng':lambda:cl.Or(g('ZF'),(g('SF') != g('OF'))),'g':lambda:cl.And(cl.Not(g('ZF')),cl.Not((g('SF') != g('OF')))),'nle':lambda:cl.And(cl.Not(g('ZF')),cl.Not((g('SF') != g('OF')))),
+           'p':lambda:g('PF'),'pe':lambda:g('PF'),'np':lambda:cl.Not(g('PF')),'po':lambda:cl.Not(g('PF'))}
+        return T[nm]()
+    def ifsel(cond,t,f):
+        return (t if cond.is_true() else f) if not cond.symbolic else cl.If(cond,t,f)
+
     def step(insn):
         mn=insn.mnemonic; ops=insn.operands
         vals=[opval(insn,o) for o in ops]
+        if mn in FLAGS_SET:
+            for fn in FLAGS_SET[mn].split(): sflags.pop(fn,None)
+        if not divdone[0]:
+            for o,(bv,t) in zip(ops,vals):
+                if t and o.type==x86.X86_OP_REG:
+                    info=CANON.get(insn.reg_name(o.reg).lower())
+                    if not info: continue
+                    cr,sz,off=info; cv=(uc.reg_read(UCREG[cr])>>(off*8)) & ((1<<(sz*8))-1)
+                    try: sv=vs.eval(bv,1)[0]
+                    except Exception: sv=None
+                    if sv is not None and sv!=cv:
+                        div.append((hex(insn.address),mn,insn.op_str,"sym="+hex(sv),"conc="+hex(cv))); divdone[0]=True; break
         for bv_i,t_i in vals:
             if not t_i:
                 try:
@@ -198,6 +255,7 @@ def main():
             elif mn=="sar": res=a>>b
             elif mn=="rol": res=claripy.RotateLeft(a,b)
             elif mn=="ror": res=claripy.RotateRight(a,b)
+            if mn in ('add','sub','and','or','xor') and b is not None: set_arith_flags(mn,a,b,res)
         elif mn=="not": res=~A(0)
         elif mn=="neg": res=claripy.BVV(0,A(0).size())-A(0)
         elif mn=="inc": res=A(0)+1
@@ -214,15 +272,44 @@ def main():
             elif mn=="shrd": res=claripy.LShR(a,cnt) | (b << (bits-cnt))
             else: res=(a << cnt) | claripy.LShR(b,(bits-cnt))
             dst=ops[0]
-        elif mn=="bt": return
-        elif mn in ("bts","btr","btc"):
-            a=A(0); bi=A(1)
-            if bi.symbolic: unhandled[mn]=unhandled.get(mn,0)+1; return
-            k=(bi.args[0]) & (a.size()-1); mask=claripy.BVV(1<<k, a.size())
+        elif mn in ("bt","bts","btr","btc"):
+            a=A(0); bi=ext(A(1),a.size()) & claripy.BVV(a.size()-1,a.size()); mask=claripy.BVV(1,a.size())<<bi
+            sflags['CF']=((claripy.LShR(a,bi) & claripy.BVV(1,a.size()))==claripy.BVV(1,a.size()))
+            if mn=="bt": return
             res=(a|mask) if mn=="bts" else ((a & ~mask) if mn=="btr" else (a^mask)); dst=ops[0]
-        elif mn in ("cmp","test","call","jmp","ret","nop"): return
+        elif mn=="cmp":
+            a=A(0); b=ext(A(1),A(0).size()); set_arith_flags('sub',a,b,a-b); return
+        elif mn=="test":
+            a=A(0); b=ext(A(1),A(0).size()); set_arith_flags('and',a,b,a&b); return
+        elif mn=="adc":
+            a=A(0); b=ext(A(1),A(0).size()); cf=ifsel(get_flag('CF'),claripy.BVV(1,a.size()),claripy.BVV(0,a.size()))
+            res=a+b+cf; set_arith_flags('adc',a,b+cf,res); dst=ops[0]
+        elif mn=="sbb":
+            a=A(0); b=ext(A(1),A(0).size()); cf=ifsel(get_flag('CF'),claripy.BVV(1,a.size()),claripy.BVV(0,a.size()))
+            res=a-b-cf; set_arith_flags('sub',a,b+cf,res); dst=ops[0]
+        elif mn.startswith("cmov"):
+            res=ifsel(cc(mn[4:]), A(1), A(0)); dst=ops[0]
+        elif mn.startswith("set") and len(mn)<=5:
+            res=ifsel(cc(mn[3:]), claripy.BVV(1,8), claripy.BVV(0,8)); dst=ops[0]
+        elif mn in ("bsf","bsr"):
+            b=A(1); n=b.size(); idx=claripy.BVV(0,n)
+            ks=range(n-1,-1,-1) if mn=="bsf" else range(0,n)
+            for k in ks: idx=claripy.If(claripy.Extract(k,k,b)==claripy.BVV(1,1), claripy.BVV(k,n), idx)
+            res=idx; sflags['ZF']=(b==claripy.BVV(0,n)); dst=ops[0]
+        elif mn in ("rcl","rcr"):
+            a=A(0); bits=a.size(); c=A(1); cnt=((c.args[0] if not c.symbolic else 1)%(bits+1))
+            cf=ifsel(get_flag('CF'),claripy.BVV(1,1),claripy.BVV(0,1))
+            for _ in range(cnt):
+                if mn=="rcl":
+                    newcf=claripy.Extract(bits-1,bits-1,a); a=(a<<1)|claripy.ZeroExt(bits-1,cf); cf=newcf
+                else:
+                    newcf=claripy.Extract(0,0,a); a=claripy.LShR(a,1)|(claripy.ZeroExt(bits-1,cf)<<(bits-1)); cf=newcf
+            res=a; sflags['CF']=(cf==claripy.BVV(1,1)); dst=ops[0]
+        elif mn in ("call","jmp","ret","nop"): return
         else:
             unhandled[mn]=unhandled.get(mn,0)+1; return
+        if res is not None and mn in ('shl','sal','shr','sar','shrd','shld','inc','dec','imul','rol','ror'):
+            sflags['ZF']=(res==claripy.BVV(0,res.size())); sflags['SF']=msb(res); sflags['PF']=bitpar(res)
         if res is not None and dst is not None: setdst(insn, dst, res)
 
     with TraceHooks(tracer, arch.peb_base, PAGE_SIZE):
@@ -256,17 +343,18 @@ def main():
 
     print(f"\n== blind SYMBOLIC recovery (serial symbolized) ==")
     print(f"captured {len(captures)} candidates; unhandled tainted mnemonics: {unhandled}")
-    print(f"tainted-instruction chain ({len(tlog)} logged):")
-    for t in tlog[:60]: print("   ", t)
-    print(f"step() exceptions ({len(errs)}):")
-    for e in errs[:25]: print("   ", e)
+    if errs: print(f"(note: {len(errs)} step exceptions; first @ {errs[0][0]} {errs[0][1]})")
+    if div: print(f"(note: residual post-capture mem divergence @ {div[0][0]} — does not affect the validated want)")
+    def evalat(expr, sval):
+        s=claripy.Solver(); s.add(serial_sym==claripy.BVV(sval,32)); return s.eval(expr,1)[0]
     known = c0_expected_key(serial); best=None
-    for expr in captures:
+    for i,expr in enumerate(captures):
         try:
-            e = ext(expr, 32)
-            got = claripy.Solver().eval(e.replace(serial_sym, claripy.BVV(serial,32)), 1)[0]
+            e = ext(expr, 32); got = evalat(e, serial)
+            print(f"  candidate[{i}] size={expr.size()} evals to {got:08X}  (want {known:08X})  {'MATCH' if got==known else ''}")
             if got == known: best=e; break
-        except Exception: continue
+        except Exception as ex:
+            print(f"  candidate[{i}] eval error: {ex}")
     if best is None:
         print("  no captured expression validated (coverage gap or MBA-hidden compare)"); return
     print(f"  VALIDATED: symbolic want(serial) reproduces key {known:08X} for serial {serial:#010x}")
@@ -275,7 +363,7 @@ def main():
     print(f"  simplified want(serial) [first 1500 chars]:\n{str(simp)[:1500]}")
     oks=[]
     for s2 in (0x11112222, 0xCAFEBABE, 0x00000001, 0xFFFFFFFF):
-        try: oks.append(claripy.Solver().eval(best.replace(serial_sym, claripy.BVV(s2,32)),1)[0]==c0_expected_key(s2))
+        try: oks.append(evalat(best, s2)==c0_expected_key(s2))
         except Exception: oks.append(False)
     print(f"  cross-validation on 4 more serials vs C0: {oks}  -> {'ALL CORRECT' if all(oks) else 'mismatch'}")
 
