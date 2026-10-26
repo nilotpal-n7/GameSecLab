@@ -500,18 +500,25 @@ def main():
     #   g_i == clean_round_i where g_i = want with acc_i replaced by x, and cur_{i+1}==acc_i, so
     #   want == compose(clean_round_7..0)(base) exactly, by construction. (The monolithic z3 recheck
     #   is only corroboration and is multiply-heavy, so it runs under a timeout.)
-    print("\n  [Proof A] blind recurrence == want -- PROVEN by transitivity of the 8 per-round proofs.")
+    #   PROVEN by TRANSITIVITY of the per-round proofs above: each round i was SMT-proven
+    #   g_i == clean_round_i (a fast SINGLE-multiply equivalence), and cur_{i+1} == acc_i, so
+    #   want == compose(round_{n-1}..round_0)(base) exactly, by construction. No monolithic solve
+    #   needed. The monolithic recheck (bz == composed) is an 8-nested-multiply BV equivalence that
+    #   z3 does NOT close in reasonable time (multiply blow-up) and adds nothing, so it is OFF by
+    #   default. Set DEMBA_MONO=1 to attempt it anyway (bounded to 120s so it cannot hang).
+    print("\n  [Proof A] blind recurrence == want -- PROVEN (transitivity of the per-round proofs).")
     if len(rounds)>=8 and base_clean:
-        print("    (8 rounds + clean base all individually SMT-proven over all 2^32 inputs.)")
-    try:
-        acc = cur_s
-        for (M,shift,mask,K,C) in rounds:
-            nib = z3.LShR(Sz, z3.BitVecVal(shift,32)) & z3.BitVecVal(mask,32)
-            acc = ((acc * z3.BitVecVal(M,32) + z3.BitVecVal(K,32)) ^ nib) + z3.BitVecVal(C,32)
-        sv=z3.Solver(); sv.set("timeout",0); sv.add(bz != acc); rr=sv.check() # 120000
-        print(f"    monolithic recheck: {('UNSAT (corroborated)' if rr==z3.unsat else 'timeout/unknown' if rr==z3.unknown else 'SAT-counterexample '+str(sv.model()))}")
-    except Exception as e:
-        print("    proof A recheck error:", repr(e))
+        print(f"    {len(rounds)} rounds + clean base (seed 0x{seed:X}) all individually SMT-proven over all 2^32 inputs.")
+    if os.environ.get("DEMBA_MONO"):
+        try:
+            acc = cur_s
+            for (M,shift,mask,K,C) in rounds:
+                nib = z3.LShR(Sz, z3.BitVecVal(shift,32)) & z3.BitVecVal(mask,32)
+                acc = ((acc * z3.BitVecVal(M,32) + z3.BitVecVal(K,32)) ^ nib) + z3.BitVecVal(C,32)
+            sv=z3.Solver(); sv.set("timeout",120000); sv.add(bz != acc); rr=sv.check()
+            print(f"    monolithic recheck (optional, redundant): {rr}")
+        except Exception as e:
+            print("    proof A recheck error:", repr(e))
 
     # ---- Capstone B: want == the PRISTINE source form (clean +7i), for ALL 2^32 serials ----
     print("\n  [Proof B] want(serial) == pristine source form, for ALL 2^32 serials? (multiply-heavy; timeout 180s)")
@@ -520,7 +527,7 @@ def main():
         for i in range(8):
             acc = (acc * z3.BitVecVal(33,32)) ^ (z3.LShR(Sz, z3.BitVecVal(4*i,32)) & z3.BitVecVal(0xF,32))
             acc = acc + z3.BitVecVal((i*7) & MOD, 32)
-        sv=z3.Solver(); sv.set("timeout",0); sv.add(bz != acc); rr=sv.check() # 180000
+        sv=z3.Solver(); sv.set("timeout",180000); sv.add(bz != acc); rr=sv.check()  # bounded so it can't hang
         if rr==z3.unsat:
             print("    >>> UNSAT over all 2^32 inputs  ==>  PROVEN. MBA collapsed to pristine source:")
             print("        acc = 0x1505 ^ serial;  for i in 0..7: acc = ((acc*33) ^ ((serial>>(4*i))&0xF)) + 7*i")

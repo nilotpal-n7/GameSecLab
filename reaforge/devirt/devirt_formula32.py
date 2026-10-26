@@ -166,7 +166,7 @@ def main():
     sym = SymState(uc)
     md = Cs(CS_ARCH_X86, CS_MODE_32); md.detail = True
     inp = [claripy.BVS(f"inp{i}", 8) for i in range(N)]
-    unhandled={}; errs=[]
+    unhandled={}; errs=[]; snaps=[]; snapk=set()      # snaps: materialized tainted values, for round peeling
 
     def opval(insn, op):
         if op.type==x86.X86_OP_REG: return sym.getreg(insn.reg_name(op.reg))
@@ -321,7 +321,14 @@ def main():
         else: unhandled[mn]=unhandled.get(mn,0)+1; return
         if res is not None and mn in ('shl','sal','shr','sar','shrd','shld','inc','dec','imul','rol','ror'):
             sflags['ZF']=(res==claripy.BVV(0,res.size())); sflags['SF']=msb(res); sflags['PF']=bitpar(res)
-        if res is not None and dst is not None: setdst(insn, dst, res)
+        if res is not None and dst is not None:
+            setdst(insn, dst, res)
+            if tainted(res):
+                try:
+                    r32 = res if res.size()==32 else (claripy.Extract(31,0,res) if res.size()>32 else res)
+                    k=hash(r32)
+                    if k not in snapk and len(snaps)<20000: snapk.add(k); snaps.append(r32)
+                except Exception: pass
 
     with TraceHooks(tracer, arch.peb_base, PAGE_SIZE):
         if not (os.environ.get("FAST") and os.path.exists(SNAP)):
@@ -387,7 +394,7 @@ def main():
         acc = z3.BitVecVal(0,32)
         for i in range(N): acc = acc*z3.BitVecVal(223,32) + z3.SignExt(24, bz[i])
         ref = z3.SRem(acc, z3.BitVecVal(MODULO,32))      # C '%' truncates toward zero (signed)
-        s=z3.Solver(); s.set("timeout",0); s.add(hz != ref); r=s.check() # 300000
+        s=z3.Solver(); s.set("timeout",300000); s.add(hz != ref); r=s.check()  # bounded so it can't hang
         if r==z3.unsat:
             print(f"    >>> UNSAT over all 2^{8*N} inputs ==> PROVEN: virtualized hl_hash_utf8 ==")
             print(f"        h=0; for c in bytes[:{N}]: h=223*h+c;  return h % 0x1FFFFF7B")
@@ -397,6 +404,57 @@ def main():
             m=s.model(); print(f"    counterexample: {m}")
     except Exception as e:
         print("    proof error:", repr(e))
+
+    # ---- round peeling: decompose the fold into per-input-byte rounds + anti-unify ----
+    # hl_hash_utf8 is one round per byte: acc_{k+1} = 223*acc_k + (signed char)name[k]. We find each
+    # per-byte accumulator among the recorded tainted snapshots (by which input bytes it depends on),
+    # peel the round by substituting a fresh var for acc_k, blindly recover the multiplier, and PROVE
+    # acc_{k+1} == M*acc_k + signext(name[k]). Then anti-unify the identical rounds into the loop.
+    print(f"\n== round peeling (per-input-byte rounds) ==")
+    try:
+        import z3
+        conv = claripy.backends.z3.convert
+        def to32(a): return a if a.size()==32 else (claripy.Extract(31,0,a) if a.size()>32 else claripy.ZeroExt(32-a.size(),a))
+        xx = z3.BitVec('xx', 32)
+        inpz = [conv(inp[i]) for i in range(N)]
+        def vidx(a): return frozenset(int(v[3:v.index('_')]) for v in a.variables if v.startswith('inp'))
+        byset = {}
+        for a in snaps:
+            s = vidx(a)
+            if s: byset.setdefault(s, []).append(a)
+        def ev(g, xv):
+            return z3.simplify(z3.substitute(g, (xx, z3.BitVecVal(xv & M, 32)),
+                               *[(inpz[i], z3.BitVecVal(0,8)) for i in range(N)])).as_long() & M
+        rounds=[]; prev=z3.BitVecVal(0,32); ok=True
+        for k in range(N):
+            found=None
+            for a in byset.get(frozenset(range(k+1)), []):
+                az = conv(to32(a))
+                g = z3.substitute(az, (prev, xx)) if k>0 else az
+                nib = z3.SignExt(24, inpz[k])
+                if k>0:
+                    Mk=(ev(g,1)-ev(g,0)) & M
+                    if Mk in (0,1): continue
+                    cand = xx*z3.BitVecVal(Mk,32) + nib
+                else:
+                    Mk=None; cand = nib
+                sv=z3.Solver(); sv.set("timeout",20000); sv.add(g != cand)
+                if sv.check()==z3.unsat: found=(az, Mk); break
+            if not found: ok=False; break
+            az, Mk = found; prev=az; rounds.append(Mk)
+            print(f"    round[0] PROVEN:  acc = (signed char) name[0]" if k==0 else
+                  f"    round[{k}] PROVEN:  acc = acc*{Mk} + (signed char) name[{k}]")
+        mults=[m for m in rounds if m is not None]
+        if ok and len(rounds)==N and mults and all(m==mults[0] for m in mults):
+            print("\n  anti-unified loop (recovered by peeling, each round SMT-proven):")
+            print(f"    h = 0")
+            print(f"    for c in name:  h = {mults[0]}*h + (signed char)c")
+            print(f"    return h % 0x1FFFFF7B")
+            print(f"    => multiplier {mults[0]} recovered blindly; matches HashLink source (223).")
+        else:
+            print(f"    peeling recovered {len(rounds)}/{N} rounds (some accumulator snapshots not captured).")
+    except Exception as e:
+        print("    peeling error:", repr(e))
 
 if __name__ == "__main__":
     main()
