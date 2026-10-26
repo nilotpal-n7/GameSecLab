@@ -375,3 +375,22 @@ ALL PASS -- the VM reproduces hl_hash_utf8 exactly on a real shipping VMProtect 
 **Benchmark meaning:** this is §5-metric *functional/semantic fidelity* — our devirtualizer faithfully executes a VMProtect 3.11-virtualized function inside a real commercial game's runtime and matches the independent source ground truth on every input. The **all-inputs formal proof** (§5.4) is the open extension: it needs the taint-symbolic engine (`devirt_formula.py`/`demba_rounds.py`) ported from x64 to x86-32 — the same engine that proved the `license_app` formula for all 2³² inputs.
 
 Run: `cd C:\Tools\_downloads\research\vmp-lazy-unpack && python reaforge\devirt\devirt_dll32.py C:\Tools\GameSecLab\capstone\libhl.vmp.dll` (first run unpacks + snapshots; add `FAST=1` after).
+
+### 7.7 Phase 2 — all-inputs formal proof (x86-32 taint-symbolic engine) ✅ PROVEN
+
+`reaforge/devirt/devirt_formula32.py` ports the x64 taint-symbolic engine to x86-32 (32-bit register aliasing, 4-byte `push`/`pop`, 1-operand `mul`/`imul` → `EDX:EAX`, full symbolic EFLAGS). Reusing the FAST post-unpack snapshot, it symbolizes an N-byte input, propagates claripy expressions through the VMProtect VM along the single concrete path, reads the symbolic output `h_out(b0..b_{N-1})`, and SMT-proves it against the closed form:
+
+```
+probe b'Play'              h_out=0x15335A99  ref=0x15335A99  ok
+probe b'\x01\x02\x03\x04'  h_out=0x00AABDC2  ref=0x00AABDC2  ok
+probe b'\xff\xff\xff\xff'  h_out=0xFF560640  ref=0xFF560640  ok
+probe b'\x01\x00\x00\x00'  h_out=0x00A9369F  ref=0x00A9369F  ok
+[Proof] h_out == fold for ALL 2^32 inputs?
+  >>> UNSAT  ==>  PROVEN: virtualized hl_hash_utf8 == h=0; for c in bytes[:4]: h=223*h+c; h %= 0x1FFFFF7B
+```
+
+This is §5-metric **formal bit-vector equivalence (§5.4)** achieved on the real shipping VMProtect 3.11 function — the concrete 8/8 validation is now a *universal* guarantee for 4-byte inputs (z3 UNSAT over all 2³²). The per-byte round is uniform, so the recurrence generalizes to any length (raise `N` to extend the proof; the div/mod makes larger `N` progressively harder for z3).
+
+**Semantics the symbolic recovery corrected:** `(unsigned)*name` **sign-extends** the signed `char` before the unsigned cast, so byte `0xFF` contributes `0xFFFFFFFF` (not `0xFF`) — invisible to ASCII-only testing; and the final `h %= 0x1FFFFF7B` is a **signed/truncated** modulo (`z3.SRem`). The devirtualizer recovered the true semantics, not the naive source reading. (This mirrors the x64 `license_app` campaign, whose formula was likewise recovered + proved; see `reaforge/devirt/README.md`.)
+
+Run: `cd C:\Tools\_downloads\research\vmp-lazy-unpack && FAST=1 python reaforge\devirt\devirt_formula32.py C:\Tools\GameSecLab\capstone\libhl.vmp.dll 4`
