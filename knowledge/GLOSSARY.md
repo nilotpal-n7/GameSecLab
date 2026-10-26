@@ -67,7 +67,7 @@ Plain-words definitions. Add a term the first time you meet it.
 - **Scylla** — dumps a running (unpacked) process image to disk and rebuilds its IAT (**IAT Autosearch → Get
   Imports → Dump → Fix Dump**), turning an in-memory unpacked program back into a static-analyzable `.exe`.
 - **ZF (Zero Flag) / register edit** — flipping a CPU flag or register value live in the debugger to change a
-  branch outcome, **without** modifying bytes (so integrity CRCs don't trip). The core C2 bypass move.
+  branch outcome, **without** modifying bytes (so integrity CRCs don't trip). The core VMProtect bypass move.
 - **NoVmp / VTIL** — an (abandoned, 2021) automatic VMProtect **devirtualizer** for VMProtect x64 **3.0–3.5**
   (fork NoVmpy ≤3.6), needs an **unpacked** input. Does **not** handle modern versions (our target is 3.11).
 

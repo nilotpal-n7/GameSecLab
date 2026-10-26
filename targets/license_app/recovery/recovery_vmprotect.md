@@ -1,32 +1,32 @@
-# Capstone C2 — VMProtect virtualization (protect side done; break path is a decision)
+# VMProtect layer — virtualization (protect side done; break path is a decision)
 
 **Layer added:** the whole `check_license` algorithm is turned into **VMProtect VM bytecode** (not native
-instructions), plus the binary is packed. This is the real step up from C1: C1 only changed how the native
-instructions *looked*; C2 removes the native arithmetic entirely and runs it on an embedded interpreter.
+instructions), plus the binary is packed. This is the real step up from OLLVM: OLLVM only changed how the native
+instructions *looked*; VMProtect removes the native arithmetic entirely and runs it on an embedded interpreter.
 
 ## Protect side — DONE (scripted, no GUI)
 
 - **Protector:** VMProtect **Ultimate v3.11.0 (build 2835)**, Demo, console (`VMProtect_Con.exe`).
-- **Target:** `license_app_c2.c` — identical algorithm to C0/C1, but `machine_id()`/`expected_key()` are
+- **Target:** `license_app_hardened.c` — identical algorithm to clean/OLLVM, but `machine_id()`/`expected_key()` are
   `always_inline` into `check_license`, whose body is wrapped in
   `VMProtectBeginVirtualization("check_license") … VMProtectEnd()` so the arithmetic lands inside the VM.
 - **Build (marker build):**
 
   ```bash
-  clang license_app_c2.c -O2 -I"<VMP>\Include\C" "<VMP>\Lib\Windows\VMProtectSDK64.lib" -o license_app_c2.exe
+  clang license_app_hardened.c -O2 -I"<VMP>\Include\C" "<VMP>\Lib\Windows\VMProtectSDK64.lib" -o license_app_hardened.exe
   ```
 
 - **Protect — done by hand in the VMProtect GUI** (the learning step; not the CLI). Opened
-  `license_app_c2.exe`, the SDK marker auto-added `check_license` → set **Compilation Type = Virtualization**,
+  `license_app_hardened.exe`, the SDK marker auto-added `check_license` → set **Compilation Type = Virtualization**,
   and enabled **Pack**, **Memory Protection** (integrity CRC), **Import Protection**, and
-  **Detection: Debugger = User+Kernel**. Output: `license_app_c2.vmp.exe`.
+  **Detection: Debugger = User+Kernel**. Output: `license_app.vmp.exe`.
 
 ### Verification
 
 | check | result |
 | --- | --- |
 | marker found & virtualized | `Loading [V] 140001010 … "check_license"` |
-| semantics preserved through the VM | `.\license_app_c2.vmp.exe 75685AB2` → `LICENSED`; junk → `INVALID LICENSE` |
+| semantics preserved through the VM | `.\license_app.vmp.exe 75685AB2` → `LICENSED`; junk → `INVALID LICENSE` |
 | SDK DLL dependency after protection | **none** |
 | size | 143,360 → **1,507,328 bytes (~1050%)** (heavier than CLI default — extra layers on) |
 | demo watermark | startup messagebox "protected with demo version of VMProtect" (Demo only) |
@@ -54,8 +54,8 @@ why modern VMProtect is considered strong.
 2. **Unpack practice (your GUI hands, I guide).** Take the packed `…_vmp.exe` through **x64dbg + ScyllaHide**
    (past anti-debug) → **Scylla** dump at OEP. Produces the unpacked image option (1) analyzes. This is the
    half of the original plan that still applies.
-3. **Dynamic bypass ("get past the popup").** We already know the algorithm (C0). Use x64dbg / Intel Pin /
-   Triton to locate the final compare in the running VM and patch or observe the branch — the C5 "defeat the
+3. **Dynamic bypass ("get past the popup").** We already know the algorithm (clean build). Use x64dbg / Intel Pin /
+   Triton to locate the final compare in the running VM and patch or observe the branch — the full-bypass-chain "defeat the
    check without devirtualizing" goal. Fast, practical.
 4. **NoVmp anyway** — build it and document it failing on 3.11 (honest negative; costly, low skill value).
 
@@ -64,6 +64,6 @@ RE workflow. NoVmp (4) only if you specifically want to see the version wall fir
 
 ## Artifacts (git-ignored binaries)
 
-`license_app_c2.c` (committed), `license_app_c2.exe` (marker build), `license_app_c2_vmp.exe` (virtualized +
+`license_app_hardened.c` (committed), `license_app_hardened.exe` (marker build), `license_app.vmp.exe` (virtualized +
 packed). Rebuild per the commands above (copy `VMProtectSDK64.dll` beside the marker build to run it
 pre-protection).

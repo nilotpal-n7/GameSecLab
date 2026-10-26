@@ -4,7 +4,7 @@ r"""REAForge quick smoke tests — verify the pipeline across the arch x format 
 Fast (default, no emulation):
   * every core/category/title module imports cleanly;
   * the arch-agnostic engine builds register tables for BOTH x86-32 and x86-64;
-  * the reference keygens (license_app C0, HashLink hl_hash_utf8) match known ground truth,
+  * the reference keygens (license_app clean build, HashLink hl_hash_utf8) match known ground truth,
     including the signed-char / signed-modulo edge cases.
 
 Slow (opt-in: set RUN_CAMPAIGNS=1; needs vmp-lazy-unpack + the authorized binaries present):
@@ -50,15 +50,15 @@ def test_category_and_title_modules_import():
     assert dc.CONFIG.export == "hl_hash_utf8"
 
 
-def test_license_app_c0_keygen():
-    """C0 reference keygen matches the VM-validated ground truth (5 serials)."""
-    from targets.license_app.config import c0_expected_key
+def test_license_app_keygen():
+    """Clean-build keygen matches the VM-validated ground truth (5 serials)."""
+    from targets.license_app.config import expected_key
     known = {
         0x12345678: 0x7A3B3935, 0xAABBCCDD: 0x3E988000, 0xDEADBEEF: 0x593BA6C6,
         0x00000000: 0xB8BF23C9, 0xFFFFFFFF: 0x4E25F1B6,
     }
     for serial, key in known.items():
-        assert c0_expected_key(serial) == key, f"C0({serial:#x}) != {key:#x}"
+        assert expected_key(serial) == key, f"expected_key({serial:#x}) != {key:#x}"
 
 
 def test_hashlink_ref_hash_edges():

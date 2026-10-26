@@ -22,5 +22,5 @@ devirtualization of our 3.11 function is not currently possible.
    `docs/Rolles_…WOOT2009.pdf`). Hard but tool-independent.
 2. **Dynamic I/O recovery** — emulate/trace the VM executing `check_license` on known inputs and recover the
    input→output relation (we control the env via Unicorn, like vmp-lazy-unpack).
-3. **Already known** — we recovered the exact algorithm at **C0** (`expected_key`, key `75685AB2`); the C2 break
+3. **Already known** — we recovered the exact algorithm on the **clean** build (`expected_key`, key `75685AB2`); the VMProtect break
    (strip protection + recover `main` + isolate the VM function) is complete regardless.

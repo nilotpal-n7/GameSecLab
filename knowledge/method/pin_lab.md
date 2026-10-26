@@ -13,7 +13,7 @@ Pin injects analysis code into a live process; never attach it to someone else's
 - **Ghidra/IDA** = static (the on-disk bytes). **x64dbg** = interactive single-stepping.
 - **Pin** = programmatic observation of *every executed instruction* with almost no manual driving. It sees
   **JIT'd / self-generated code** that never exists on disk — exactly what VM-protectors emit. That's why it
-  is the right tool for C5 step 3 ("find the native CPUID/RDTSC a VM can't virtualize").
+  is the right tool for full-bypass-chain step 3 ("find the native CPUID/RDTSC a VM can't virtualize").
 
 ## The starter tool: `reaforge/pintools/recon_trace.cpp`
 
@@ -45,22 +45,22 @@ toolset) — use `build.bat`.
 ```bash
 C:\Tools\PIN\pin-external-4.4-99977-g54fbb8814-clang-windows\pin.exe ^
   -t C:\Tools\PIN\pin-external-4.4-99977-g54fbb8814-clang-windows\source\tools\MyPinTool\obj-intel64\recon_trace.dll ^
-  -o C:\Tools\GameSecLab\capstone\pin_recon.log ^
-  -- C:\Tools\GameSecLab\capstone\license_app.exe 75685AB2
+  -o C:\Tools\GameSecLab\targets\license_app\dumps\pin_recon.log ^
+  -- C:\Tools\GameSecLab\targets\license_app\dumps\license_app.exe 75685AB2
 ```
 
-Read `capstone\pin_recon.log`: each `cpuid/rdtsc @ 0xADDR` line is a place to breakpoint in x64dbg or mark in
-IDA. On the **clean C0** build you'll see `GetVolumeInformationA`'s path, not raw cpuid; after VMProtect (C2)
+Read `targets\license_app\dumps\pin_recon.log`: each `cpuid/rdtsc @ 0xADDR` line is a place to breakpoint in x64dbg or mark in
+IDA. On the **clean build** build you'll see `GetVolumeInformationA`'s path, not raw cpuid; after VMProtect
 the native cpuid/rdtsc the VM can't hide is what this surfaces.
 
 ## Safe warm-up exercises (from the reference, §6)
 
 1. Instruction count on clean `license_app.exe` → baseline.
-2. Same after the C1/C2 protections → watch the count explode (DBI makes the obfuscation cost visible).
+2. Same after the OLLVM/VMProtect protections → watch the count explode (DBI makes the obfuscation cost visible).
 3. Compare `-O0` vs `-O2` builds on a deterministic input.
 
 ## Next Pin tools to add (later)
 
-- `callTrace` — log calls to a named routine (C5: watch the license check fire).
+- `callTrace` — log calls to a named routine (full bypass chain: watch the license check fire).
 - `virtualloc_shadow` — hook `VirtualAlloc`/`VirtualProtect` to catch JIT'd regions, then instrument them
-  (C5 step 3, the "JIT'd CPUID in heap" case).
+  (full-bypass-chain step 3, the "JIT'd CPUID in heap" case).

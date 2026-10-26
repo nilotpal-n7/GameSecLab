@@ -203,7 +203,7 @@ for (int i = 0; i < 8; i++) {
 
 ## 6. Empirical Case Study — VMProtect 3.11 in this lab (`reaforge/devirt`)
 
-This is the worked result on our own virtualized binary (`capstone/license_app_c2.vmp.exe`, `check_license`), the ground truth for the theory above.
+This is the worked result on our own virtualized binary (`targets/license_app/dumps/license_app.vmp.exe`, `check_license`), the ground truth for the theory above.
 
 ### 6.1 Pipeline (where each tier's technique actually runs)
 

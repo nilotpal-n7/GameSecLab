@@ -22,7 +22,7 @@ validation battery, then recover / peel / prove the key formula symbolically. It
 | `prove(want, serial_sym)` | optional z3 all-inputs proof of the recovered formula |
 | `keybuf`, `ret_sentinel`, `marker`, `serial_api` | harness addresses / the import to hook |
 
-See `targets/license_app/config.py` for the reference title (our C0 crackme).
+See `targets/license_app/config.py` for the reference title (our clean crackme).
 
 ## Scope
 

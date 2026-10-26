@@ -3,7 +3,7 @@
 // Authorized use only: run this against binaries you own or are explicitly authorized to
 // analyze (your own license_app.exe, CTF/crackme samples, owned games you may mod).
 //
-// What it does (maps to capstone C5 step 3 — "find the checks"):
+// What it does (maps to the full bypass chain step 3 — "find the checks"):
 //   * counts every executed instruction (DBI overhead / coverage baseline), and
 //   * logs the runtime address of every CPUID / RDTSC / RDTSCP executed.
 // Those instructions are the ones a VM-protector must execute NATIVELY (they full-exit the

@@ -9,7 +9,7 @@
 //       else if TF is set now -> arm (X will run with TF, trap comes after it).
 //   PIN_RaiseException delivers the exception to the app's VEH/SEH on return from the analysis routine.
 //
-// Authorized targets only (our own license_app_c2.vmp.exe).
+// Authorized targets only (our own license_app.vmp.exe).
 #include "pin.H"
 #include <fstream>
 

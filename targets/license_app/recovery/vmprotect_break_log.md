@@ -1,13 +1,13 @@
-# C2 break log — fighting VMProtect 3.11's anti-debug/anti-DBI
+# VMProtect break log — fighting VMProtect 3.11's anti-debug/anti-DBI
 
-Chronological record of the break attempts on `license_app_c2.vmp.exe` (VMProtect Ultimate 3.11.0,
+Chronological record of the break attempts on `license_app.vmp.exe` (VMProtect Ultimate 3.11.0,
 virtualize + pack + memory-protection + User/Kernel debugger detection). Evidence in `screenshots/` and
 `reaforge/pintools/`.
 
 ## Attempt 1 — x64dbg + ScyllaHide (ring-3 debugger)
 
-- Default ScyllaHide "VMProtect" profile → **"A debugger has been found"** (`screenshots/c2_02…`).
-- Maxed the profile to 36+ hooks → **still detected** (`screenshots/c2_03…`).
+- Default ScyllaHide "VMProtect" profile → **"A debugger has been found"** (`screenshots/vmp_02…`).
+- Maxed the profile to 36+ hooks → **still detected** (`screenshots/vmp_03…`).
 - x64dbg exception config (pass `EXCEPTION_SINGLE_STEP 0x80000004` to debuggee) → **still detected**.
 - **Root cause** (from `docs/…DBI_Tools.pdf`): VMProtect anti-debug = **single-step/trap-flag exception** that
   must fire into VMProtect's own handler. ScyllaHide hides flags/APIs but has **no single-step handler**, so it
@@ -49,6 +49,6 @@ not a visible exception.
 ## Options from here
 
 1. **Attempt the single-step re-raise pintool** (the paper's method) — honor the DBI path; research gamble on 3.11.
-2. **Bank this + the Pin toolchain**, rebuild C2 with **Debugger detection OFF** (keep virtualize + pack +
+2. **Bank this + the Pin toolchain**, rebuild the VMProtect target with **Debugger detection OFF** (keep virtualize + pack +
    memory-protection), and learn the rest of the break now: reach OEP, Scylla-dump, find the native `test/je`,
    flip ZF at runtime vs the integrity CRC.

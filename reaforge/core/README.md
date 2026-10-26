@@ -62,16 +62,16 @@ serial=0x00000000  key=B8BF23C9 -> 1   wrong -> 0   PASS
 serial=0xFFFFFFFF  key=4E25F1B6 -> 1   wrong -> 0   PASS
 ```
 
-For every serial the VM accepts **exactly** the key the C0 formula predicts and rejects wrong keys — proving
-(a) the devirtualizer faithfully emulates the VMProtect 3.11 VM, and (b) the VM computes the C0 algorithm
+For every serial the VM accepts **exactly** the key the recovered formula predicts and rejects wrong keys — proving
+(a) the devirtualizer faithfully emulates the VMProtect 3.11 VM, and (b) the VM computes the clean-build algorithm
 (independent cross-validation). We now have an **executable model / keygen oracle** for the virtualized
-function: `expected_key(serial) = c0_expected_key(serial)`, confirmed by the real VM.
+function: `expected_key(serial) = expected_key(serial)`, confirmed by the real VM.
 
 Run:
 
 ```bash
 cd C:\Tools\_downloads\research\vmp-lazy-unpack
-python C:\Tools\GameSecLab\reaforge\devirt\devirt_oep.py C:\Tools\GameSecLab\capstone\license_app_c2.vmp.exe
+python C:\Tools\GameSecLab\reaforge\devirt\devirt_oep.py C:\Tools\GameSecLab\targets\license_app\dumps\license_app.vmp.exe
 ```
 
 `emulate_checklicense.py` (the standalone Unicorn attempt) is kept as the record of why the loader env is
@@ -79,7 +79,7 @@ required (it runs the VM but can't resolve imports alone).
 
 ## Blind key recovery — `RECOVER` mode (zero prior knowledge)
 
-`devirt_oep.py` (RECOVER=1) recovers the valid key with **no knowledge of the algorithm** (C0 is used only to
+`devirt_oep.py` (RECOVER=1) recovers the valid key with **no knowledge of the algorithm** (the clean algorithm is used only to
 cross-check, never to recover):
 
 1. Feed a unique marker key so `got = strtoul("13371337")` is known.
@@ -88,7 +88,7 @@ cross-check, never to recover):
 3. **Self-validate** each candidate through the oracle (feed it back as the key → does the VM say LICENSED?).
 
 Result (serial `0xAABBCCDD`): 12 candidates → **recovered `3E988000`, self-validated (VM → LICENSED), and it
-MATCHES the C0 formula.** A fully autonomous blind break — the secret pulled straight out of the virtualized
+MATCHES the recovered formula.** A fully autonomous blind break — the secret pulled straight out of the virtualized
 function.
 
 ```bash
@@ -107,11 +107,11 @@ meets the concrete marker. It implements, from scratch:
 - a full **symbolic EFLAGS** model (CF/ZF/SF/OF/PF computed per arithmetic op) driving `cmp`/`test`/`adc`/`sbb`/
   `cmov<cc>`/`set<cc>` — the flag-dependent core the MBA leans on.
 
-**Result (blind — zero prior knowledge; C0 used only to cross-check):**
+**Result (blind — zero prior knowledge; the clean algorithm used only to cross-check):**
 
 ```text
 VALIDATED: symbolic want(serial) reproduces key 3E988000 for serial 0xAABBCCDD
-cross-validation on 4 more serials vs C0: [True, True, True, True]  -> ALL CORRECT
+cross-validation on 4 more serials vs the clean build: [True, True, True, True]  -> ALL CORRECT
 ```
 
 We recovered `expected_key(serial)` as a **correct symbolic expression**, proven on 5 independent serials. z3/

@@ -6,11 +6,11 @@ knowledge/vmprotect_3.11/mba_deobfuscation.md:
   * GAMBA (linear-isolation + SiMBA + variable substitution) DOES collapse intra-round MBA, e.g.
     the shift-encoded multiply (acc<<5)+acc -> 33*acc.
   * GAMBA alone does NOT roll the 8-round loop (no inductive recurrence synthesis) -> the unrolled
-    hash stays a large nested expression. That inter-round layer is what our demba_rounds.py adds
+    hash stays a large nested expression. That inter-round layer is what our peel.py adds
     (cut-point slicing + Plotkin anti-unification).
 
-Since Proof B (demba_rounds.py) proves want(serial) == the C0 recurrence for ALL 2^32 serials, the
-C0 unrolled form below IS the recovered VMProtect expression up to proven equivalence.
+Since Proof B (peel.py) proves want(serial) == the clean-build recurrence for ALL 2^32 serials, the
+clean-build unrolled form below IS the recovered VMProtect expression up to proven equivalence.
 
 Own-code driver that imports GAMBA as a library (external repo is not executed directly).
 Run:  python -I reaforge/devirt/demba_gamba.py

@@ -1,6 +1,6 @@
-# C2 break cheat-sheet — x64dbg + ScyllaHide + Scylla on a VMProtect'd binary
+# VMProtect break cheat-sheet — x64dbg + ScyllaHide + Scylla on a VMProtect'd binary
 
-Reference while **you** drive. Target: `capstone/license_app_c2.vmp.exe` (VMProtect 3.11, `check_license`
+Reference while **you** drive. Target: `targets/license_app/dumps/license_app.vmp.exe` (VMProtect 3.11, `check_license`
 virtualized + packed + Memory Protection + User/Kernel debugger detection). Format: **action → what it does → why.**
 
 ## The plan (why we attack the native branch, not the VM)
@@ -12,7 +12,7 @@ runtime. We do **not** devirtualize the VM (NoVmp can't touch 3.11; manual VM re
 
 > **Memory Protection gotcha:** you enabled the integrity CRC. Editing *bytes* (e.g. `jz`→`jmp`) is detected →
 > the program dies. So we change a **register/flag at runtime**, not bytes. That beats virtualization + anti-tamper
-> together, and is the real lesson of C2.
+> together, and is the real lesson of VMProtect.
 
 ## x64dbg keys
 
@@ -40,8 +40,8 @@ Without these, VMProtect's "Debugger = User+Kernel" layer exits or crashes the p
 
 ## Step B — load + feed an argument
 
-**File → Open** `license_app_c2.vmp.exe`. **File → Change Command Line** → append a **wrong** key, e.g.
-`… license_app_c2.vmp.exe DEADBEEF` → OK. *(No arg ⇒ it prints usage and exits; wrong key ⇒ we prove the
+**File → Open** `license_app.vmp.exe`. **File → Change Command Line** → append a **wrong** key, e.g.
+`… license_app.vmp.exe DEADBEEF` → OK. *(No arg ⇒ it prints usage and exits; wrong key ⇒ we prove the
 bypass by forcing LICENSED anyway.)*
 
 ## Step C — reach OEP (past the packer)
@@ -59,7 +59,7 @@ Packed code unpacks itself in memory, then jumps to the **OEP** (Original Entry 
   `jz/jne` choosing the LICENSED vs INVALID path.
 - **F2** on that conditional jump to breakpoint it.
 
-**The exact branch (recovered from the clean build `license_app_c2.exe`, imagebase 0x140000000):**
+**The exact branch (recovered from the clean build `license_app_hardened.exe`, imagebase 0x140000000):**
 
 ```x86asm
 ...113d:  e8 be fe ff ff   call 0x140001000     ; call check_license (virtualized in the protected build)
@@ -91,7 +91,7 @@ This is how you'd feed a devirtualizer or do static VM analysis — not needed f
 
 ## What I run in the background (so the docs/automation are right)
 
-- `diec -e license_app_c2.vmp.exe` → sections + entropy (shows the packed high-entropy section).
+- `diec -e license_app.vmp.exe` → sections + entropy (shows the packed high-entropy section).
 - `pefile` import counts: clean vs protected → proves **Import Protection** hid the IAT.
 - plaintext-string scan: clean vs protected → strings only reappear after in-memory unpack.
-Findings land in `capstone/recon_C2.md`.
+Findings land in `targets/license_app/recovery/recon_vmprotect.md`.

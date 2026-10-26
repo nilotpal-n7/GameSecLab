@@ -1,4 +1,4 @@
-/* license_app.c — Capstone C0 target: a hardware-bound license check (Windows PE).
+/* license_app.c — Capstone clean target: a hardware-bound license check (Windows PE).
  * machine_id() derives an ID from the C: volume serial; expected_key() mixes it;
  * check_license() accepts only the matching 8-hex-digit key. We then protect this
  * with VMProtect/Themida/OLLVM and reverse our own output.

@@ -22,7 +22,7 @@ we fully control, where no check (debugger flags, CPUID, RDTSC clock, page permi
   Its code handles exactly the doc's defenses: maps/populates **`KUSER_SHARED_DATA`**, emulates **`CPUID`**
   (real model, no hypervisor bit), a full **`SingleStep`** + `RtlUnwindEx` handler, **`NtQueryVirtualMemory`**,
   syscalls, **`loader_crc`** (self-checksumming), IAT rebuild, `.pdata` repair, `dump_pe`. Deps (pefile/
-  capstone/unicorn) already installed. Invoke: `python -m unpack <pe>`.
+  targets/license_app/dumps/unicorn) already installed. Invoke: `python -m unpack <pe>`.
   Scope: unpacks + fixes IAT; **does not devirtualize** `.vmp` bytecode (feeds a devirtualizer).
 
 - **Papers (in `docs/`, all valid PDFs, one verified by title/authors):**
@@ -35,12 +35,12 @@ we fully control, where no check (debugger flags, CPUID, RDTSC clock, page permi
 ## 3. The new break pipeline (routes around the wall)
 
 ```text
-license_app_c2.vmp.exe
+license_app.vmp.exe
   │  (1) vmp-lazy-unpack  — Unicorn emulation; defeats anti-debug/anti-DBI/timing/checksum by construction
   ▼
 unpacked dump + rebuilt IAT   (packer/anti-debug/anti-tamper GONE; check_license still VM bytecode, but EXPOSED)
   │  (2a) main's native test/je is now statically visible — we already know the pattern (85 C0 / 74) and the
-  │       algorithm from C0/C1, so the keygen/bypass is immediate; OR
+  │       algorithm from clean/OLLVM, so the keygen/bypass is immediate; OR
   │  (2b) Pushan / VMPredator / VMSpec  — devirtualize check_license to C pseudocode for a from-scratch recovery
   ▼
 recovered logic → keygen / branch-flip → LICENSED
@@ -56,7 +56,7 @@ To proceed, either approve running it, or run it yourself:
 
 ```powershell
 cd C:\Tools\_downloads\research\vmp-lazy-unpack
-python -m unpack "C:\Tools\GameSecLab\capstone\license_app_c2.vmp.exe"
+python -m unpack "C:\Tools\GameSecLab\targets\license_app\dumps\license_app.vmp.exe"
 ```
 
 Then we analyze the dumped image (IDA/our scripts) and, if needed, devirtualize with Pushan.

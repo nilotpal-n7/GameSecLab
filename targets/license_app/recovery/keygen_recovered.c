@@ -1,5 +1,5 @@
 /* keygen_recovered.c — reconstructed ONLY from IDA's decompile of check_license
- * (machine_id + expected_key were inlined at -O2). Proves the C0 baseline was fully recovered.
+ * (machine_id + expected_key were inlined at -O2). Proves the clean baseline was fully recovered.
  */
 #include <windows.h>
 #include <stdio.h>

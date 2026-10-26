@@ -49,9 +49,9 @@ a man-in-the-middle box re-signing TLS is exactly what certificate validation ex
 - Installed free RE core: capstone, unicorn, keystone, lief, r2pipe (pefile/frida already). ScyllaHide
   v1.4 into x64dbg plugins. Protectors present: VMProtect Demo, Themida. OSS fallback = Tigress.
 
-## 2026-10-24 — Capstone C0 built + bridge mode proven
+## 2026-10-24 — Clean build done + bridge mode proven
 
-- C0 target `targets/license_app/src/license_app.c`: hardware-bound license (C: volume serial ->
+- clean target `targets/license_app/src/license_app.c`: hardware-bound license (C: volume serial ->
   expected_key -> 8-hex compare). Built + verified LICENSED with keygen's key.
 - IDA Professional 9.1 found + registered (`idat.exe` headless).
 - **Bridge mode end-to-end:** `REAFORGE_LLM=bridge python reaforge/orchestrator.py recon <exe>` wrote
@@ -63,7 +63,7 @@ a man-in-the-middle box re-signing TLS is exactly what certificate validation ex
 - Educational transcript analyzed -> `knowledge/method/re_techniques.md`: 3 RE layers (HWID+token,
   anti-tamper CRC, VMProtect VM) and the attacker stack, each mapped to a LEGAL reproduction on our
   OWN VMProtect-protected binary + the tool for it.
-- Added capstone layer C5 (full bypass chain): multi-source HWID + anti-tamper CRC + VMProtect, then
+- Added the full bypass chain (full bypass chain): multi-source HWID + anti-tamper CRC + VMProtect, then
   our own DLL-hijack/IAT/VEH/shadow-page/VirtualProtect-hook/RDTSC/HWID record-replay harness + Intel
   Pin tracing + NoVmp devirt. Harness becomes reusable REAForge tooling.
 
@@ -78,20 +78,20 @@ a man-in-the-middle box re-signing TLS is exactly what certificate validation ex
 - Fixed `reaforge/tool_registry.py`: probes both distros now and validates the path. Added the neutral
   reference `knowledge/binary_protection.txt` (defensive/authorized-lab framing of the same tech).
 
-## 2026-10-25 — Capstone C1 done (OLLVM compile-time obfuscation)
+## 2026-10-25 — OLLVM layer done (OLLVM compile-time obfuscation)
 
 - Installed **Hikari/Arkari OLLVM fork** (clang 21.1.0, x64-windows-msvc) to `C:\Tools\ollvm`.
 - Rebuilt `license_app.c` with `-irobf-cff` (flatten), `-irobf-cse` (string-enc), `-irobf-cie`
   (int-const-enc), `-irobf-indbr`. 143,872 -> 153,600 bytes; semantics preserved (keygen still LICENSED).
 - Re-reversed via `reaforge/ida/decompile.py` (string anchors gone, so anchor on `main`). Findings in
-  `targets/license_app/recovery/recovery_C1.md`: strings encrypted, constants became `dwordX±K` but
+  `targets/license_app/recovery/recovery_ollvm.md`: strings encrypted, constants became `dwordX±K` but
   FOLD back to 0x1505/33/0xF from static `.data` (proved with pefile), flatten+indbr ballooned the
-  reachable set to 510 fns / 34,585 lines vs C0's ~15. Honest takeaway: obfuscation raised analysis
-  cost, did NOT change the algorithm — same keygen works. That's why C2 (VMProtect) is the real step up.
+  reachable set to 510 fns / 34,585 lines vs the clean build's ~15. Honest takeaway: obfuscation raised analysis
+  cost, did NOT change the algorithm — same keygen works. That's why VMProtect is the real step up.
 
-## 2026-10-26..27 — C2 VMProtect 3.11 broken + consolidation
+## 2026-10-26..27 — VMProtect 3.11 broken + consolidation
 
-- C2 (`targets/license_app/.../license_app_c2.vmp.exe`) and the Dead Cells `libhl.vmp.dll` benchmark
+- VMProtect target (`targets/license_app/.../license_app.vmp.exe`) and the Dead Cells `libhl.vmp.dll` benchmark
   both devirtualized end-to-end: validated, blind-recovered, round-peeled, and SMT-proven. See
   `targets/license_app/README.md` and `targets/dead_cells/README.md`.
 - Repo consolidated into three layers — generic `reaforge/core` engine, reusable `categories/`, and

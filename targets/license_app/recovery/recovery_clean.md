@@ -1,4 +1,4 @@
-# C0 recovery — clean baseline (IDA Pro 9.1)
+# Clean-build recovery — baseline (IDA Pro 9.1)
 
 **Difficulty: trivial (minutes).** No protection, MinGW symbols, `-O2` inlined `machine_id()`+`expected_key()`
 into `check_license`, which Hex-Rays decompiled cleanly. This is the "before" measurement for the capstone.
@@ -31,5 +31,5 @@ So IDA is now a scriptable step in the toolchain, not just a GUI.
 ## Baseline takeaway
 
 Symbols + no obfuscation + inlined logic = one decompile, one keygen. Next layers raise this cost:
-C1 (OLLVM flattening) -> control flow obscured; C2 (VMProtect) -> logic virtualized (expect the
+OLLVM flattening -> control flow obscured; VMProtect -> logic virtualized (expect the
 keygen recovery to go from minutes to much longer / need dump+devirtualize).

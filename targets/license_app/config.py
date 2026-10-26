@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 r"""Title config: license_app — our own VMProtect 3.11 crackme (x64 check_license).
 
-The only place the license_app specifics live: its C0 keygen (ground truth, used ONLY to validate /
+The only place the license_app specifics live: its clean-build keygen (ground truth, used ONLY to validate /
 cross-check recovery), the virtualized function RVA, the Proof-B recurrence, and the local paths to
 its packed binary + snapshot. Everything mechanical is in categories/native_license/campaign.py.
 
@@ -21,8 +21,8 @@ DUMPS = HERE / "dumps"
 M = (1 << 32) - 1
 
 
-def c0_expected_key(mid: int) -> int:
-    """C0 reference keygen: the algorithm our crackme implements (cross-check oracle only)."""
+def expected_key(mid: int) -> int:
+    """Reference keygen (clean-build algorithm our crackme implements; cross-check oracle only)."""
     acc = (0x1505 ^ mid) & M
     for i in range(8):
         acc = ((acc * 33) & M) ^ ((mid >> (i * 4)) & 0xF)
@@ -48,10 +48,10 @@ def _prove_b(want, serial_sym):
 
 CONFIG = campaign.Config(
     name="license_app check_license",
-    packed=str(DUMPS / "license_app_c2.vmp.exe"),
+    packed=str(DUMPS / "license_app.vmp.exe"),
     snap=str(DUMPS / "license_postoep.snap"),
     check_rva=0x1000,
-    expected=c0_expected_key,
+    expected=expected_key,
     prove=_prove_b,
     default_serial=0xAABBCCDD,
     keybuf=0x00000add00000000,

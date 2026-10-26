@@ -18,7 +18,7 @@ PATHS = {
     "x64dbg":   [r"C:\Tools\x96dbg\release\x96dbg.exe", r"C:\Tools\x96dbg\release\x64\x64dbg.exe"],
     "die":      [r"C:\Tools\DIE\diec.exe", r"C:\Tools\DIE\die.exe"],
     "gcc":      [r"C:\Tools\msys64\ucrt64\bin\gcc.exe"],
-    "ollvm_clang": [r"C:\Tools\ollvm\install\bin\clang.exe"],  # Hikari/Arkari OLLVM fork (capstone C1)
+    "ollvm_clang": [r"C:\Tools\ollvm\install\bin\clang.exe"],  # Hikari/Arkari OLLVM fork (OLLVM layer)
     "ida":      [r"C:\Program Files\IDA Professional 9.1\ida.exe"],
     "ida_headless": [r"C:\Program Files\IDA Professional 9.1\idat.exe"],
     "scyllahide": [r"C:\Tools\x96dbg\release\x64\plugins\ScyllaHideX64DBGPlugin.dp64",

@@ -1,12 +1,12 @@
-/* license_app_c2.c — Capstone C2 target: same license check as C0/C1, but the whole
+/* license_app_hardened.c — VMProtect target: same license check as clean/OLLVM, but the whole
  * check_license algorithm is wrapped in a VMProtect virtualization marker so the
  * protector turns it into VM bytecode. machine_id()/expected_key() are force-inlined
  * so their arithmetic lands INSIDE the marked region (and thus gets virtualized).
  *
  * Build (unprotected, marker build — needs VMProtectSDK64.dll beside it to run):
- *   clang license_app_c2.c -O2 -I"<VMP>\Include\C" "<VMP>\Lib\Windows\VMProtectSDK64.lib" -o license_app_c2.exe
+ *   clang license_app_hardened.c -O2 -I"<VMP>\Include\C" "<VMP>\Lib\Windows\VMProtectSDK64.lib" -o license_app_hardened.exe
  * Protect (SDK markers, no project file needed):
- *   VMProtect_Con.exe license_app_c2.exe license_app_c2_vmp.exe
+ *   VMProtect_Con.exe license_app_hardened.exe license_app_c2_vmp.exe
  */
 #include <windows.h>
 #include <stdio.h>

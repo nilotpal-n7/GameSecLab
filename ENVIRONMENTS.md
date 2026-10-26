@@ -7,7 +7,7 @@ binaries, so Windows-native is the primary workbench and everything else is a su
 
 | Environment | Role | What lives here |
 | --- | --- | --- |
-| **Windows 11 (native)** | **PRIMARY workbench** — all Windows-PE work | IDA Pro 9.1, Ghidra, x64dbg + ScyllaHide + Scylla, DIE, VMProtect, Themida, Cheat Engine, ReClass.NET, **Intel Pin 4.4 (Windows DBI)**, Frida 17, MSVC/VS2026, msys64 gcc 16, Python libs (capstone/unicorn/keystone/lief/pefile/r2pipe) |
+| **Windows 11 (native)** | **PRIMARY workbench** — all Windows-PE work | IDA Pro 9.1, Ghidra, x64dbg + ScyllaHide + Scylla, DIE, VMProtect, Themida, Cheat Engine, ReClass.NET, **Intel Pin 4.4 (Windows DBI)**, Frida 17, MSVC/VS2026, msys64 gcc 16, Python libs (targets/license_app/dumps/unicorn/keystone/lief/pefile/r2pipe) |
 | **WSL BlackArch** (`archlinux`) | **Specialized Linux RE arsenal** | radare2, rizin, cutter, gdb, ropper, ROPgadget, clang, nasm, ghidra (headless). Add angr/pwntools/frida here when needed (`pip`/`pacman`). Home for Linux-ELF targets + the external test (Tigress Challenge / FLARE-On Linux levels are ELF). |
 | **WSL Ubuntu 24.04** | plain Linux build box | gcc, g++, gdb only. **Nothing unique to this lab** (Tigress is no longer installed — see gap below). |
 | **Docker Desktop 29.9** | disposable build & detonation sandboxes | reproducible toolchain builds that would pollute the host (OLLVM/LLVM, NoVmp/VTIL), and isolated no-network detonation of untrusted challenge samples. Not a daily RE box. |

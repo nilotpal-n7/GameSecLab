@@ -5,7 +5,7 @@ explanation here with an analogy + a concrete example, so it's understandable la
 
 ---
 
-## 1. VMProtect's single-step anti-debug (the thing blocking our C2 break)
+## 1. VMProtect's single-step anti-debug (the thing blocking our VMProtect break)
 
 Source: `Bypassing_Anti-Analysis_of_Commercial_Protector_Methods_Using_DBI_Tools.pdf` (IEEE 2021), §IV-C +
 Table 1 ("VMProtect Anti-DBI = Exception / Single Step").
