@@ -105,12 +105,9 @@ def recon(path: str, plan: bool = True):
 
 
 def protector_of(facts) -> str:
-    """Classify the packer/protector from recon facts (so we route to the right approach)."""
-    die = (facts.get("tools", {}).get("die") or "").lower() if isinstance(facts, dict) else ""
-    if "vmprotect" in die: return "vmprotect"
-    if "themida" in die or "winlicense" in die or "oreans" in die: return "themida"
-    if "enigma" in die: return "enigma"
-    return "unknown"
+    """Classify the packer/protector from recon facts (delegates to the Protector registry)."""
+    from reaforge.core.protectors import classify
+    return classify(facts)
 
 
 def list_titles():
@@ -205,13 +202,14 @@ def run_title(title: str, rest):
     packed = cfg_mod.CONFIG.packed
     _check_authorized(Path(packed).resolve())
     if Path(packed).exists():
+        from reaforge.core import protectors
         print(f"== recon: {title} ==")
         facts = recon(packed, plan=False)
-        prot = protector_of(facts)
-        print(f"  protector: {prot}")
-        if prot in ("themida", "enigma"):
-            sys.exit(f"  reaforge/core devirt is VMProtect-specific — it cannot unpack a {prot} binary.\n"
-                     f"  See targets/license_app/themida_plan.md for the {prot} unpack + protector-agnostic bypass route.")
+        prot = protectors.for_facts(facts)
+        print(f"  protector: {prot.name + ' ' + prot.classify_version(facts) if prot else 'unknown'}")
+        if prot is not None and not prot.available():
+            sys.exit(f"  {prot.unavailable_message()}\n"
+                     f"  See targets/license_app/themida_plan.md for the unpack + protector-agnostic bypass route.")
     else:
         print(f"  (packed binary not present yet: {packed})")
     from reaforge.core.__main__ import main as core_main

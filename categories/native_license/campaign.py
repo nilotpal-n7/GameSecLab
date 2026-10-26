@@ -24,9 +24,8 @@ import unicorn.x86_const as ux
 from capstone import CS_ARCH_X86, CS_MODE_64, Cs
 from unicorn import UC_HOOK_CODE, UC_PROT_ALL, UcError
 
-from reaforge.core import peel
+from reaforge.core import peel, protectors
 from reaforge.core.engine import SymEngine
-from reaforge.core.loader import VmpLoader
 
 M = (1 << 32) - 1
 
@@ -47,11 +46,11 @@ class Config:
     marker: int = 0x13371337
     serial_api: str = "getvolumeinformationa"   # import hooked to inject the serial
     serial_api_argc: int = 8
+    protector: str = "vmprotect"                 # which Protector reaches the unpacked state
 
 
 def _build(cfg: Config, packed: str):
-    ld = VmpLoader(packed, progress=lambda m: print("  [setup]", m))
-    ld.reach_unpacked(cfg.snap)
+    ld = protectors.for_name(cfg.protector).unpack(packed, cfg.snap, progress=lambda m: print("  [setup]", m))
     for a in (cfg.keybuf, cfg.ret_sentinel):
         try: ld.uc.mem_map(a & ~0xfff, 0x1000, UC_PROT_ALL)
         except UcError: pass

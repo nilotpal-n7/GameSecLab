@@ -24,6 +24,7 @@ reaforge/        GENERIC — the framework (automated + AI), arch/target-agnosti
     engine.py        taint-symbolic execution (x86-32 AND x86-64 — arch is a parameter)
     loader.py        VMProtect process-world env (EXE/DLL, 32/64) on top of vmp-lazy-unpack
     peel.py          round peeling + anti-unification + z3 equivalence proofs
+    protectors/      the protector seam: base + VMProtect / Themida / Denuvo (+ registry)
     __main__.py      `python -m reaforge.core <title>` — authorization-gated CLI
   orchestrator.py  authorize -> static recon -> facts -> LLM plan
   tool_registry.py detect every RE tool/lib installed on this machine

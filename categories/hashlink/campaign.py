@@ -25,9 +25,8 @@ import unicorn.x86_const as ux
 from capstone import CS_ARCH_X86, CS_MODE_32, Cs
 from unicorn import UC_HOOK_CODE, UC_PROT_ALL, UcError
 
-from reaforge.core import peel
+from reaforge.core import peel, protectors
 from reaforge.core.engine import SymEngine
-from reaforge.core.loader import VmpLoader
 
 MODULO, MULT = 0x1FFFFF7B, 223                       # HashLink hl_hash_utf8 constants (category ground truth)
 STRBUF, RET, CALLSTK, CALLSTK_SZ = 0x30000000, 0x31000000, 0x20000000, 0x40000
@@ -42,6 +41,7 @@ class Config:
     snap: str                   # post-unpack snapshot path
     export: str = "hl_hash_utf8"
     N: int = 4                  # symbolic input length for recover/peel
+    protector: str = "vmprotect"   # which Protector reaches the unpacked state
 
 
 def ref_hash(s: bytes) -> int:
@@ -55,9 +55,8 @@ def ref_hash(s: bytes) -> int:
 
 
 def _build(cfg: Config, packed: str):
-    """Fresh loader at the clean post-unpack state (phases isolated so tracer state can't leak)."""
-    ld = VmpLoader(packed, progress=lambda m: print("  [setup]", m))
-    ld.reach_unpacked(cfg.snap)
+    """Fresh env at the clean post-unpack state (phases isolated so tracer state can't leak)."""
+    ld = protectors.for_name(cfg.protector).unpack(packed, cfg.snap, progress=lambda m: print("  [setup]", m))
     func = ld.resolve_export(cfg.export)
     for a, sz in ((STRBUF, 0x1000), (RET, 0x1000), (CALLSTK, CALLSTK_SZ)):
         try: ld.uc.mem_map(a & ~0xfff, sz, UC_PROT_ALL)

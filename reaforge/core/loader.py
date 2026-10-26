@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-r"""REAForge devirt — shared VMProtect loader environment (x86-32 / x86-64, EXE / DLL).
+r"""REAForge devirt — VMProtect loader environment (x86-32 / x86-64, EXE / DLL).
+
+This is VMProtect's implementation of the unpack step — the `protectors.VMProtect` class is the seam
+around it, and campaigns reach it via `protectors.for_name(cfg.protector).unpack(...)`, never by
+importing `VmpLoader` directly. Note: VMProtect's *VM* is not modeled here or anywhere — the real VM
+handlers run on Unicorn and the generic x86 SymEngine shadows them; only the *unpack* (below) is
+VMProtect-specific.
 
 Wraps vmp-lazy-unpack's env mechanism into one reusable object: map the packed PE, build the
 synthetic Windows process world (PEB/TEB/LDR + module export tables + API/syscall stubs), synthesize
