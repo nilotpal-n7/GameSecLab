@@ -1,0 +1,29 @@
+# REAForge lint config. The devirt code is deliberately dense (multi-statement lines, sys.path
+# bootstrapping before imports); lint for real defects (undefined names, unused imports, bad
+# comparisons) without fighting that house style.
+line-length = 170
+target-version = "py311"
+
+exclude = [
+    ".git",
+    "vmlab",                 # C sources + ELF/PE build artifacts
+    "knowledge",             # prose + PDFs
+    "targets/**/dumps",      # binaries / snapshots / traces
+    "reaforge/pintools",     # C++ pintools
+]
+
+[lint]
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E401",  # multiple imports on one line (compact headers)
+    "E402",  # module import not at top (sys.path bootstrap must run first)
+    "E701",  # multiple statements on one line (colon)
+    "E702",  # multiple statements on one line (semicolon)
+    "E703",  # statement ends with semicolon
+    "E731",  # lambda assignment (small handlers)
+    "E741",  # ambiguous name (l/I used for loop locals)
+    "W605",  # invalid escape in regex strings handled case-by-case
+]
+
+[lint.isort]
+known-first-party = ["reaforge", "categories", "targets"]

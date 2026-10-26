@@ -4,7 +4,10 @@ Run:  python -m reaforge.tool_registry   (or: python tool_registry.py)
 Prints a capability report and writes capabilities.json next to it.
 """
 from __future__ import annotations
-import json, os, shutil, subprocess, sys
+
+import json
+import os
+import subprocess
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -31,6 +34,7 @@ PY_LIBS = ["capstone", "unicorn", "keystone", "lief", "pefile", "r2pipe", "frida
 # WSL layout (see ENVIRONMENTS.md): Ubuntu = plain build box + Tigress;
 # archlinux = BlackArch, the specialized Linux RE arsenal.
 import re as _re
+
 WSL_DISTROS = ["Ubuntu", "archlinux"]
 WSL_TOOLS = {
     "Ubuntu":    ["gcc", "gdb", "tigress"],

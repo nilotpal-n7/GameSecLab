@@ -1,64 +1,44 @@
-# Practice games are large third-party binaries: keep them out of the repo.
-# Re-download instructions live in NOTES.md.
-targets/
-
-# Binaries and archives anywhere in the lab
+# ── Binaries & archives anywhere in the lab (re-download/rebuild instructions live in NOTES.md) ──
 *.exe
 *.dll
 *.sys
 *.pdb
 *.zip
 *.7z
+*.snap
+*.i64
+*.scandata
+*.scandata.*
 
-# Big generated output: commit curated results (e.g. offsets.json), not raw dumps
-dumps/**
-!dumps/.gitkeep
-!dumps/*.md
+# ── Per-title workspaces: track src/, recovery/, config.py, README, screenshots; drop heavy dumps ──
+# Each title's binaries, snapshots, IDA dumps, traces, logs and imports live under targets/<title>/dumps/.
+targets/**/dumps/
 
-# Editor / OS noise
-.vscode/
-Thumbs.db
-desktop.ini
-
-# vmlab: keep source + notes, ignore built binaries
-vmlab/*.exe
-vmlab/keycheck_vm
-vmlab/keycheck_vm.c
-vmlab/ghidra_proj/
-vmlab/keycheck_plain_elf
-vmlab/keycheck_vm
-vmlab/keycheck_vm2
-vmlab/a.out
-!vmlab/keycheck_vm.c
-!vmlab/keycheck_vm2.c
-vmlab/keycheck_ad
-vmlab/keycheck_ad_vm
-!vmlab/keycheck_ad.c
-!vmlab/keycheck_ad_vm.c
-
-# REAForge generated/runtime files (keep code + README, drop outputs)
+# ── REAForge generated/runtime files (keep code + READMEs, drop outputs) ──
 reaforge/capabilities.json
 reaforge/facts.json
 reaforge/llm_prompt.txt
 reaforge/llm_reply.txt
-reaforge/__pycache__/
 reaforge/bridge/
-capstone/*.exe
-capstone/*.i64
-capstone/ida_decompile.txt
+**/__pycache__/
+*.pyc
 
-# Intel Pin lab artifacts
+# ── Intel Pin lab artifacts ──
 *.log
 **/obj-intel64/
 **/obj-ia32/
 
-# Capstone C1 decompile dumps (large, regenerable)
-capstone/ida_decompile*.txt
+# ── vmlab: keep source + notes, ignore built binaries ──
+vmlab/*.exe
+vmlab/a.out
+vmlab/keycheck_plain_elf
+vmlab/keycheck_vm
+vmlab/keycheck_vm2
+vmlab/keycheck_ad
+vmlab/keycheck_ad_vm
+vmlab/ghidra_proj/
 
-capstone/ida_unpacked*.txt
-capstone/*.imports.json
-
-# Dead Cells 32-bit DLL benchmark artifacts (large/generated)
-capstone/*.snap
-capstone/dll32_trace.txt
-capstone/*.vmp
+# ── Editor / OS noise ──
+.vscode/
+Thumbs.db
+desktop.ini

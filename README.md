@@ -1,66 +1,86 @@
 # GameSecLab
 
-Hands-on course: learn how game cheats work on a running process, and how anti-cheat
-detects/prevents them — so you can build those defenses into your own games.
+Hands-on lab for learning game security and reverse engineering: how cheats work on a running
+process, how anti-cheat detects them, and how commercial protectors (VMProtect / Themida / OLLVM)
+obfuscate code — so you can both understand the attacks and build the defenses into your own games.
 
-**You do the work. Claude explains, writes scripts, and reviews what you paste back.**
-Each phase file in `phases/` is a guided lesson: CONCEPT -> YOUR STEPS -> ANTI-CHEAT LENS -> DELIVERABLE.
-Do every step yourself, paste the output back, and only move on after you can explain it.
+**You do the hands-on GUI work; the tooling here scripts, analyzes, and automates the rest.**
 
 ## Lab rules
 
-1. Single-player / offline only. Never attach tools to a game while it is connected to a
-   public server — that hurts real players and gets accounts banned.
-2. Legit copies only. No cracked games, no DRM (Denuvo/Steam) bypass, no anti-cheat bypass.
-3. Every attack you learn gets a matching defense written into `FIXLIST.md`.
+1. Single-player / offline only. Never attach tools to a game connected to a public server.
+2. Legit copies only — your own builds and your own protected binaries. No DRM / anti-cheat bypass of
+   third-party products. Every target analyzed here is one you own and have authorized (enforced by
+   `reaforge/authorized_targets.json`).
+3. Every attack learned gets a matching defense noted in `knowledge/FIXLIST.md`.
 
-## Targets
+## The three layers
 
-| Target | Engine | Used for | Location |
-| --- | --- | --- | --- |
-| Veloren v0.18.0 | Rust (custom) | Phases 0, 2, 3 (generic hooking), 4, 5 | `targets\Veloren` |
-| Lyra Starter Game (Shipping build) | Unreal Engine 5 | Phases 0 (UE recon), 1, 3 (ProcessEvent) | `targets\Lyra` (later) |
-
-## Folder map
+Everything is organized so that **generic** capability and **category** knowledge are reusable, and
+only the **per-title** specifics are pinned to one game:
 
 ```text
-C:\Tools\                 <- reusable tools live here (Ghidra, x64dbg, DIE, Cheat Engine, ...)
-C:\Tools\GameSecLab\
-  README.md               <- this file
-  NOTES.md                <- running learning log (what you did, what you learned)
-  GLOSSARY.md             <- every term, in plain words
-  FIXLIST.md              <- defenses to implement in your own games
-  RECON.md                <- Phase 0 deliverable (you write it)
-  phases\                 <- one lesson file per phase
-  targets\                <- the practice games
-  scripts\                <- cheatengine, frida, python, x64dbg, ghidra scripts
-  dumps\                  <- SDK dumps, pointer scans, logs you generate
-  screenshots\            <- evidence for your notes
+reaforge/        GENERIC — the framework (automated + AI), arch/target-agnostic
+  core/            the VMProtect devirtualization engine
+    engine.py        taint-symbolic execution (x86-32 AND x86-64 — arch is a parameter)
+    loader.py        VMProtect process-world env (EXE/DLL, 32/64) on top of vmp-lazy-unpack
+    peel.py          round peeling + anti-unification + z3 equivalence proofs
+    __main__.py      `python -m reaforge.core <title>` — authorization-gated CLI
+  orchestrator.py  authorize -> static recon -> facts -> LLM plan
+  tool_registry.py detect every RE tool/lib installed on this machine
+  llm_backend.py   pluggable AI backend (Anthropic API | Ollama | manual bridge | Claude Code)
+  ida/ pintools/ tools/   generic IDA drivers, Intel Pin probes, external-tool wrappers (GAMBA, Frida)
+  tests/           quick smoke tests across the arch x format matrix (x86/x64 x EXE/DLL)
+
+categories/      CATEGORY — reusable per game CATEGORY, never a single title
+  native_license/  VMProtect-protected native license checks (x64 MS ABI)    -> campaign.py
+  hashlink/        Haxe/Heaps/HashLink games (libhl hl_hash_utf8 ground truth) -> campaign.py
+  unreal/          Unreal Engine recon / anti-cheat review notes
+  voxel_rust/      Rust/voxel games: memory-scan + pointer methodology
+
+targets/         PER-TITLE — one workspace per game (binaries + dumps gitignored; src/recovery tracked)
+  license_app/     our own x64 VMProtect 3.11 crackme   (native_license category)
+  dead_cells/      our own VMProtect'd libhl.dll (x86)  (hashlink category)
+  veloren/         Rust voxel game pointer-scan notes
+  <title>/         config.py (the only place specifics live) + src/ recovery/ dumps/ README
+
+knowledge/       REFERENCE — generic, title-independent
+  papers/          academic PDFs (DBI, VM obfuscation, deobfuscation)
+  vmprotect_3.11/  VMProtect 3.11 architecture + MBA deobfuscation analyses + pipeline
+  method/          phase-by-phase RE method (static recon, memory editing, Pin lab, ...)
+  GLOSSARY.md  FIXLIST.md  binary_protection_instrumentation_reference.txt
+
+vmlab/           local Tigress/crackme lab ("child's play" — keycheck*, single and nested VM)
+NOTES.md  RECON.md  ENVIRONMENTS.md   running lab logs
 ```
 
-## Roadmap
+## Run the devirtualizer
 
-- [ ] Phase 0 — Static recon (Veloren: done, see RECON.md — Lyra recon when it's packaged)
-- [ ] Phase 1 — Map the game live (Lyra: UE4SS, Dumper-7, offsets.json)
-- [x] Phase 2 — Memory editing (Veloren: CE scan/freeze, server-vs-client copy, code anchor, ReClass) — done
-- [~] Phase 3 — Function hooking — Veloren warm-up DONE (Frida: observe/modify/player-filter); ProcessEvent on Lyra next
-- [ ] Lyra setup — build UE 5.8 Shipping build of Lyra (see phases/lyra_setup.md) — NEXT, user's hands-on
-- [ ] Phase 4 — Debugger & deeper RE (x64dbg + Ghidra)
-- [ ] Phase 5 — Anti-cheat synthesis (ANTICHEAT_MAP.md, FIXLIST.md)
-- [~] Side track — Virtualization & anti-tamper (Tigress + Ghidra on your own code; legal Denuvo-technique study) — see phases/vmtrack_01_virtualize.md
-- [ ] Capstone — protect your own app with VMProtect/Themida/OLLVM, then devirtualize it (see phases/capstone_protect_and_break.md)
+```bash
+python -m reaforge.core license_app                 # x64 EXE: validate, recover, peel, prove
+python -m reaforge.core dead_cells validate,recover,peel   # x86 DLL
+python -m reaforge.core --help                      # list titles + usage
+```
 
-## Tool install status (all go in `C:\Tools\<Name>`)
+A title's packed binary must be authorized first:
 
-| Tool | Phase | Status |
-| --- | --- | --- |
-| Ghidra | 4 | already installed (`C:\Tools\ghidra`) |
-| x64dbg | 4 | installed (`C:\Tools\x96dbg` — folder name is a typo of x64dbg; `release\x96dbg.exe` launcher) |
-| Detect It Easy (DIE) | 0 | already installed |
-| objdump / strings / c++filt | 0 | already in msys64 (`C:\Tools\msys64\ucrt64\bin`) |
-| Cheat Engine 7.7 | 2 | installed system-wide (`C:\Program Files\Cheat Engine`; includes `Tutorial-x86_64.exe`) |
-| ReClass.NET 1.2 | 2 | installed (`C:\Tools\ReClass.NET`; use `x64\ReClass.NET.exe` for 64-bit games) |
-| Frida (pip) | 3 | later |
-| ScyllaHide | 4 | later |
-| UE4SS, Dumper-7, FModel | 1 | later (Lyra) |
-| System Informer | any | optional |
+```bash
+python -m reaforge.orchestrator authorize "<path>" "why you own / may analyze this"
+```
+
+## Quick checks
+
+```bash
+python -m ruff check .                               # lint
+python -m reaforge.tests.test_smoke                  # fast tests (imports, keygens, arch matrix)
+set RUN_CAMPAIGNS=1 && python -m reaforge.tests.test_smoke   # + run the real x64-EXE / x86-DLL campaigns
+```
+
+## Adding a new game
+
+1. Pick (or add) the **category** under `categories/` that matches the engine/protection pattern.
+2. Create `targets/<title>/config.py` with the binary path, snapshot path, and the few title
+   specifics (the category's `campaign.run(cfg)` does the rest).
+3. Authorize the binary, then `python -m reaforge.core <title>`.
+
+The category and generic layers never name a specific title — new titles are added by configuration.

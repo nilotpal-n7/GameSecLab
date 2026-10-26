@@ -14,12 +14,23 @@ DRM/anti-cheat circumvention tool for third-party products.
 ## Architecture
 
 ```txt
-reaforge/
-  tool_registry.py   # detects installed tools (Ghidra, x64dbg, DIE, Tigress, Frida, py libs, gcc/VS)
-  llm_backend.py     # pluggable AI: Anthropic API | local Ollama | manual (copy/paste)
-  orchestrator.py    # pipeline: authorize -> static recon -> collect facts -> LLM plan -> (tools) -> report
-  authorized_targets.json   # allowlist (you add targets + reason)
+reaforge/                    # GENERIC framework (this package)
+  core/              # the VMProtect devirtualization engine (arch/target-agnostic)
+    engine.py          # taint-symbolic execution, x86-32 AND x86-64 (arch is a parameter)
+    loader.py          # VMProtect process-world env (EXE/DLL, 32/64) on vmp-lazy-unpack
+    peel.py            # round peeling + anti-unification + z3 equivalence proofs
+    __main__.py        # `python -m reaforge.core <title>` — authorization-gated CLI
+  tool_registry.py   # detects installed tools (Ghidra, x64dbg, DIE, IDA, Tigress, Frida, py libs, gcc)
+  llm_backend.py     # pluggable AI: Anthropic API | local Ollama | manual bridge | Claude Code driver
+  orchestrator.py    # pipeline: authorize -> static recon -> collect facts -> LLM plan -> report
+  authorized_targets.json   # allowlist (path + reason + sha256); the CLI refuses anything not listed
+  ida/  pintools/  tools/    # generic IDA drivers, Intel Pin probes, external-tool wrappers (GAMBA, Frida)
+  tests/             # quick smoke tests across the arch x format matrix (x86/x64 x EXE/DLL)
 ```
+
+The generic engine is driven by **category** engines (`categories/<cat>/campaign.py`, reusable per
+game category) and **per-title** configs (`targets/<title>/config.py`, the only place specifics live).
+See the repo-root `README.md` for the full three-layer map.
 
 ## The AI backend — honest options
 
