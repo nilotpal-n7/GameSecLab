@@ -14,6 +14,7 @@ end-to-end. x64 PE (MinGW).
 - `config.py` — the **only** place license_app specifics live (RVA, keygen, Proof-B recurrence, paths).
 - `src/` — our C sources (tracked).  `recovery/` — the recovery write-ups clean/OLLVM/VMProtect + recovered keygen.
 - `protect_and_break.md`, `vmprotect_break_cheatsheet.md` — the protect-then-reverse walkthrough.
+- `themida_plan.md` — the next layer (Themida/Oreans): protect hand-off + unpack + protector-agnostic bypass.
 - `screenshots/` — x64dbg / anti-debug evidence.
 - `dumps/` — binaries, snapshot, IDA dumps, logs (**gitignored**; rebuild from `src/` + VMProtect).
 
@@ -21,8 +22,11 @@ end-to-end. x64 PE (MinGW).
 
 ```bash
 python -m reaforge.core license_app [serial_hex] [modes]
+python -m reaforge.core license_app AABBCCDD bypass    # defeat the check with a WRONG key
 ```
 
 Result: the VM accepts exactly the clean-build key for every serial; the symbolic engine recovers
 `want(serial)` blind, peels the 8 VMProtect nibble-hash rounds (each z3-proven over all 2^32), and
-Proof B confirms the clean `0x1505^s; ((acc*33)^nibble)+7i` recurrence.
+Proof B confirms the clean `0x1505^s; ((acc*33)^nibble)+7i` recurrence. `bypass` mode defeats the
+check without recovering anything: it trace-diffs a correct vs wrong key, finds the one branch where
+they diverge (the verdict), flips it, and prints the module-relative address to patch live in x64dbg.

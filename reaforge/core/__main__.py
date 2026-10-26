@@ -57,7 +57,7 @@ def main(argv):
         sys.exit(f"could not load targets/{title}/config.py: {e}")
 
     arg = argv[2] if len(argv) > 2 and "," not in argv[2] and argv[2] not in (
-        "validate", "recover", "peel", "prove") else None
+        "validate", "recover", "peel", "prove", "bypass") else None
     modes_tok = argv[3] if arg and len(argv) > 3 else (argv[2] if not arg and len(argv) > 2 else None)
     modes = tuple(modes_tok.split(",")) if modes_tok else ("validate", "recover", "peel", "prove")
 

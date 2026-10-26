@@ -98,6 +98,44 @@ def run(cfg: Config, packed: str = None, modes=("validate", "recover", "peel", "
         print(f"  {'ALL PASS — the VM computes the reference algorithm.' if ok else 'some FAILED'}")
         ld.close()
 
+    if "bypass" in modes:
+        # Defeat the check with a WRONG key, without recovering the algorithm: trace-diff a correct
+        # vs a wrong run, find the one branch where they diverge (the verdict), and flip it.
+        ld, check = _build(cfg, packed); ld.add_handler(cfg.serial_api, serial_hook, cfg.serial_api_argc)
+        base = ld.mapped_start
+        ser = cfg.default_serial
+        good_key = f"{cfg.expected(ser):08X}"; wrong_key = "00000000" if good_key != "00000000" else "11111111"
+
+        def tracer(seq):
+            def h(uc_, address, size, ud): seq.append(address)
+            return h
+
+        good, bad = [], []
+        rg = call_check(ld, check, ser, good_key, hook=tracer(good))
+        rb = call_check(ld, check, ser, wrong_key, hook=tracer(bad))
+        print(f"\n== dynamic bypass (defeat the check with a WRONG key, no keygen) ==  check@0x{check:X}")
+        print(f"  correct key {good_key} -> {rg} (accept);  wrong key {wrong_key} -> {rb} (reject);  traces {len(good)}/{len(bad)} instrs")
+        n = min(len(good), len(bad)); D = None
+        for i in range(n):
+            if good[i] != bad[i]:
+                D = good[i - 1] if i else good[i]; break
+        if D is None:
+            print("  traces never diverge (keys indistinguishable here)."); ld.close(); return
+        print(f"  key-dependent decision region begins at module+0x{D - base:X}  (traces then differ by {abs(len(good) - len(bad))} instrs)")
+        # A VM'd verdict is NOT one native branch — the result is carried in VM state and the traces
+        # diverge in many places, so flipping the first jcc does not flip the verdict. The reliable,
+        # classic dynamic bypass is to force the check to return LICENSED: emulate `mov eax,1; ret` at entry.
+        def retpatch(uc_, address, size, ud):
+            if address == check:
+                uc_.reg_write(ux.UC_X86_REG_RAX, 1); uc_.reg_write(ux.UC_X86_REG_RIP, cfg.ret_sentinel)
+
+        rp = call_check(ld, check, ser, wrong_key, hook=retpatch)
+        print(f"  patch check@0x{check:X} to `mov eax,1; ret` -> wrong key returns {rp}  "
+              f"{'BYPASSED (LICENSED, check never runs)' if rp == 1 else 'unexpected'}")
+        print("  live options: (a) patch the function prologue to `mov eax,1; ret` in x64dbg (shown above),")
+        print("                (b) recover the key algorithmically — `recover` / `peel` modes (the deeper break).")
+        ld.close()
+
     if any(m in modes for m in ("recover", "peel", "prove")):
         ld, check = _build(cfg, packed); ld.add_handler(cfg.serial_api, serial_hook, cfg.serial_api_argc)
         eng = SymEngine(ld.uc, bits=64, taint_prefix="serial", record=True); eng.marker = cfg.marker

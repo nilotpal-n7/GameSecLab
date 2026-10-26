@@ -16,5 +16,5 @@ lief>=0.14
 # lint + tooling
 ruff>=0.14
 
-# optional runtime hooking (Frida templates in reaforge/tools/frida/); large wheel, install if needed:
-# frida>=17
+# runtime hooking (Frida templates in reaforge/tools/frida/)
+frida>=17

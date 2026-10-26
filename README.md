@@ -57,14 +57,22 @@ NOTES.md  ENVIRONMENTS.md   running lab logs
 
 ```bash
 python -m reaforge.core license_app                 # x64 EXE: validate, recover, peel, prove
+python -m reaforge.core license_app AABBCCDD bypass  # defeat the check with a WRONG key (no keygen)
 python -m reaforge.core dead_cells validate,recover,peel   # x86 DLL
 python -m reaforge.core --help                      # list titles + usage
 ```
 
-A title's packed binary must be authorized first:
+Modes: `validate` (VM == reference), `recover` (blind symbolic key), `peel` (round peeling + proofs),
+`prove` (all-inputs SMT), `bypass` (trace-diff the verdict branch and flip it — defeats the check
+without recovering the algorithm; prints the live-patch RVA for x64dbg).
+
+The orchestrator is the one-command front door (gate → recon → classify protector → campaign):
 
 ```bash
 python -m reaforge.orchestrator authorize "<path>" "why you own / may analyze this"
+python -m reaforge.orchestrator targets                      # list per-title workspaces
+python -m reaforge.orchestrator new-target <name> <category> # scaffold targets/<name>/ (native_license | hashlink)
+python -m reaforge.orchestrator run <title> [arg] [modes]    # recon + run the campaign
 ```
 
 ## Quick checks
@@ -77,9 +85,14 @@ set RUN_CAMPAIGNS=1 && python -m reaforge.tests.test_smoke   # + run the real x6
 
 ## Adding a new game
 
-1. Pick (or add) the **category** under `categories/` that matches the engine/protection pattern.
-2. Create `targets/<title>/config.py` with the binary path, snapshot path, and the few title
-   specifics (the category's `campaign.run(cfg)` does the rest).
-3. Authorize the binary, then `python -m reaforge.core <title>`.
+```bash
+python -m reaforge.orchestrator new-target <title> <category>   # scaffolds config.py + dumps/ + README
+```
 
-The category and generic layers never name a specific title — new titles are added by configuration.
+Then fill the `config.py` TODOs (binary path, snapshot, the few title specifics), drop the packed
+binary in `dumps/`, authorize it, and `python -m reaforge.core <title>`. The category's
+`campaign.run(cfg)` does the rest — the category and generic layers never name a specific title.
+
+> The devirt engine is **VMProtect-specific**. For a Themida/Oreans target the recon step classifies
+> the protector and routes you to the unpack + protector-agnostic bypass plan instead (see
+> `targets/license_app/themida_plan.md`).

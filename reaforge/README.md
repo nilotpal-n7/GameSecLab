@@ -44,9 +44,17 @@ local code can POST to. So REAForge's "AI" is a pluggable backend:
 - **Claude Code driver** — when REAForge is run *from this session*, I (Claude Code) act as the planner,
   reading its JSON facts and deciding next steps. That's the live AI loop until you wire a key/Ollama.
 
-## Usage (as it grows)
+## Usage
 
 ```bash
-python -m reaforge.tool_registry            # capability report: what's installed
-python -m reaforge.orchestrator recon <path>  # static recon on an AUTHORIZED target -> facts JSON
+python -m reaforge.tool_registry                         # capability report: what's installed
+python -m reaforge.orchestrator authorize <path> <why>   # allowlist a target you own
+python -m reaforge.orchestrator recon <path>             # static recon on an AUTHORIZED target -> facts JSON
+python -m reaforge.orchestrator targets                  # list per-title workspaces
+python -m reaforge.orchestrator new-target <name> <cat>  # scaffold targets/<name>/ (native_license | hashlink)
+python -m reaforge.orchestrator run <title> [arg] [modes]  # gate -> recon -> classify protector -> campaign
+python -m reaforge.core <title> [arg] [modes]            # run a title's campaign directly
 ```
+
+`run` recons the title's binary, classifies the protector, and dispatches to the category campaign —
+refusing a non-VMProtect protector (e.g. Themida) with a pointer to its plan instead of crashing.
