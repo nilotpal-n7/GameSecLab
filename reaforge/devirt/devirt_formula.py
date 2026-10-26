@@ -360,7 +360,18 @@ def main():
     print(f"  VALIDATED: symbolic want(serial) reproduces key {known:08X} for serial {serial:#010x}")
     simp = claripy.simplify(best)
     print(f"  AST depth raw/simplified: {best.depth}/{simp.depth}")
-    print(f"  simplified want(serial) [first 1500 chars]:\n{str(simp)[:1500]}")
+    print(f"  simplified want(serial) [first 900 chars]:\n{str(simp)[:900]}")
+    try:
+        import z3
+        zx = claripy.backends.z3.convert(best)
+        zs = z3.simplify(zx, som=True, hoist_mul=True, flat=True, arith_lhs=True, mul_to_power=False)
+        print(f"  z3-simplified [first 900]:\n{str(zs).replace(chr(10),' ')[:900]}")
+        out = os.environ.get("WANT_SMT2", r"C:\Users\nilot\AppData\Local\Temp\want.smt2")
+        sv=z3.Solver(); w=z3.BitVec('want',32); sv.add(w==zx)
+        open(out,"w").write(sv.to_smt2())
+        print(f"  saved {out} for offline MBA simplification")
+    except Exception as e:
+        print("  z3 step error:", repr(e))
     oks=[]
     for s2 in (0x11112222, 0xCAFEBABE, 0x00000001, 0xFFFFFFFF):
         try: oks.append(evalat(best, s2)==c0_expected_key(s2))

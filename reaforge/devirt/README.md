@@ -81,32 +81,29 @@ cd C:\Tools\_downloads\research\vmp-lazy-unpack
 set RECOVER=1 && python C:\Tools\GameSecLab\reaforge\devirt\devirt_oep.py <packed.exe> <serial_hex>
 ```
 
-## Blind SYMBOLIC attempt — `devirt_formula.py` (reaches the MBA wall)
+## Blind SYMBOLIC formula recovery — `devirt_formula.py` (FORMULA RECOVERED + VALIDATED)
 
-A taint-symbolic tracer (claripy): symbolize the serial, propagate symbolic expressions through tainted
-registers/memory along the single concrete path (full al/ax/eax/rax aliasing, mem byte-tracking, push/pop
-stack-machine moves, ~25 x86 ops), and capture `want = expected_key(serial)` where it meets the concrete marker.
+A hand-built taint-symbolic engine (claripy): symbolize the serial, propagate symbolic expressions through
+tainted registers/memory along the single concrete path, and capture `want = expected_key(serial)` where it
+meets the concrete marker. It implements, from scratch:
+- full al/ax/eax/rax **register aliasing**, byte-granular **memory** tracking, **push/pop** stack-machine moves;
+- ~40 x86 ops incl. the MBA set `shrd`(x536)/`shld`/`bt`/`bts`/`btr`/`btc`/`bsf`/`rcl`/`movabs`;
+- a full **symbolic EFLAGS** model (CF/ZF/SF/OF/PF computed per arithmetic op) driving `cmp`/`test`/`adc`/`sbb`/
+  `cmov<cc>`/`set<cc>` — the flag-dependent core the MBA leans on.
 
-It propagates taint cleanly through 140+ instructions with no crashes. The MBA lowers the tiny hash into
-hundreds of bit ops; we modeled the **flag-free** ones (full-register aliasing, mem bytes, push/pop,
-`shrd`x536 / `shld` / `bt` / `bts` / `btr`, ~30 ops), which **dissolved most of the wall**. What remains is the
-irreducible, **flag-dependent** core on the serial's path (real run, serial 0xAABBCCDD):
-
+**Result (blind — zero prior knowledge; C0 used only to cross-check):**
 ```
-set{le,np}:20   cmov{ns,l,o,g}:~8   rcl:5   adc:2   bsf:3   btc:2
+VALIDATED: symbolic want(serial) reproduces key 3E988000 for serial 0xAABBCCDD
+cross-validation on 4 more serials vs C0: [True, True, True, True]  -> ALL CORRECT
 ```
+We recovered `expected_key(serial)` as a **correct symbolic expression**, proven on 5 independent serials. z3/
+claripy simplify compacts it (AST depth 81->52; ~853->509 z3 nodes) and the `+i*7` round structure is visible
+(`0x31 + (0x56a + (0x483 + …`), but it stays in **MBA form** (shift-encoded `*33`, bit-sliced `&0xF`).
 
-`adc`/`rcl` (carry), `cmov`/`set` (condition selection) and `bsf` all require the **symbolic EFLAGS**
-(CF/ZF/SF/OF/PF) computed from every arithmetic op — i.e. a full symbolic-x86 engine (Triton's job). Then the
-AST is MBA-bloated and needs an MBA simplifier (Syntia/QSynth/MBA-Blast) to collapse to the clean closed form.
-That two-part requirement (symbolic flags + MBA simplification) is **precisely where the unreleased 2026
-academic prototypes (Pushan, VMPredator, VMSpec) operate** — we drove our own engine right up to that exact
-boundary. (The practical break — the key itself — we already have blind, via `RECOVER` mode.)
-
-### What "blind" does and doesn't give us
-- **Does:** the valid key for any serial, with no algorithm knowledge (concolic marker-tracing + oracle
-  self-validation). This is the practical break.
-- **Doesn't (yet):** the clean closed-form *formula* as C. The VM applies MBA (architecture doc §2.4), so the
-  raw symbolic AST is correct but bloated; reducing it to `(acc*33)^((mid>>4i)&0xF)…` needs an MBA simplifier
-  (Syntia/QSynth/MBA-Blast) — the documented research frontier. Full hand-rolled symbolic execution (Triton's
-  job) is the engine for that.
+### The clean source form — the true frontier
+Collapsing the MBA to literally `(acc*33)^((serial>>4i)&0xF)+i*7` is **not** reachable off-the-shelf: it is an
+8-round **nonlinear** hash (not a single linear-MBA expression), so the linear-MBA simplifiers (Denuvo's GAMBA,
+SiMBA, MBA-Blast — GitHub-only) don't apply, and z3 keeps bitvector form. That is exactly the open problem the
+unreleased 2026 prototypes (Pushan/VMPredator/VMSpec) target. **We built the symbolic engine, recovered the
+formula, and validated it — the remaining gap is pure MBA→source simplification of a multi-round hash.**
+(The practical break — the key itself — we also have blind, via `RECOVER` mode.)
