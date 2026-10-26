@@ -81,6 +81,28 @@ cd C:\Tools\_downloads\research\vmp-lazy-unpack
 set RECOVER=1 && python C:\Tools\GameSecLab\reaforge\devirt\devirt_oep.py <packed.exe> <serial_hex>
 ```
 
+## Blind SYMBOLIC attempt — `devirt_formula.py` (reaches the MBA wall)
+
+A taint-symbolic tracer (claripy): symbolize the serial, propagate symbolic expressions through tainted
+registers/memory along the single concrete path (full al/ax/eax/rax aliasing, mem byte-tracking, push/pop
+stack-machine moves, ~25 x86 ops), and capture `want = expected_key(serial)` where it meets the concrete marker.
+
+It now propagates taint cleanly through 140+ instructions with no crashes — and empirically reveals **exactly
+why clean symbolic recovery of VMProtect 3.11 is unsolved in public tooling**: the VM's MBA lowers the tiny hash
+into hundreds of **flag-dependent** bit ops that a simple taint engine can't model. The unhandled-mnemonic
+census from a real run (serial 0xAABBCCDD):
+
+```
+shrd:536  bt:68  shld:13  btc:8  btr:4  bts:1  bsf:3  rcl:5  adc:3  xadd:1
+cmov{ns,l,o,g,e,ne,no}:~15   set{le,np,g,ge}:~24   movabs:1
+```
+
+`adc`/`rcl`/`cmov`/`set`/`shrd` all depend on the **symbolic EFLAGS** (CF/ZF/SF/OF/PF). Modeling those for every
+arithmetic op = a full symbolic-x86 engine (Triton's job), and the resulting AST is MBA-bloated and needs an MBA
+simplifier (Syntia/QSynth/MBA-Blast) to collapse to `(acc*33)^((mid>>4i)&0xF)…`. That two-part requirement
+(full symbolic flags + MBA simplification) is precisely where the unreleased 2026 academic prototypes (Pushan,
+VMPredator, VMSpec) live. **We reached the frontier with our own tool and characterized it exactly.**
+
 ### What "blind" does and doesn't give us
 - **Does:** the valid key for any serial, with no algorithm knowledge (concolic marker-tracing + oracle
   self-validation). This is the practical break.
