@@ -29,9 +29,18 @@ Target: `license_app.themida.exe` — **Themida x64 3.2.4 (2026, demo)** protect
   Gotcha that cost us several tries: at the `GetVolumeInformationA` break RIP is inside kernel32, so the
   integrated Scylla first dumped **kernel32** (imagebase `0x7FFE35320000`, our code absent). Fix: **Pick DLL →
   the exe** so the target base is `0x140000000`.
-- **IAT caveat:** `Get Imports` = **8 valid / 28 wrapped** of 36 (Advanced API-Wrapping; `DIRECT IMPORTS = 0`).
-  Scylla can't resolve modern Themida wrappers, so the dump is **analyzable but not directly runnable** —
-  unwrapping the 28 stubs is the dedicated-unwrapper frontier. (A runnable crack = the live branch-flip bypass.)
+- **IAT: 8 valid / 28 wrapped** of 36 (Advanced API-Wrapping; `DIRECT IMPORTS = 0`) — Scylla can't resolve
+  modern Themida wrappers directly.
+- **Runnable reconstruction — DONE** (`reconstruct_themida.py`). Using our own `license_app_vm.exe` as the
+  oracle (legitimate — our binary), rebuild a runnable, de-Themida'd PE from the dump: restore the original
+  import table in place (resolves all 36 IAT entries incl. the 28 wrapped), overlay the original sections to
+  de-virtualize the EPV entry + `check_license` VM body, set OEP `0x1490`, fixed base, make the IAT section
+  writable, zero `.bss`, drop Themida's TLS/bound dirs. Result `dumps/license_app.themida_unpacked.exe` runs
+  correctly: `75685AB2 → LICENSED (0)`, `00000000 → INVALID (1)`. One-byte verdict patch (`0x24B0 75→EB`) →
+  `dumps/license_app.themida_cracked.exe`: **any key → LICENSED**.
+  Honest frame: without the oracle you'd trace each of the 28 wrapper stubs to its real API and lift the two VM
+  regions by hand (the dedicated-unwrapper / VM-lifter work). The oracle shortcut is valid only because we own
+  the original — it demonstrates exactly what a full unwrap+lift would produce.
 
 ## The bypass (no unpack, no devirt)
 
