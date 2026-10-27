@@ -77,6 +77,17 @@ Target: `license_app.themida.exe` — **Themida x64 3.2.4 (2026, demo)** protect
   at 570s) — the per-round transitive proof is what makes it provable. This is `expected_key` recovered **and proven**
   blind from the Themida VM, oracle-free.
   Run: `python -m reaforge.tools.vm_lift form <dump.DMP> themida 14e0`
+- **VM-lifter: EPV entry — DONE, oracle-free** (`vm_lift.py entry`). The last virtualized region: the Entry-Point-
+  Virtualization block (`0x1490`, `jmp 0x1402d2a08` into the VM). Unlike `check_license` this is **control flow**, not a
+  computed value, so the lift recovers the block's *effect*: run the VM from `0x1490` with **sentinel registers** and a
+  clean stack, and stop when control leaves the VM segment back into native code. Recovered (2,704 VM instrs):
+  `rax = 0x140007080; mov dword [0x140007080], 0; jmp 0x1400010A0` (RSP delta 0 — no call/push). Oracle cross-check:
+  the native entry is `mov rax,[0x14043870]` (= `0x140007080`) / `mov [rax],0` / `jmp 0x1400010A0` — **exit-target
+  match, register + store match**. The exit edge and state delta are read straight from the VM; the oracle only confirms.
+  Run: `python -m reaforge.tools.vm_lift entry <dump.DMP> themida 1490 [oracle.exe]`
+
+**Devirt complete:** both virtualized regions (the `check_license` VM body *and* the EPV entry) are now lifted
+oracle-free — the constant, the full keygen recurrence (proven over all 2^32 mid), and the entry block's effect.
 
 ## The bypass (no unpack, no devirt)
 

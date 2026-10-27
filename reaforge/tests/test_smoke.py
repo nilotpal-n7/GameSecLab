@@ -54,11 +54,12 @@ def test_protector_tools_wired():
     """Themida from-dump tools import and the protector exposes unwrap/reconstruct/lift_vm."""
     from reaforge.tools import pe_reconstruct, themida_unwrap, vm_lift  # noqa: F401
     assert callable(themida_unwrap.unwrap) and callable(pe_reconstruct.reconstruct)
-    assert callable(vm_lift.lift) and callable(vm_lift.emulate) and callable(vm_lift.lift_form)
+    assert all(callable(getattr(vm_lift, f)) for f in ("lift", "emulate", "lift_form", "lift_entry"))
     from reaforge.core.protectors import for_name
     t = for_name("themida")
     assert t.available()
-    assert all(hasattr(t, m) for m in ("unwrap_iat", "reconstruct", "lift_vm", "lift_vm_form"))
+    assert all(hasattr(t, m) for m in
+               ("unwrap_iat", "reconstruct", "lift_vm", "lift_vm_form", "lift_vm_entry"))
 
 
 def test_prove_recurrence_offline():

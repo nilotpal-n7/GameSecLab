@@ -20,11 +20,13 @@ handler model:
                 (the oracle only checks the answer; it never drives the recovery).
 
   python -m reaforge.tools.vm_lift <dump> <main_module_substr> <func_rva_hex> [serial_hex]
-  python -m reaforge.tools.vm_lift form <dump> <main_module_substr> <func_rva_hex> [serial_hex]
+  python -m reaforge.tools.vm_lift form  <dump> <main_module_substr> <func_rva_hex> [serial_hex]
+  python -m reaforge.tools.vm_lift entry <dump> <main_module_substr> <entry_rva_hex> [oracle.exe]
 
-The plain form recovers the compared constant (self-validated). The `form` subcommand lifts the full
-arithmetic FORM: taint mid, extract the symbolic want(mid), and SMT-prove the recovered recurrence
-over all 2^32 mid via reaforge.core.peel.prove_recurrence.
+Plain: recover the compared constant (self-validated). `form`: lift the full arithmetic FORM — taint
+the input, extract the symbolic want(input), SMT-prove the recovered recurrence over all inputs via
+reaforge.core.peel.prove_recurrence. `entry`: lift an EPV'd basic block (e.g. the virtualized entry
+point) — run the VM with sentinel registers and read off its effect (exit edge + state delta).
 """
 from __future__ import annotations
 
@@ -33,7 +35,15 @@ import sys
 from collections import Counter
 
 from capstone import CS_ARCH_X86, CS_MODE_64, Cs, x86
-from unicorn import UC_ARCH_X86, UC_HOOK_CODE, UC_MODE_64, UC_PROT_ALL, Uc, UcError
+from unicorn import (
+    UC_ARCH_X86,
+    UC_HOOK_CODE,
+    UC_HOOK_MEM_WRITE,
+    UC_MODE_64,
+    UC_PROT_ALL,
+    Uc,
+    UcError,
+)
 from unicorn.x86_const import (
     UC_X86_REG_EAX,
     UC_X86_REG_GS_BASE,
@@ -178,6 +188,132 @@ def lift(dump, mod_sub, func_rva, serial=0x75685AB2, expected_key=None, show=pri
             "verdict_recovered": eax_good, "self_ok": self_ok, "traced": st["n"]}
 
 
+_SENT = {"rax": 0x1111, "rbx": 0x2222, "rcx": 0x3333, "rdx": 0x4444, "rbp": 0x5555,
+         "rsi": 0x6666, "rdi": 0x7777, "r8": 0x8888, "r9": 0x9999, "r10": 0xA0A0,
+         "r11": 0xB0B0, "r12": 0xC0C0, "r13": 0xD0D0, "r14": 0xE0E0, "r15": 0xF0F0}
+
+
+def lift_entry(dump, mod_sub, entry_rva, serial=None, expected_key=None, oracle=None, show=print):
+    """Lift an EPV'd basic block (e.g. the virtualized entry point): the virtualized bytes are never
+    native, so run the VM from the block's entry with sentinel registers and read off the block's
+    *effect* — exit target, stack delta, register deltas, and the stores it makes to the image. That
+    state transition IS the native block the VM replaced (control-flow, not a computed value, so no
+    probe key / constant capture — the recovery is the semantic delta + the recovered exit edge)."""
+    mod_sub = mod_sub.lower()
+    mf, rdr, segs, mods, teb = load(dump)
+    main = next((m for m in mods if mod_sub in os.path.basename(m[0]).lower()), None)
+    if not main:
+        sys.exit(f"module ~{mod_sub!r} not in dump")
+    base, mend = main[1], main[2]
+    entry_va = base + entry_rva
+    md = Cs(CS_ARCH_X86, CS_MODE_64); md.detail = True
+
+    show(f"== VM-lift ENTRY (EPV block) ==  {os.path.basename(main[0])}  entry @ {entry_va:#x} (rva {entry_rva:#x})")
+    show("\n[1] STATIC")
+    _, vm_entry = native_prologue(rdr, entry_va, md, show=show)
+    # the VM region = the dump segment holding the jmp target; the block exits when RIP leaves it
+    vlo = vhi = None
+    if vm_entry is not None:
+        for s in segs:
+            if s.start_virtual_address <= vm_entry < s.start_virtual_address + s.size:
+                vlo, vhi = s.start_virtual_address, s.start_virtual_address + s.size; break
+    show(f"  VM region: [{vlo:#x}, {vhi:#x})" if vlo else "  (no VM region found)")
+
+    show("\n[2] EMULATE (sentinel registers; stop when control returns to native code)")
+    uc = Uc(UC_ARCH_X86, UC_MODE_64)
+    map_all(uc, rdr, segs)
+    STACK, SZ = STACK_BASE, STACK_SZ
+    try: uc.mem_map(STACK, SZ, UC_PROT_ALL)
+    except UcError: pass
+    if teb: uc.reg_write(UC_X86_REG_GS_BASE, teb)
+    rsp0 = STACK + SZ // 2
+    uc.reg_write(UC_X86_REG_RSP, rsp0)
+    ucr = {k: _ucreg(k) for k in _SENT}
+    for k, v in _SENT.items(): uc.reg_write(ucr[k], v)
+
+    st = {"n": 0, "exit": None, "writes": []}
+
+    def modname(a):
+        for n, b, e in mods:
+            if b <= a < e: return os.path.basename(n)
+        return None
+
+    def in_vm(a):
+        return vlo is not None and vlo <= a < vhi
+
+    def code_hook(u, addr, size, ud):
+        st["n"] += 1
+        if st["n"] > 2_000_000:
+            st["exit"] = ("insn-cap", addr); u.emu_stop(); return
+        if st["n"] > 1 and not in_vm(addr):
+            in_img = base <= addr < mend
+            dn = modname(addr)
+            if (in_img and addr not in (entry_va,)) or (not in_img and dn):
+                st["exit"] = ("native" if in_img else f"dll:{dn}", addr); u.emu_stop()
+
+    def mem_hook(u, access, addr, size, value, ud):
+        if (base <= addr < mend) and not in_vm(addr) and size <= 8:
+            st["writes"].append((addr, size, value & ((1 << (size * 8)) - 1)))
+
+    hc = uc.hook_add(UC_HOOK_CODE, code_hook)
+    hw = uc.hook_add(UC_HOOK_MEM_WRITE, mem_hook)
+    try:
+        uc.emu_start(entry_va, 0, count=0)
+    except UcError as e:
+        st["exit"] = st["exit"] or (f"UcError:{e}", uc.reg_read(UC_X86_REG_RIP))
+    finally:
+        uc.hook_del(hc); uc.hook_del(hw)
+
+    kind, exit_rip = st["exit"] if st["exit"] else ("none", 0)
+    rspd = (uc.reg_read(UC_X86_REG_RSP) - rsp0) & 0xFFFFFFFFFFFFFFFF
+    show(f"  traced {st['n']} instrs -> exit [{kind}] {exit_rip:#x} (rva {exit_rip-base:#x})")
+    show(f"  RSP delta: {rspd - (1<<64) if rspd >> 63 else rspd:#x}")
+    show("  register deltas (from sentinels):")
+    for k, v in _SENT.items():
+        nv = uc.reg_read(ucr[k])
+        if nv != v:
+            show(f"    {k} <- {nv:#x}" + ("   (-> image pointer)" if base <= nv < mend else ""))
+    seen = set(); stores = []
+    for addr, size, val in st["writes"]:
+        if addr in seen: continue
+        seen.add(addr); stores.append((addr, size, val))
+    show(f"  stores into the image ({len(stores)}):")
+    for addr, size, val in stores[:8]:
+        show(f"    [{addr:#x}] <- {val:#x}  ({size}b)")
+
+    show("\n[3] RECOVERED native block (semantic):")
+    show(f"    ; effect of the virtualized bytes {entry_rva:#x}..?  (sentinels in, state out)")
+    for k, v in _SENT.items():
+        nv = uc.reg_read(ucr[k])
+        if nv != v:
+            show(f"    {k} = {nv:#x}")
+    for addr, size, val in stores[:8]:
+        w = {1: "byte", 2: "word", 4: "dword", 8: "qword"}.get(size, "")
+        show(f"    mov {w} [{addr:#x}], {val:#x}")
+    show(f"    jmp {exit_rip:#x}")
+
+    show("\n[4] VALIDATE")
+    show("  native continuation at the exit target:")
+    for ins in md.disasm(rdr.read(exit_rip, 0x20), exit_rip):
+        show(f"    {ins.address:#x}  {ins.mnemonic:8} {ins.op_str}")
+        if ins.mnemonic in ("jmp", "ret", "call"): break
+    if oracle and os.path.exists(oracle):
+        import pefile
+        pe = pefile.PE(oracle)
+        oep = pe.OPTIONAL_HEADER.AddressOfEntryPoint
+        show(f"  oracle entry @ rva {oep:#x} (cross-check — not used to drive the lift):")
+        ocode = pe.get_data(entry_rva, 0x20)
+        tgt = None
+        for ins in md.disasm(ocode, base + entry_rva):
+            show(f"    {ins.address:#x}  {ins.mnemonic:8} {ins.op_str}")
+            if ins.mnemonic == "jmp":
+                try: tgt = int(ins.op_str, 16)
+                except ValueError: pass
+                break
+        show(f"  exit-target match: {tgt == exit_rip}  (lifted {exit_rip:#x} vs oracle {tgt and hex(tgt)})")
+    return {"exit": exit_rip, "rsp_delta": rspd, "stores": stores}
+
+
 def _emulate_symbolic(rdr, segs, teb, md, amap, func_va, serial, max_insns=4_000_000):
     """Run the VM'd function with `mid` tainted at the GetVolumeInformationA stub and a taint-recording
     SymEngine shadow. Returns (snaps, mid_sym, want) — want captured concretely from the probe key."""
@@ -317,29 +453,37 @@ def _opc(u, ins, op):
 
 
 _UCMAP = None
-def _reg(u, name):
+def _ucreg(name):
     global _UCMAP
     if _UCMAP is None:
         import unicorn.x86_const as ux
         _UCMAP = {k[len("UC_X86_REG_"):].lower(): getattr(ux, k)
                   for k in dir(ux) if k.startswith("UC_X86_REG_")}
-    r = _UCMAP.get(name.lower())
+    return _UCMAP.get(name.lower())
+
+
+def _reg(u, name):
+    r = _ucreg(name)
     return u.reg_read(r) if r is not None else 0
 
 
 def main(argv):
-    form = len(argv) > 1 and argv[1] == "form"
-    if form: argv = argv[:1] + argv[2:]
+    mode = argv[1] if len(argv) > 1 and argv[1] in ("form", "entry") else None
+    if mode: argv = argv[:1] + argv[2:]
     if len(argv) < 4:
         sys.exit(__doc__)
-    serial = int(argv[4], 16) if len(argv) > 4 else 0x75685AB2
     ek = None
     try:
         from targets.license_app.config import expected_key as ek
     except Exception:
         pass
-    fn = lift_form if form else lift
-    fn(argv[1], argv[2], int(argv[3], 16), serial=serial, expected_key=ek)
+    if mode == "entry":
+        oracle = argv[4] if len(argv) > 4 else None
+        lift_entry(argv[1], argv[2], int(argv[3], 16), oracle=oracle)
+    else:
+        serial = int(argv[4], 16) if len(argv) > 4 else 0x75685AB2
+        fn = lift_form if mode == "form" else lift
+        fn(argv[1], argv[2], int(argv[3], 16), serial=serial, expected_key=ek)
 
 
 if __name__ == "__main__":

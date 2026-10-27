@@ -16,6 +16,9 @@ path is wired to our own reaforge tools, no reference binary:
   * `lift_vm_form()` — reaforge.tools.vm_lift (form): taint the input, extract the symbolic
                       want(input) from the VM, and SMT-prove the recovered recurrence over all inputs
                       (reaforge.core.peel.prove_recurrence) — the full arithmetic form, oracle-free.
+  * `lift_vm_entry()` — reaforge.tools.vm_lift (entry): lift an EPV'd basic block (the virtualized
+                      entry point) by running the VM with sentinel registers and reading off its
+                      effect — exit edge + state delta. Control-flow, so a delta, not a value.
 
 `unpack(packed, dump=...)` runs unwrap -> reconstruct and returns a ThemidaUnpacked result; `lift_vm()`
 devirtualizes the VM'd regions (EPV entry + VM_START/VM_END body). `vm_model()` stays None — the VM is
@@ -88,6 +91,13 @@ class Themida(Protector):
         from reaforge.tools.vm_lift import lift_form
         return lift_form(dump, main_module_substr, func_rva, serial=serial,
                          expected_key=expected_key, show=show)
+
+    def lift_vm_entry(self, dump, main_module_substr, entry_rva, oracle=None, show=print):
+        """Lift an EPV'd (Entry-Point-Virtualized) basic block: run the VM from the block entry with
+        sentinel registers and recover its effect — exit edge + register/memory state delta — which is
+        the native block the VM replaced (control-flow, so a delta rather than a computed value)."""
+        from reaforge.tools.vm_lift import lift_entry
+        return lift_entry(dump, main_module_substr, entry_rva, oracle=oracle, show=show)
 
     def unpack(self, packed, snap=None, progress=lambda m: None, *,
                dump=None, main_module_substr=None, iat_rva=None, iat_size=None,
