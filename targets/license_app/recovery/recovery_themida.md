@@ -41,6 +41,15 @@ Target: `license_app.themida.exe` — **Themida x64 3.2.4 (2026, demo)** protect
   Honest frame: without the oracle you'd trace each of the 28 wrapper stubs to its real API and lift the two VM
   regions by hand (the dedicated-unwrapper / VM-lifter work). The oracle shortcut is valid only because we own
   the original — it demonstrates exactly what a full unwrap+lift would produce.
+- **IAT unwrapper — DONE, oracle-free** (`reaforge/tools/themida_unwrap.py`). The real frontier, built as a
+  reusable reaforge tool: map a full-memory process dump (Task Manager → Create dump file) into Unicorn, read
+  the IAT, and **emulate each wrapper stub to its real API** — stopping on the TAIL-jmp (stack back to the
+  wrapper's entry) and skipping Themida's intermediate **anti-analysis API calls** (the first cut landed 4
+  kernel32 wrappers on `Sleep` until the tail-jmp fix). Result on this binary: **36/36 imports resolved,
+  validated 36/36 against the oracle** — the oracle only checked the answer, never drove it. The IAT can now be
+  rebuilt from a dump with **no reference binary**; only the two VM'd regions (EPV entry, `check_license` body)
+  still need a VM-lifter.
+  Run: `python -m reaforge.tools.themida_unwrap <dump.dmp> license_app.themida 8250 168`
 
 ## The bypass (no unpack, no devirt)
 
