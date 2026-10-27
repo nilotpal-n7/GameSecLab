@@ -50,6 +50,19 @@ Target: `license_app.themida.exe` — **Themida x64 3.2.4 (2026, demo)** protect
   rebuilt from a dump with **no reference binary**; only the two VM'd regions (EPV entry, `check_license` body)
   still need a VM-lifter.
   Run: `python -m reaforge.tools.themida_unwrap <dump.dmp> license_app.themida 8250 168`
+- **VM-lifter — DONE, oracle-free** (`reaforge/tools/vm_lift.py`). The last frontier: de-virtualize the
+  `check_license` VM body itself. It is `push rsi/rbx; sub rsp,0x58; mov rsi,rcx; jmp 0x1402bd04c` — a native
+  prologue then a `jmp` into the SecureEngine VM (region `0x140021000`+0x2ee000, Falcon in the demo). The lifter
+  maps the full-memory dump into Unicorn and **runs the whole VM concretely from the native entry** (16,621
+  instrs), stubbing the two OS calls the body makes (`GetVolumeInformationA` → our serial, `strtoul` → parse the
+  key). Themida's VM juggles the value through so many stack slots that **byte-level taint does not survive** it
+  (exactly why it resists symbolic devirt — observed: the tainted parsed-key is clobbered within ~40 VM instrs),
+  so the constant is captured **concretely**: feed a distinctive probe key and read the 32-bit value it is
+  compared against. Result: **recovered `want = 0x39853C6F`**, self-validated oracle-free — wrong key `DEADBEEF`
+  → verdict `0` (reject), recovered key `39853C6F` → verdict `1` (**accept**); independent oracle cross-check
+  `expected_key(0x75685AB2) = 0x39853C6F` → **MATCH**. The virtualized licence constant comes straight out of the
+  running SecureEngine VM, no reference binary.
+  Run: `python -m reaforge.tools.vm_lift <dump.DMP> themida 14e0`
 
 ## The bypass (no unpack, no devirt)
 

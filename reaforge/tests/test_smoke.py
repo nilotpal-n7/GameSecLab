@@ -50,6 +50,17 @@ def test_category_and_title_modules_import():
     assert dc.CONFIG.export == "hl_hash_utf8"
 
 
+def test_protector_tools_wired():
+    """Themida from-dump tools import and the protector exposes unwrap/reconstruct/lift_vm."""
+    from reaforge.tools import pe_reconstruct, themida_unwrap, vm_lift  # noqa: F401
+    assert callable(themida_unwrap.unwrap) and callable(pe_reconstruct.reconstruct)
+    assert callable(vm_lift.lift) and callable(vm_lift.emulate)
+    from reaforge.core.protectors import for_name
+    t = for_name("themida")
+    assert t.available()
+    assert all(hasattr(t, m) for m in ("unwrap_iat", "reconstruct", "lift_vm"))
+
+
 def test_license_app_keygen():
     """Clean-build keygen matches the VM-validated ground truth (5 serials)."""
     from targets.license_app.config import expected_key

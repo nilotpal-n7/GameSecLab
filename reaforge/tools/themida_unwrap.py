@@ -88,10 +88,9 @@ def export_map(mods):
     return amap
 
 
-def main(argv):
-    if len(argv) < 5:
-        sys.exit(__doc__)
-    dump, mod_sub, iat_rva, iat_sz = argv[1], argv[2].lower(), int(argv[3], 16), int(argv[4], 16)
+def unwrap(dump, mod_sub, iat_rva, iat_sz, show=print):
+    """Resolve an API-wrapped IAT from a full-memory dump. Returns [(rva, slot_val, tag, api), ...]."""
+    mod_sub = mod_sub.lower()
     mf, rdr, segs, mods, teb = load(dump)
     main_mod = next((m for m in mods if mod_sub in os.path.basename(m[0]).lower()), None)
     if not main_mod:
@@ -150,7 +149,7 @@ def main(argv):
         return land["a"]
 
     n = iat_sz // 8
-    print(f"== Themida IAT unwrap ==  module {os.path.basename(main_mod[0])} base {base:#x}  IAT {iat_va:#x} x{n}")
+    show(f"== Themida IAT unwrap ==  module {os.path.basename(main_mod[0])} base {base:#x}  IAT {iat_va:#x} x{n}")
     resolved = wrapped = direct = 0
     out = []
     for k in range(n):
@@ -170,9 +169,15 @@ def main(argv):
             if api: resolved += 1; tag = "UNWRAPPED"
             else: wrapped += 1; tag = "unresolved"; api = f"(stub {v:#x}, landed {land:#x})" if land else f"(stub {v:#x})"
         out.append((slot - base, v, tag, api))
-        print(f"  [+{slot-base:#06x}] {v:#018x}  {tag:10} {api}")
-    print(f"\n  direct {direct}  UNWRAPPED {resolved}  unresolved {wrapped}  (of {len([o for o in out])})")
+        show(f"  [+{slot-base:#06x}] {v:#018x}  {tag:10} {api}")
+    show(f"\n  direct {direct}  UNWRAPPED {resolved}  unresolved {wrapped}  (of {len(out)})")
     return out
+
+
+def main(argv):
+    if len(argv) < 5:
+        sys.exit(__doc__)
+    return unwrap(argv[1], argv[2], int(argv[3], 16), int(argv[4], 16))
 
 
 if __name__ == "__main__":
