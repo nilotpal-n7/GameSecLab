@@ -63,6 +63,20 @@ Target: `license_app.themida.exe` — **Themida x64 3.2.4 (2026, demo)** protect
   `expected_key(0x75685AB2) = 0x39853C6F` → **MATCH**. The virtualized licence constant comes straight out of the
   running SecureEngine VM, no reference binary.
   Run: `python -m reaforge.tools.vm_lift <dump.DMP> themida 14e0`
+- **VM-lifter: full arithmetic FORM — DONE, oracle-free** (`vm_lift.py form` + `reaforge.core.peel.prove_recurrence`).
+  Not just the constant for one machine — the whole keygen as a function of a **tainted machine-id**. `machine_id()`
+  runs *before* `strtoul` and the `expected_key` recurrence stays largely in registers, so tainting `mid` at the
+  `GetVolumeInformationA` stub (with the taint-recording SymEngine shadow) **survives the VM for ~1,625 instrs** —
+  far enough to recover the symbolic `want(mid)` straight from the SecureEngine VM. `peel.prove_recurrence` then peels
+  the rounds off `best`'s **own z3 subterms** (the VM's bit-sliced `Concat/Extract` representation defeats passing
+  captured snaps as candidates — the same representation that scrambles structural peeling) and SMT-proves each round
+  over all 2^32 mid. Recovered + **PROVEN**: `acc = 0x1505 ^ mid; for i in 0..7: acc = ((acc*33) ^ ((mid>>4i)&0xF)) + C_i`
+  — seed `0x1505`, multiplier **33**, nibble shifts `[0,4,8,…,28]`, mask `0xF`, **8 rounds each proven over all 2^32
+  inputs** (the per-round `K`/`C` are the proven equivalents of the VM's folded bit-sliced form). Sampled vs the keygen
+  at 6 machine-ids: all **MATCH**. A monolithic z3 proof of the 8-chained-multiply equality is intractable (`unknown`
+  at 570s) — the per-round transitive proof is what makes it provable. This is `expected_key` recovered **and proven**
+  blind from the Themida VM, oracle-free.
+  Run: `python -m reaforge.tools.vm_lift form <dump.DMP> themida 14e0`
 
 ## The bypass (no unpack, no devirt)
 

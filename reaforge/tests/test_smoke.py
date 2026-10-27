@@ -54,11 +54,27 @@ def test_protector_tools_wired():
     """Themida from-dump tools import and the protector exposes unwrap/reconstruct/lift_vm."""
     from reaforge.tools import pe_reconstruct, themida_unwrap, vm_lift  # noqa: F401
     assert callable(themida_unwrap.unwrap) and callable(pe_reconstruct.reconstruct)
-    assert callable(vm_lift.lift) and callable(vm_lift.emulate)
+    assert callable(vm_lift.lift) and callable(vm_lift.emulate) and callable(vm_lift.lift_form)
     from reaforge.core.protectors import for_name
     t = for_name("themida")
     assert t.available()
-    assert all(hasattr(t, m) for m in ("unwrap_iat", "reconstruct", "lift_vm"))
+    assert all(hasattr(t, m) for m in ("unwrap_iat", "reconstruct", "lift_vm", "lift_vm_form"))
+
+
+def test_prove_recurrence_offline():
+    """peel.prove_recurrence recovers + SMT-proves the offset recurrence from a symbolic want(mid)
+    (no dump needed): build expected_key symbolically, peel it blind, check the recovered structure."""
+    import claripy
+
+    from reaforge.core import peel
+    mid = claripy.BVS("inp_mid", 32)
+    acc = claripy.BVV(0x1505, 32) ^ mid
+    for i in range(8):
+        acc = ((acc * 33) ^ (claripy.LShR(mid, 4 * i) & 0xF)) + 7 * i   # == expected_key(mid)
+    res = peel.prove_recurrence(acc, mid, out=lambda *a: None)
+    assert res["seed"] == 0x1505 and res["seed_proven"]
+    assert set(res["mult"]) == {33} and res["shifts"] == [0, 4, 8, 12, 16, 20, 24, 28]
+    assert len(res["rounds"]) == 8
 
 
 def test_license_app_keygen():

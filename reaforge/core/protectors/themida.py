@@ -13,6 +13,9 @@ path is wired to our own reaforge tools, no reference binary:
   * `lift_vm()`    — reaforge.tools.vm_lift: emulate a VM'd function's SecureEngine VM from the dump
                       and recover what it computes (the constant the input is checked against),
                       self-validated — oracle-free devirt of the Falcon VM region.
+  * `lift_vm_form()` — reaforge.tools.vm_lift (form): taint the input, extract the symbolic
+                      want(input) from the VM, and SMT-prove the recovered recurrence over all inputs
+                      (reaforge.core.peel.prove_recurrence) — the full arithmetic form, oracle-free.
 
 `unpack(packed, dump=...)` runs unwrap -> reconstruct and returns a ThemidaUnpacked result; `lift_vm()`
 devirtualizes the VM'd regions (EPV entry + VM_START/VM_END body). `vm_model()` stays None — the VM is
@@ -76,6 +79,15 @@ class Themida(Protector):
         from reaforge.tools.vm_lift import lift
         return lift(dump, main_module_substr, func_rva, serial=serial,
                     expected_key=expected_key, show=show)
+
+    def lift_vm_form(self, dump, main_module_substr, func_rva, serial=0x75685AB2,
+                     expected_key=None, show=print):
+        """Lift the VM'd function's full arithmetic FORM: taint the input, extract the symbolic
+        want(input) from the VM, and SMT-prove the recovered recurrence over all inputs (oracle-free,
+        via reaforge.core.peel.prove_recurrence)."""
+        from reaforge.tools.vm_lift import lift_form
+        return lift_form(dump, main_module_substr, func_rva, serial=serial,
+                         expected_key=expected_key, show=show)
 
     def unpack(self, packed, snap=None, progress=lambda m: None, *,
                dump=None, main_module_substr=None, iat_rva=None, iat_size=None,

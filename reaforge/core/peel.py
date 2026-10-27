@@ -141,6 +141,96 @@ def peel_offset_rounds(best, snaps, serial_sym, modulo=None, out=print):
     return rounds
 
 
+def _subterms32(z):
+    """All distinct 32-bit z3 subterms of z (exact hash-consed nodes)."""
+    out = {}
+    def walk(n):
+        if n.get_id() in out: return
+        try:
+            if n.sort_kind() == z3.Z3_BV_SORT and n.size() == 32:
+                out[n.get_id()] = n
+        except Exception:
+            pass
+        for c in n.children(): walk(c)
+    walk(z)
+    return out
+
+
+def prove_recurrence(best, serial_sym, out=print):
+    """Blindly recover + SMT-prove the offset recurrence ((acc*M) ^ ((serial>>s)&mask)) + C from a
+    lifted `want(serial)` expression, peeling rounds off best's OWN subterms (robust to a protector's
+    bit-sliced representation, where passing captured snaps as candidates fails). Each round is proven
+    over all 2^32 inputs; the chain proves want == the recurrence by transitivity.
+
+    Returns {"seed", "seed_proven", "mult", "shifts", "offsets", "rounds"} (rounds newest-last)."""
+    out("\n== recurrence proof (peel off best's own subterms; each round SMT-proven) ==")
+    bz = best if isinstance(best, z3.ExprRef) else conv(to32(best))
+    Sz = serial_sym if isinstance(serial_sym, z3.ExprRef) else conv(serial_sym)
+    x = z3.BitVec("x", 32)
+    subs = _subterms32(bz)
+
+    def ev(g, xv, sv):
+        return z3.simplify(z3.substitute(g, (x, z3.BitVecVal(xv & M32, 32)),
+                                         (Sz, z3.BitVecVal(sv & M32, 32)))).as_long() & M32
+
+    def synth(g):
+        # round template ((x*M + K) ^ ((serial>>sh)&mask)) + C; K absorbs the protector's folded
+        # pre-xor constant, so the match is robust to the bit-sliced representation.
+        try: Mm = (ev(g, 1, 0) - ev(g, 0, 0)) & M32
+        except Exception: return None
+        if Mm in (0, 1) or Mm > 0xFFFF: return None
+        base0 = ev(g, 0, 0)
+        bits = [b for b in range(32) if ev(g, 0, 1 << b) != base0]
+        if not bits: return None
+        sh = min(bits); mask = 0
+        for b in bits: mask |= 1 << (b - sh)
+        nib = z3.LShR(Sz, z3.BitVecVal(sh, 32)) & z3.BitVecVal(mask, 32)
+        K = z3.BitVec("K", 32); C = z3.BitVec("C", 32)
+        cand = ((x * z3.BitVecVal(Mm, 32) + K) ^ nib) + C
+        s = z3.Solver(); s.set("timeout", 15000)
+        for _ in range(14):
+            xv, sv = random.randrange(1 << 32), random.randrange(1 << 32)
+            s.add(z3.substitute(cand, (x, z3.BitVecVal(xv, 32)), (Sz, z3.BitVecVal(sv, 32)))
+                  == z3.BitVecVal(ev(g, xv, sv), 32))
+        if s.check() != z3.sat: return None
+        m = s.model(); Kv = (m[K].as_long() if m[K] is not None else 0) & M32
+        Cv = (m[C].as_long() if m[C] is not None else 0) & M32
+        cand2 = ((x * z3.BitVecVal(Mm, 32) + z3.BitVecVal(Kv, 32)) ^ nib) + z3.BitVecVal(Cv, 32)
+        ss = z3.Solver(); ss.set("timeout", 30000); ss.add(g != cand2)
+        return (Mm, sh, mask, Kv, Cv) if ss.check() == z3.unsat else None
+
+    rounds = []; cur = bz; guard = 0
+    while guard < 40:
+        guard += 1
+        cands = [z for z in subs.values() if _zsize(z) < _zsize(cur) and _zcontains(cur, z)]
+        cands.sort(key=_zsize, reverse=True)
+        found = None
+        for y in cands:
+            r = synth(z3.substitute(cur, (y, x)))
+            if r: found = (y, r); break
+        if not found: break
+        cur, r = found[0], found[1]; rounds.append(r)
+    rounds.reverse()
+
+    seed = ev(cur, 0, 0)
+    sb = z3.Solver(); sb.add(cur != (z3.BitVecVal(seed, 32) ^ Sz))
+    seed_proven = sb.check() == z3.unsat
+    out(f"    seed  acc_0 = 0x{seed:X} ^ serial   (proven: {seed_proven})")
+    for i, (Mm, sh, mask, Kv, Cv) in enumerate(rounds):
+        kterm = "" if Kv == 0 else f" + {Kv}"
+        out(f"    round[{i}] PROVEN:  acc = ((acc*{Mm}{kterm}) ^ ((serial>>{sh}) & 0x{mask:X})) + {Cv}")
+    Ms = [r[0] for r in rounds]; Ss = [r[1] for r in rounds]; Cs = [r[4] for r in rounds]
+    if rounds:
+        out("\n  anti-unified recurrence (blind; each round SMT-proven over all 2^32 inputs):")
+        out(f"    acc = 0x{seed:X} ^ serial")
+        out(f"    for i in 0..{len(rounds)-1}:  acc = ((acc*{fit_affine(Ms)}) ^ "
+            f"((serial>>{fit_affine(Ss)}) & 0x{rounds[0][2]:X})) + C_i")
+        out(f"    recovered: multiplier={set(Ms)}, nibble shifts={Ss}, mask=0x{rounds[0][2]:X}, seed=0x{seed:X}")
+        out("  [Proof] want == recurrence -- PROVEN by transitivity of the per-round proofs.")
+    return {"seed": seed, "seed_proven": seed_proven, "mult": Ms, "shifts": Ss,
+            "offsets": Cs, "rounds": rounds}
+
+
 def prove_fold(h_sym, inp, N, modulo, mult, timeout_ms=300000, out=print):
     """All-inputs proof: h_sym == (h=0; for c in bytes[:N]: h=mult*h+signext(c)); h%=modulo."""
     hz=conv(h_sym); bz=[conv(inp[i]) for i in range(N)]

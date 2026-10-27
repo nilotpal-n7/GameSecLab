@@ -20,6 +20,11 @@ handler model:
                 (the oracle only checks the answer; it never drives the recovery).
 
   python -m reaforge.tools.vm_lift <dump> <main_module_substr> <func_rva_hex> [serial_hex]
+  python -m reaforge.tools.vm_lift form <dump> <main_module_substr> <func_rva_hex> [serial_hex]
+
+The plain form recovers the compared constant (self-validated). The `form` subcommand lifts the full
+arithmetic FORM: taint mid, extract the symbolic want(mid), and SMT-prove the recovered recurrence
+over all 2^32 mid via reaforge.core.peel.prove_recurrence.
 """
 from __future__ import annotations
 
@@ -173,6 +178,124 @@ def lift(dump, mod_sub, func_rva, serial=0x75685AB2, expected_key=None, show=pri
             "verdict_recovered": eax_good, "self_ok": self_ok, "traced": st["n"]}
 
 
+def _emulate_symbolic(rdr, segs, teb, md, amap, func_va, serial, max_insns=4_000_000):
+    """Run the VM'd function with `mid` tainted at the GetVolumeInformationA stub and a taint-recording
+    SymEngine shadow. Returns (snaps, mid_sym, want) — want captured concretely from the probe key."""
+    import claripy
+
+    from reaforge.core.engine import SymEngine
+    uc = Uc(UC_ARCH_X86, UC_MODE_64)
+    map_all(uc, rdr, segs)
+    for addr, sz in ((STACK_BASE, STACK_SZ), (KEY_BUF & ~0xFFF, 0x2000)):
+        try: uc.mem_map(addr, sz, UC_PROT_ALL)
+        except UcError: pass
+    if teb: uc.reg_write(UC_X86_REG_GS_BASE, teb)
+    uc.mem_write(KEY_BUF, b"DEADBEEF\x00")
+    rsp = STACK_BASE + STACK_SZ // 2
+    uc.mem_write(rsp, RET_SENTINEL.to_bytes(8, "little"))
+    uc.reg_write(UC_X86_REG_RSP, rsp); uc.reg_write(UC_X86_REG_RCX, KEY_BUF)
+    eng = SymEngine(uc, bits=64, taint_prefix="inp", record=True)
+    mid_sym = claripy.BVS("inp_mid", 32)
+    st = {"got": None, "want": [], "n": 0}
+
+    def ret_with(u, rax):
+        sp = u.reg_read(UC_X86_REG_RSP)
+        u.reg_write(UC_X86_REG_RIP, int.from_bytes(u.mem_read(sp, 8), "little"))
+        u.reg_write(UC_X86_REG_RSP, sp + 8); u.reg_write(UC_X86_REG_RAX, rax)
+
+    def hook(u, addr, size, ud):
+        if addr == RET_SENTINEL: u.emu_stop(); return
+        st["n"] += 1
+        if st["n"] > max_insns: u.emu_stop(); return
+        ln = amap.get(addr, "").lower()
+        if ln.endswith("!getvolumeinformationa"):
+            r9 = u.reg_read(UC_X86_REG_R9)
+            if r9:
+                u.mem_write(r9, int(serial).to_bytes(4, "little"))
+                for i in range(4): eng.mem[r9 + i] = claripy.Extract(i * 8 + 7, i * 8, mid_sym)
+            ret_with(u, 1); return
+        if ln.split("!")[-1] in ("strtoul", "_strtoul"):
+            kp = u.reg_read(UC_X86_REG_RCX); s = b""
+            for i in range(32):
+                c = u.mem_read(kp + i, 1)
+                if c == b"\x00": break
+                s += c
+            try: val = int(s.decode(errors="ignore"), 16) & 0xFFFFFFFF
+            except ValueError: val = 0
+            st["got"] = val; ret_with(u, val); return
+        try: ins = next(md.disasm(bytes(u.mem_read(addr, 16)), addr))
+        except StopIteration: return
+        if ins.mnemonic in FLAG_OPS and len(ins.operands) == 2 and st["got"] is not None:
+            v0, v1 = _opc(u, ins, ins.operands[0]), _opc(u, ins, ins.operands[1])
+            g = st["got"]
+            if v0 == g and v1 not in (None, g): st["want"].append(v1)
+            elif v1 == g and v0 not in (None, g): st["want"].append(v0)
+        try: eng.step(ins)
+        except Exception: pass
+
+    h = uc.hook_add(UC_HOOK_CODE, hook)
+    try: uc.emu_start(func_va, 0, count=0)
+    except UcError: pass
+    finally: uc.hook_del(h)
+    from collections import Counter
+    want = Counter(st["want"]).most_common(1)[0][0] if st["want"] else None
+    return eng.snaps, mid_sym, want
+
+
+def lift_form(dump, mod_sub, func_rva, serial=0x75685AB2, expected_key=None, show=print):
+    """Lift the VM'd function's full arithmetic FORM: the symbolic want(mid), then prove the recovered
+    offset recurrence over all 2^32 mid (reaforge.core.peel.prove_recurrence)."""
+    import z3
+
+    from reaforge.core import peel
+    mod_sub = mod_sub.lower()
+    mf, rdr, segs, mods, teb = load(dump)
+    main = next((m for m in mods if mod_sub in os.path.basename(m[0]).lower()), None)
+    if not main:
+        sys.exit(f"module ~{mod_sub!r} not in dump")
+    base = main[1]; func_va = base + func_rva
+    md = Cs(CS_ARCH_X86, CS_MODE_64); md.detail = True
+    amap = export_map(mods)
+    show(f"== VM-lift FORM ==  {os.path.basename(main[0])}  func @ {func_va:#x}  serial {serial:#010x}")
+    show("\n[1] EMULATE (mid tainted, taint-recording shadow)")
+    snaps, mid_sym, want = _emulate_symbolic(rdr, segs, teb, md, amap, func_va, serial)
+    if want is None:
+        show("  could not capture want — trace did not reach the key check."); return None
+    show(f"  captured want({serial:#x}) = {want:#010x}  from {len(snaps)} recorded snaps")
+
+    # the symbolic want(mid): the smallest recorded expr that evaluates to the captured constant
+    Sz = peel.conv(mid_sym)
+    def evS(z, sv):
+        return z3.simplify(z3.substitute(z, (Sz, z3.BitVecVal(sv & 0xFFFFFFFF, 32)))).as_long() & 0xFFFFFFFF
+    best = best_z = None
+    for a in snaps:
+        if not any(v.startswith("inp") for v in a.variables): continue
+        try: z = peel.conv(peel.to32(a))
+        except Exception: continue
+        try:
+            if evS(z, serial) == want and (best_z is None or peel._zsize(z) < peel._zsize(best_z)):
+                best, best_z = a, z            # keep the claripy expr for prove_recurrence
+        except Exception: pass
+    show(f"  symbolic want(mid) extracted: {best is not None}")
+    if best is None:
+        return None
+
+    show("\n[2] PROVE the recurrence")
+    res = peel.prove_recurrence(best_z, Sz, out=show)
+
+    show("\n[3] VALIDATE (oracle-free)")
+    pts = [serial, 0x12345678, 0xAABBCCDD, 0x00000000, 0xFFFFFFFF, 0xDEADBEEF]
+    show("  VM want(mid) sampled:")
+    for p in pts:
+        vmv = evS(best_z, p)
+        line = f"    want({p:#010x}) = {vmv:#010x}"
+        if expected_key is not None:
+            ek = expected_key(p) & 0xFFFFFFFF
+            line += f"   keygen={ek:#010x}  {'MATCH' if vmv == ek else 'DIFFER'}"
+        show(line)
+    return res
+
+
 def _opc(u, ins, op):
     """Concrete 32-bit value of an operand read live from Unicorn (reg / imm / mem)."""
     try:
@@ -205,6 +328,8 @@ def _reg(u, name):
 
 
 def main(argv):
+    form = len(argv) > 1 and argv[1] == "form"
+    if form: argv = argv[:1] + argv[2:]
     if len(argv) < 4:
         sys.exit(__doc__)
     serial = int(argv[4], 16) if len(argv) > 4 else 0x75685AB2
@@ -213,7 +338,8 @@ def main(argv):
         from targets.license_app.config import expected_key as ek
     except Exception:
         pass
-    lift(argv[1], argv[2], int(argv[3], 16), serial=serial, expected_key=ek)
+    fn = lift_form if form else lift
+    fn(argv[1], argv[2], int(argv[3], 16), serial=serial, expected_key=ek)
 
 
 if __name__ == "__main__":
