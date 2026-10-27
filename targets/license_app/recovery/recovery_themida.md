@@ -21,6 +21,17 @@ Target: `license_app.themida.exe` — **Themida x64 3.2.4 (2026, demo)** protect
 - **Clean OEP capture resisted** (HW BP neutralized; memory-access BPs fire on SecureEngine's decrypt reads).
   Modern Themida resists public unpacking the same way VMProtect 3.11 resists NoVmp — that version lag IS the
   lesson. A full clean dump (with the wrapped IAT rebuilt) is the hard, licensed-tool / manual frontier.
+- **Clean dump — DONE (code-complete).** Scylla targeting the exe (imagebase `0x140000000`, OEP `base+0x1490`):
+  Dump + Fix Dump → `dumps/license_app.themida_dump_SCY.exe`. The dump holds the original code at the original
+  RVAs — `main @0x2490`, `check_license @0x14E0` (prologue then `jmp` into the SecureEngine VM), the verdict
+  branch `test eax,eax / jnz` at `0x24AE/0x24B0`, strings intact. **IDA Hex-Rays decompiles `main` cleanly** —
+  the full licence-check control flow recovered from the protected binary.
+  Gotcha that cost us several tries: at the `GetVolumeInformationA` break RIP is inside kernel32, so the
+  integrated Scylla first dumped **kernel32** (imagebase `0x7FFE35320000`, our code absent). Fix: **Pick DLL →
+  the exe** so the target base is `0x140000000`.
+- **IAT caveat:** `Get Imports` = **8 valid / 28 wrapped** of 36 (Advanced API-Wrapping; `DIRECT IMPORTS = 0`).
+  Scylla can't resolve modern Themida wrappers, so the dump is **analyzable but not directly runnable** —
+  unwrapping the 28 stubs is the dedicated-unwrapper frontier. (A runnable crack = the live branch-flip bypass.)
 
 ## The bypass (no unpack, no devirt)
 
