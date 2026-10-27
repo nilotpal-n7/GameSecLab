@@ -6,5 +6,9 @@
   "C:\\Tools\\GameSecLab\\targets\\dead_cells\\dumps\\libhl.vmp.dll": {
     "reason": "Dead Cells libhl.dll: HashLink runtime I own, VMProtect 3.11-packed by me for this benchmark",
     "sha256": "f0467c9938fc0d1e5897ad6886478b65982fc071e84b28d8cd39cd4b622d4a3b"
+  },
+  "C:\\Tools\\GameSecLab\\targets\\license_app\\dumps\\license_app.themida.exe": {
+    "reason": "my own license_app, Themida-protected (demo) by me",
+    "sha256": "712d869a001846c8de5cafb0719bacbdffb86926c45d01d5d9b96a7ccadbd65d"
   }
 }
