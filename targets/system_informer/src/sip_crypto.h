@@ -1,11 +1,11 @@
 /* sip_crypto.h — primitive crypto + environment seam used by the Pro gate.
  *
  * pro_gate.cpp is written against THIS narrow interface so the entangled-KDF / verify logic is fixed and
- * matches license_signer.py byte for byte, while the actual primitives are supplied by the LicenseSeat
- * C++ SDK (Ed25519 verify, AES-256-GCM, HKDF-SHA256, HWID). The LicenseSeat bindings live in
- * sip_crypto_licenseseat.cpp (filled once the SDK header path is known); a self-contained portable
- * backing (sip_crypto_portable.cpp) can stand in so the gate is buildable/testable before the SDK is
- * wired. Exactly one backing is linked.
+ * matches license_signer.py byte for byte. The backing is sip_crypto_licenseseat.cpp:
+ *   - HWID + Ed25519 verify come from the LicenseSeat C++ SDK (device::generate_device_id,
+ *     crypto::verify_ed25519_signature).
+ *   - AES-256-GCM + HKDF-SHA256 + the .text CRC come from Windows CNG (BCrypt) — LicenseSeat's public
+ *     headers do not expose standalone AES-GCM/HKDF, and SI already relies on CNG.
  *
  * Contract (all little-endian where it matters; all functions are leaf, allocate nothing, never throw):
  *   - sip_hkdf_sha256: RFC 5869 HKDF with SHA-256. info = "SIP-offline-v1". Output 32 bytes.

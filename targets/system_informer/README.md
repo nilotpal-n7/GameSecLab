@@ -39,9 +39,10 @@ config.py           mask bases, slug, RVAs (single source of truth)
 src/
   si_pro_mask.h     branchless entangled mask (final)
   pro_gate.h        extern "C" bridge contract (final)
-  sip_crypto.h      crypto/HWID seam (LicenseSeat-backed)
+  sip_crypto.h      crypto/HWID seam (LicenseSeat + Windows CNG)
+  sip_crypto_licenseseat.cpp  the seam backing: HWID+Ed25519 via LicenseSeat, AES-GCM+HKDF via BCrypt
   pro_gate.cpp      the Pro licensing core (VMProtect-marked)
-  integration_misccmd.md   how to wire the dumper feature into misccmd.c (one feature, end to end)
+  integration_dumper.md   how to wire the dumper feature into mdump.c (one feature, end to end)
 recovery/
   recovery_system_informer.md   the IDA/x64dbg crack walkthrough
 dumps/              protected binaries + snapshots (gitignored)
@@ -65,7 +66,11 @@ that exact protected build.
 
 ## Build / protect (user runs these in the fork)
 
-See `src/integration_misccmd.md` for the wiring, and `recovery/recovery_system_informer.md` for the
-VMProtect/Themida pass settings and the RE walkthrough. The licensing core builds into `sip_progate.lib`
-with the **same CRT as System Informer** (`/MT` release, `/MTd` debug) and `/Zi /DEBUG /MAP` so the
-VMProtect pass can resolve the marker symbols.
+See `src/integration_dumper.md` for the wiring, and `recovery/recovery_system_informer.md` for the
+VMProtect/Themida pass settings and the RE walkthrough.
+
+**CRT trap:** `demo/licenseseat/lib/licenseseat.lib` is prebuilt `/MD` (dynamic CRT) while System Informer
+is `/MT` (static CRT); they cannot share one image. So the licensing core is its **own DLL**
+(`sip_progate.dll`, `/MD`, linking `licenseseat.lib` + `bcrypt.lib` + `VMProtectSDK64.lib`), which SI
+(`/MT`) calls across the primitives-only C ABI in `pro_gate.h` — no CRT objects cross the boundary. Build
+the DLL `/Zi /DEBUG /MAP`, then run the VMProtect pass on `sip_progate.dll` itself.

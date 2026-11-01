@@ -25,6 +25,9 @@
 
 #include <string.h>
 #include <stdint.h>
+#include <stdio.h>   /* fopen_s / fread / fclose */
+#include <time.h>    /* _time64                  */
+#include <intrin.h>  /* __rdtsc / __readgsqword  */
 
 /* Make the file buildable for local testing even without the VMProtect SDK on the include path; the
  * real protected build #includes the genuine header and the markers become VM entry/exit points. */
