@@ -4,6 +4,23 @@ This is the first feature wired all the way through, so the pattern is proven on
 Editor / DLL Injection / cross-DLL handshake follow the same shape. All edits are in the user's fork; the
 licensing core (`src/*.cpp`, `src/*.h`) is built into `sip_progate.lib` and linked into `SystemInformer`.
 
+## 0. Host build prerequisites (System Informer fork)
+
+The fork's build tooling (`build\build_init.cmd` -> `build_tools.cmd`) builds a `CustomBuildTool` that
+**targets `net10.0-windows`** and drives MSBuild with the `-mt` switch (MSBuild 17.14+/18.x). So the host
+needs the **.NET 10 SDK** installed, not just the runtime. Symptoms when it is missing (seen on this box,
+which had only .NET SDK 9.0.205 + the VS18-bundled .NET 10 *runtime*):
+
+- `dotnet msbuild -mt ...` -> `MSB1001: Unknown switch -mt` (SDK 9.0.205's MSBuild 17.13 is too old).
+- forcing VS18's MSBuild instead -> `MSB4236: SDK 'Microsoft.NET.Sdk' could not be found` (the .NET
+  Framework MSBuild has no SDK resolver wired).
+- lowering CustomBuildTool to `net9.0-windows` -> `CS1503` in `Utils.cs` (it uses a .NET 10 `Span<char>`
+  API). So the downgrade is not viable; install the SDK.
+
+Fix (user, one time): `winget install Microsoft.DotNet.SDK.10` (or https://aka.ms/dotnet/download). No
+`global.json` pins the version, so a side-by-side .NET 10 SDK is picked up automatically. Then
+`build\build_init.cmd` and the SI build below work as designed with no fork edits.
+
 ## 1. Build the licensing core as its OWN DLL (not a static lib) — the real CRT trap
 
 The prebuilt `demo/licenseseat/lib/licenseseat.lib` is **`/MD` (dynamic CRT), `_MSC_VER=1900`**; System
