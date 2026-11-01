@@ -9,6 +9,11 @@ Usage:
   python -m reaforge.orchestrator targets                       # list per-title workspaces
   python -m reaforge.orchestrator new-target <name> <category>  # scaffold targets/<name>/
   python -m reaforge.orchestrator run <title> [arg] [modes]     # recon + run the title's campaign
+  python -m reaforge.orchestrator license <path> [anchors]      # unprotected target: locate the license check (IDA)
+
+Protected targets (VMProtect/Themida) go through `run` -> recon -> classify -> emulation devirt. When
+recon finds no protector, there's nothing to devirt: `license` (and `run`'s no-protector branch) hand
+off to reaforge.tools.license_recon for a static locate+read, then keygen/patch.
 """
 from __future__ import annotations
 
@@ -207,13 +212,59 @@ def run_title(title: str, rest):
         facts = recon(packed, plan=False)
         prot = protectors.for_facts(facts)
         print(f"  protector: {prot.name + ' ' + prot.classify_version(facts) if prot else 'unknown'}")
-        if prot is not None and not prot.available():
+        if prot is None:
+            # no protector -> nothing to devirt; the job is static locate+read of the license check.
+            license_hint(packed, out_dir=TARGETS / title / "dumps")
+            return
+        if not prot.available():
             sys.exit(f"  {prot.unavailable_message()}\n"
                      f"  See targets/license_app/themida_plan.md for the unpack + protector-agnostic bypass route.")
     else:
         print(f"  (packed binary not present yet: {packed})")
     from reaforge.core.__main__ import main as core_main
     core_main(["reaforge.core", title, *rest])
+
+
+def _ida_path():
+    """Best-guess IDA launcher from the capability registry; falls back to 'ida.exe'."""
+    try:
+        from reaforge.tool_registry import PATHS, _first_existing
+        return _first_existing(PATHS.get("ida", [])) or _first_existing(PATHS.get("ida_headless", [])) or "ida.exe"
+    except Exception:
+        return "ida.exe"
+
+
+def license_hint(target, out_dir=None, anchors=None):
+    """Emit the license_recon step for an UNPROTECTED target (static locate+read of the check).
+
+    Runs in IDA on a copy; under the no-access rule the user runs it and shares the decompile. This is
+    the automated entry for the unprotected-license path (vs. the devirt pipeline for packed targets).
+    """
+    script = HERE / "tools" / "license_recon.py"
+    out = Path(out_dir) if out_dir else Path(target).resolve().parent / "dumps"
+    name = Path(target).name
+    print("\n== unprotected -> static license RE (reaforge.tools.license_recon) ==")
+    print("  no VM to lift; locate the license predicate, read it, then keygen or patch.")
+    print("  run in IDA on a COPY (no-access rule: you run it, share the decompile):")
+    print(f'    $env:QN_OUT = "{out}\\license_decomp.txt"'
+          + (f'; $env:QN_ANCHORS = "{anchors}"' if anchors else ""))
+    print(f'    & "{_ida_path()}" -A -S"{script}" "<copy of {name}>"')
+    print(f'    Get-Content "{out}\\license_decomp.txt"')
+    print("  then: read the predicate -> targets/<t>/keygen.py (recover) or patch_islicensed.py (force-true).")
+    print("  reference break: targets/quint_bezier/recovery/recovery_quint.md")
+
+
+def license_cmd(path, anchors=None):
+    p = Path(path).resolve()
+    if not p.exists():
+        sys.exit(f"no such file: {p}")
+    _check_authorized(p)
+    facts = recon(str(p), plan=False)
+    prot = protector_of(facts)
+    if prot != "unknown":
+        print(f"\n  note: recon classifies this as {prot!r} (protected) — the devirt path may apply; "
+              f"see `run <title>`. Locating the check statically anyway:")
+    license_hint(str(p), anchors=anchors)
 
 
 def main():
@@ -230,6 +281,8 @@ def main():
         new_target(sys.argv[2], sys.argv[3])
     elif cmd == "run" and len(sys.argv) >= 3:
         run_title(sys.argv[2], sys.argv[3:])
+    elif cmd == "license" and len(sys.argv) >= 3:
+        license_cmd(sys.argv[2], sys.argv[3] if len(sys.argv) >= 4 else None)
     else:
         sys.exit(__doc__)
 

@@ -27,10 +27,11 @@ try:
 except Exception:
     have_hr = False
 
-OUT = os.environ.get("QN_OUT") or os.path.join(os.environ.get("TEMP", "."), "qn_license_decomp.txt")
+OUT = os.environ.get("QN_OUT") or r"C:\Tools\GameSecLab\targets\quint_bezier\dumps\qn_license_decomp.txt"
 ANCHORS = ("Quint Bezier Pro", "LicensedTo", "QN_ACTION_TOOK_LICENSE_EXPIRED", "probezier.key",
-           "quintbezier.key", "Registered User", "ShowGraphLicenseName", "Genuine", "LICENSE_EXPIRED",
-           "Activation", "RegKey", "RegName")
+           "quintbezier.key", "prolasso.key", "Registered User", "ShowGraphLicenseName", "Genuine",
+           "LICENSE_EXPIRED", "Activat", "activat", "RegKey", "RegName", "ViewState", "CacheTag",
+           "Invalid", "Thank", "nq.com", "unlock", "Serial", "serial")
 
 # snapshot every segment's bytes once
 segs = []

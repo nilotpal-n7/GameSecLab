@@ -1,4 +1,10 @@
-# Target: quint_bezier (license RE — user's own software)
+# Target: quint_bezier (license RE — user's own software) — CRACKED
+
+**Status: Pro unlocked (oracle-free keygen).** Full write-up: [recovery/recovery_quint.md](recovery/recovery_quint.md).
+The Pro gate reduces to a hardcoded-constant XOR identity on `LicensedTo`/`ViewState`/`CacheTag`;
+Formula C (machine-independent) → `CacheTag = (nameSum<<48) ^ 0x917AA921821C49AB`, written to
+**`HKLM\Software\QuintBezier`** (machine-wide, so the SYSTEM-service governor sees it). No patch, no
+code, no server. `patch_islicensed.py` is the zero-crypto fallback.
 
 Authorized license reverse-engineering of **Quint Bezier**, the user's own commercial software
 (Authenticode `CN=Nilotpal(me)`, Company `Nilotpal(me)`), modeled on Process Lasso's structure. For
@@ -42,6 +48,19 @@ unpack/devirt needed (the reaforge Themida toolchain is not required here).
 
 ## Tools
 
-- `find_license.py` — IDA headless locator: xref the license anchor strings, Hex-Rays (or disasm) the
-  referencing functions. Run via `idat64 -A -S find_license.py <copy of the target>.exe`; writes the
-  decompile to `%TEMP%\qn_license_decomp.txt` (user reviews/redacts before sharing).
+- **`reaforge/tools/license_recon.py`** — the *general* IDA license-locator (anchors → direct refs +
+  pointer-table refs → Hex-Rays/disasm, size-capped), parameterized by `QN_ANCHORS`/`QN_SEED`/`QN_CAP`.
+  This is the reusable framework tool; prefer it for new targets.
+- `keygen.py` — Formula-C keygen: `python keygen.py "<name>"` → `ViewState`/`CacheTag` to write.
+- `patch_islicensed.py` — force-true patch of the Pro predicate (RVA `0x5170` governor / `0x116E90` GUI).
+- `find_license.py` / `gen2_hunt.py` / `reg_details.py` — the ad-hoc first cuts used during this break,
+  kept for reference; `license_recon.py` generalizes them. Output now lands in `dumps/` (not `%TEMP%`).
+
+## On automation (honest note)
+
+reaforge's orchestrator automates the **protected** path (authorize → recon → classify protector →
+emulation devirt). This target is **unprotected** (plain MSVC + symbols), so recon classifies "no
+protector" and the VM toolchain has nothing to lift — the work is static *locate + read + keygen*.
+That path is now a first-class tool (`license_recon.py`) rather than ad-hoc. Also: the HARD
+no-access rule means Claude can't run anything against the install dir — every step was a command the
+user executed — so reaforge drove via handed commands, not by operating on the files directly.
