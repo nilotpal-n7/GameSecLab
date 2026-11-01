@@ -14,6 +14,11 @@
 # Each title's binaries, snapshots, IDA dumps, traces, logs and imports live under targets/<title>/dumps/.
 targets/**/dumps/
 
+# ── system_informer: the Ed25519 issuer PRIVATE key is the entire security root — never commit it;
+#    issued .sipm licenses are regenerable from the signer, so keep them out of git too. ──
+targets/system_informer/issuer_keys/
+targets/system_informer/licenses/
+
 # ── REAForge generated/runtime files (keep code + READMEs, drop outputs) ──
 reaforge/capabilities.json
 reaforge/facts.json

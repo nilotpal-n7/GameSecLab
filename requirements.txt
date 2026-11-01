@@ -13,6 +13,9 @@ z3-solver>=4.12           # SMT proofs (peel.py); also a claripy dep, pinned exp
 pefile>=2023.2.7
 lief>=0.14
 
+# offline license signer oracle (Ed25519 + AES-256-GCM + HKDF) — targets/system_informer/license_signer.py
+cryptography>=44
+
 # lint + tooling
 ruff>=0.14
 
