@@ -22,6 +22,15 @@
 extern "C" {
 #endif
 
+/* Feature selectors (which decrypted ACCESS_MASK base the gate hands back). Consumers in SI's C code
+ * include only this header; the branchless selection lives in si_pro_mask.h, which reuses this enum. */
+typedef enum SipFeature {
+    SIP_FEAT_DUMP   = 0, /* Process Memory Dumper  (PhWriteMiniDumpProcess / mdump.c) base 0x0450 */
+    SIP_FEAT_INJECT = 1, /* DLL Injection                                            base 0x002A */
+    SIP_FEAT_EDIT   = 2, /* live Memory Editor write access (memedit.c)              base 0x0038 */
+    SIP_FEAT__COUNT = 3
+} SipFeature;
+
 /* Result of sip_gate_init(). The feature code only ever needs OK vs not-OK, but the distinct codes let
  * the RE walkthrough show WHERE a given tampering lands (decrypt failure vs signature vs expiry). */
 typedef enum SipInitResult {

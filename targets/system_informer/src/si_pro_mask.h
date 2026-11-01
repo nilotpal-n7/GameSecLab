@@ -22,19 +22,12 @@
 #define SI_PRO_MASK_H
 
 #include <windows.h>  /* ULONG, LONG, ACCESS_MASK */
+#include "pro_gate.h" /* SipFeature (the public contract owns the enum) */
 
 /* The unlicensed trap mask. Grants a handle but no forensic right, so misuse denies at the syscall. */
 #ifndef SIP_TRAP_MASK
 #define SIP_TRAP_MASK ((ULONG)0x00001000) /* PROCESS_SUSPEND_RESUME */
 #endif
-
-/* Feature selectors used across the bridge (which decrypted base to hand back). */
-typedef enum SipFeature {
-    SIP_FEAT_DUMP   = 0, /* Process Memory Dumper  (PhWriteMiniDumpProcess / misccmd.c) base 0x0450 */
-    SIP_FEAT_INJECT = 1, /* DLL Injection          (misccmd.c)                          base 0x002A */
-    SIP_FEAT_EDIT   = 2, /* live Memory Editor write access (memedit.c)                 base 0x0038 */
-    SIP_FEAT__COUNT = 3
-} SipFeature;
 
 /* Branchless mask selection. `entitled`, `crc_ok`, `nodbg` MUST each be exactly 0 or 1.
  * Returns `base` when all three hold, otherwise `trap`. No comparisons, no branches. */

@@ -1,0 +1,9 @@
+; sip_progate.dll exports — the primitives-only C ABI from pro_gate.h.
+; Using a .def keeps undecorated extern "C" names and generates a clean import lib (sip_progate.lib)
+; for System Informer (/MT) to link without pulling in the DLL's /MD CRT.
+LIBRARY sip_progate
+EXPORTS
+    sip_gate_init
+    sip_is_pro
+    sip_access_mask
+    sip_xdll_respond
