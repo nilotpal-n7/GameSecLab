@@ -18,8 +18,27 @@ which had only .NET SDK 9.0.205 + the VS18-bundled .NET 10 *runtime*):
   API). So the downgrade is not viable; install the SDK.
 
 Fix (user, one time): `winget install Microsoft.DotNet.SDK.10` (or https://aka.ms/dotnet/download). No
-`global.json` pins the version, so a side-by-side .NET 10 SDK is picked up automatically. Then
-`build\build_init.cmd` and the SI build below work as designed with no fork edits.
+`global.json` pins the version, so a side-by-side .NET 10 SDK is picked up automatically.
+
+Two more host accommodations were needed on this box (fork edits, gitignored; or install the VS components
+instead). These do not affect the shipped `SystemInformer.exe` or the gate:
+
+- **CustomBuildTool NativeAOT**: `tools\CustomBuildTool\CustomBuildTool.csproj` publishes NativeAOT for
+  x86;x64;arm64 and the x86 native-gen fails here (`PublishAot`). Set `<PublishAot>false</PublishAot>` +
+  `<PublishTrimmed>false</PublishTrimmed>` (it uses source-gen JSON, so trimming off is safe) to get a
+  managed self-contained `CustomBuildTool.exe`, OR install the NativeAOT x86 cross toolset.
+- **Spectre libs**: Release configs set `<SpectreMitigation>Spectre</SpectreMitigation>` in
+  `Common.User.props` -> `MSB8040`. Either install "MSVC C++ Spectre-mitigated libs" (VS Installer,
+  individual components, for the v180 toolset x86+x64), or set those to `false` (done here; irrelevant to
+  the RE-lab demo).
+
+Build (user-mode only; skips the kernel driver and signing):
+
+    build\build_msbuild.cmd SystemInformer.sln -t:SystemInformer -restore -p:Configuration=Release -p:Platform=x64 -m
+
+The `SystemInformer` vcxproj PostBuildEvent (`build_zdriver_sdk.cmd`) prints a "Fatal error." here (driver
+SDK step, needs the WDK); it runs AFTER the link, so `bin\Release64\SystemInformer.exe` is already produced
+and msbuild still exits 0. KPH is off for the demo, so the driver is not needed.
 
 ## 1. Build the licensing core as its OWN DLL (not a static lib) — the real CRT trap
 
@@ -30,9 +49,12 @@ Informer is **`/MT` (static CRT)**. A static `sip_progate.lib` linked into `Syst
 
 So the licensing core is its **own DLL**, `sip_progate.dll`, built `/MD` with the toolset that matches the
 SDK, linking `licenseseat.lib` + `bcrypt.lib` + `VMProtectSDK64.lib` + **OpenSSL `libcrypto64MD.lib`**
-(licenseseat.lib's `EVP_*` live in libcrypto — `C:\Program Files\OpenSSL-Win64\lib\VC\`) + `advapi32.lib`
-(its device-fingerprint `Reg*` calls) + `crypt32`/`ws2_32`/`user32`. At runtime `sip_progate.dll` therefore
-also needs `libcrypto-3-x64.dll` beside it (ship it with the installer). `SystemInformer.exe` (`/MT`) calls it
+(licenseseat.lib's `EVP_*` live in libcrypto — `C:\Program Files\OpenSSL-Win64\lib\VC\libcrypto64MD.lib`,
+which is **OpenSSL 1.1**) + `advapi32.lib` (its device-fingerprint `Reg*` calls) + `crypt32`/`ws2_32`/
+`user32`. At runtime `sip_progate.dll` therefore needs **`libcrypto-1_1-x64.dll`** beside it (from
+`C:\Program Files\OpenSSL-Win64\bin\`) plus the VC++ `/MD` redist (`VCRUNTIME140.dll`, `VCRUNTIME140_1.dll`,
+`MSVCP140.dll` — present system-wide with VS installed; ship via the installer otherwise). Deploy these next
+to `SystemInformer.exe` (its `bin\Release64\`). `SystemInformer.exe` (`/MT`) calls it
 only across the **primitives-only C ABI in `pro_gate.h`** — no C++ object, no CRT allocation, ever crosses
 the boundary, so each module keeps its own CRT. This is why `pro_gate.h` was designed POD-only. Ship the
 matching VC++ runtime (or the SDK's `/MD` deps) beside the DLL.
