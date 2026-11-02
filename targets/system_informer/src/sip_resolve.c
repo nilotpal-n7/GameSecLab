@@ -41,7 +41,11 @@ static HMODULE SipProgateModule(void)
     return module;
 }
 
-SipInitResult sip_gate_init(const char *machine_file_path)
+/* guard(suppress): these wrappers call into sip_progate.dll through GetProcAddress pointers. The host and
+ * plugin are built with Control Flow Guard / XFG, but sip_progate is VMProtect-packed and its real entry
+ * points are not valid CFG indirect-call targets, so an instrumented icall would fast-fail (0xC0000409).
+ * Suppress the CFG/XFG check for the icalls in these shims (the target is our own, trusted module). */
+__declspec(guard(suppress)) SipInitResult sip_gate_init(const char *machine_file_path)
 {
     typedef SipInitResult (*InitFn)(const char *);
     HMODULE module = SipProgateModule();
@@ -72,7 +76,7 @@ SipInitResult sip_gate_init(const char *machine_file_path)
     return function ? function(machine_file_path) : SIP_NO_LICENSE;
 }
 
-int sip_is_pro(void)
+__declspec(guard(suppress)) int sip_is_pro(void)
 {
     typedef int (*IsProFn)(void);
     HMODULE module = SipProgateModule();
@@ -81,7 +85,7 @@ int sip_is_pro(void)
     return function ? function() : 0;
 }
 
-ACCESS_MASK sip_access_mask(int feature)
+__declspec(guard(suppress)) ACCESS_MASK sip_access_mask(int feature)
 {
     typedef ACCESS_MASK (*MaskFn)(int);
     HMODULE module = SipProgateModule();
@@ -91,7 +95,7 @@ ACCESS_MASK sip_access_mask(int feature)
     return function ? function(feature) : (ACCESS_MASK)0x1000;
 }
 
-int sip_xdll_respond(const unsigned char challenge[32], unsigned char response_out[32])
+__declspec(guard(suppress)) int sip_xdll_respond(const unsigned char challenge[32], unsigned char response_out[32])
 {
     typedef int (*RespondFn)(const unsigned char *, unsigned char *);
     HMODULE module = SipProgateModule();
