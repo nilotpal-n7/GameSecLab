@@ -10,5 +10,9 @@
   "C:\\Tools\\GameSecLab\\targets\\license_app\\dumps\\license_app.themida.exe": {
     "reason": "my own license_app, Themida-protected (demo) by me",
     "sha256": "712d869a001846c8de5cafb0719bacbdffb86926c45d01d5d9b96a7ccadbd65d"
+  },
+  "C:\\Tools\\GameSecLab\\targets\\system_informer\\dumps\\sip_progate.vmp.dll": {
+    "reason": "own fork of winsiderss/systeminformer; authorized educational RE lab (System Informer Pro)",
+    "sha256": "f278f02394943af4a766f884e9543b1487b9232f1a8631a2a09dc291dca3da8f"
   }
 }

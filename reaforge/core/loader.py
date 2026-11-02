@@ -61,10 +61,37 @@ class VmpLoader:
         self.prog = progress
         self._build()
 
-    # ---- synthetic export pools for uncatalogued api-set DLLs (32-bit CRT) ----
+    # ---- synthetic export catalog for uncatalogued import DLLs -------------------------------------
+    # The captured catalog only knows the system DLLs. Any OTHER imported module (OpenSSL/libcrypto, Qt,
+    # zlib, a target's own helper DLL, or a 32-bit api-set CRT) is missing, and build_emu_module_blob then
+    # raises `export not in captured catalog <dll>!<sym>`. We fill the gap by reading the module's REAL
+    # export directory off disk -- next to the packed binary first (where a target ships its private DLLs),
+    # then System32/SysWOW64 -- so the real names + ordinals go into the catalog. Only when the DLL can't be
+    # located do we fall back to a generic CRT/core name pool (keeps uncatalogued api-set stubs working).
+    def _find_module_dll(self, dll):
+        sysdir = r"C:\Windows\System32" if self.arch.bits == 64 else SYSWOW64
+        for d in (str(self.packed.parent), sysdir, SYSWOW64, r"C:\Windows\System32"):
+            p = Path(d) / dll
+            if p.exists():
+                return p
+        return None
+
     def _synth_exports(self, import_slots):
+        def real_exports(dll):
+            p = self._find_module_dll(dll)
+            if not p:
+                return None
+            try:
+                pe2 = load_pe(p.read_bytes()); pe2.parse_data_directories(directories=[0])
+                recs = [{"name": s.name.decode() if s.name else None, "ordinal": s.ordinal}
+                        for s in pe2.DIRECTORY_ENTRY_EXPORT.symbols]
+                return recs or None
+            except Exception:
+                return None
         def names(dll):
-            p = Path(SYSWOW64) / dll; pe2 = load_pe(p.read_bytes()); pe2.parse_data_directories(directories=[0])
+            p = self._find_module_dll(dll)
+            if not p: return []
+            pe2 = load_pe(p.read_bytes()); pe2.parse_data_directories(directories=[0])
             return [s.name.decode() for s in pe2.DIRECTORY_ENTRY_EXPORT.symbols if s.name]
         def cat_ok(m):
             try:
@@ -73,10 +100,20 @@ class VmpLoader:
             except Exception: return False
         uncat = {m for m in {split_import_label(l)[0] for l in import_slots.values()} if not cat_ok(m)}
         if not uncat: return 0
+        # Prefer the real on-disk export table; pool-fallback only for modules we can't find on disk.
+        real = {}; pool_mods = set()
+        for m in uncat:
+            recs = real_exports(m)
+            if recs is not None:
+                real[m] = recs
+                self.prog(f"catalogued {len(recs)} real exports from {m}")
+            else:
+                pool_mods.add(m)
         ucrt = names("ucrtbase.dll"); core = list(dict.fromkeys(names("kernelbase.dll") + names("kernel32.dll")))
-        syn = {m: (ucrt if "crt" in m else (core if "core" in m else list(dict.fromkeys(ucrt+core)))) for m in uncat}
+        syn = {m: (ucrt if "crt" in m else (core if "core" in m else list(dict.fromkeys(ucrt+core)))) for m in pool_mods}
         orig = require_catalog().exports
-        def patched(name, _o=orig, _s=syn):
+        def patched(name, _o=orig, _real=real, _s=syn):
+            if name in _real: return _real[name]
             if name in _s: return [{"name": s, "ordinal": i+1} for i, s in enumerate(_s[name])]
             return _o(name)
         require_catalog().exports = patched

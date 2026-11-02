@@ -149,8 +149,36 @@ DLL the live entry point is the **export RVA** — that is where an RE actually 
   macro at RVA `0x7C8AB-0x7CB4E` (from the Themida protection log; Demo => FALCON64-Tiny VM). Packed plugin
   MD5 `5bc7854cf650a0f1f4fbe6dabceee1cb`.
 
+## Automated break pass — VMProtect core (DONE 2026-11-02; raw logs in `evidence/logs/`)
+
+Ran the reaforge emulation-unpacker on `sip_progate.vmp.dll` end to end, no runtime dump:
+
+- **Recon** (`evidence/logs/00_recon_die_*.log`): DIE → `sip_progate` = VMProtect[packed]+OpenSSL;
+  `ExtendedTools.dll` = Themida/WinLicense(3.XX); `SystemInformer.exe` = plain MSVC (DIE's `VMProtect(new)[DS]`
+  on the host is a heuristic false positive — it is unprotected by design).
+- **General-tool gap, fixed** (`01_*` = the wall, `02_*` = the win): the emulation-unpacker's synthetic
+  Windows catalog only knew system DLLs, so it died on `libcrypto-1_1-x64.dll!EVP_DecryptInit_ex`
+  (`export not in captured catalog`). Generalized `reaforge/core/loader.py` `_synth_exports` to read the
+  **real on-disk export table** of any uncatalogued import DLL (next to the packed binary first, then
+  System32/SysWOW64). Result: *“catalogued 4397 real exports from libcrypto”* → unpack proceeds through the
+  LZMA/CRC stub to `emulation_reached_unpacked_entry` (98,370,832 insns) → **35 MB snapshot saved**
+  `dumps/system_informer_postoep.snap`. ✅ post-OEP snapshot done (was `TODO(run)`).
+- **Gate devirt** (`03_gate_devirt_*.log`, `break_gate.py`): from the snapshot, resolved the gate exports at
+  the exact RVAs this doc predicted (`sip_access_mask` 0x1249, `sip_gate_init` 0x1320, `sip_xdll_respond`
+  0x16F4, `sip_is_pro` 0x1DF2 — cross-validates the table above). `sip_access_mask` is a thunk → `jmp
+  0x180003540` (the Ultra VMEnter). Emulated through the VM with **no license loaded**, it returns
+  **0x1000 (trap)** for dump/inject/edit alike → the gate is **fail-closed**. The headline: defeating
+  VMProtect does NOT yield the mask bases — `0x0450/0x002A/0x0038` are not code constants; they only exist
+  after the AES-GCM decrypt (§3–5). Cracking the protector ≠ cracking the scheme.
+
 ## Open items (produced by the recovery RUN, not the build)
 
-- `TODO(run)`: post-OEP snapshot + the Themida-unwrapped image (outputs of `themida_unwrap.py` + `pe_reconstruct.py`).
-- `TODO(run)`: the live `NtOpenProcess` RDX trace (licensed `0x0450` vs unlicensed `0x1000`).
-- `TODO(run)`: the lifted KDF/AES block + the `prove_recurrence` transcript.
+- ✅ `TODO(run)` post-OEP snapshot — DONE (above); the Themida-unwrapped image still pending (needs a runtime
+  full-memory dump for `themida_unwrap.py` + `pe_reconstruct.py` — a recording-time step).
+- `TODO(run)`: the live `NtOpenProcess` RDX trace (licensed `0x0450` vs unlicensed `0x1000`) — the static
+  emulation already shows the unlicensed `0x1000`; the licensed `0x0450` needs the dynamic run (x64dbg on the
+  real process, where a valid `.sipm` decrypts and populates `g_state`).
+- `TODO(run)`: the lifted KDF/AES block — `sip_gate_init` calls libcrypto AES-GCM; a clean lift needs the FS +
+  crypto env (dynamic). Note: the KDF is HKDF/AES-GCM, NOT an algebraic recurrence, so `prove_recurrence` (the
+  license_app/dead_cells z3 tool) does not apply here — the evidence is structural (the EVP calls), not an
+  algebra proof.
