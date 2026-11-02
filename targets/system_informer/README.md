@@ -8,10 +8,12 @@ crack through the entire reaforge toolchain.
 ## Tiers
 
 - **Community (Free)** — standard process viewing / graphs. Left **unprotected** (the plain-MSVC contrast).
-- **Enterprise (Pro)** — license-gated:
-  - Process Memory Dumper (`PhWriteMiniDumpProcess`, `misccmd.c`)
-  - DLL Injection (`misccmd.c`)
-  - live Memory Editor write access (`memedit.c`)
+- **Enterprise (Pro)** — license-gated, exposed as a per-process **right-click → System Informer Pro**
+  submenu in `plugins\ExtendedTools\main.c` (greyed in Community; each opens the target with
+  `sip_access_mask(SIP_FEAT_*)` so the kernel, not a branch, enforces the gate):
+  - Process Memory Dumper — full `.dmp` via `PhWriteMiniDumpProcess` (also in the host `mdump.c`)
+  - DLL Injection — alloc + write + remote `LoadLibraryW`
+  - live Memory Editor — `NtReadVirtualMemory` / `NtWriteVirtualMemory` behind `IDD_PRO_MEMEDIT`
   - cross-DLL plugin handshake (`SystemInformer.exe` <-> `plugins\ExtendedTools.dll`)
 
 ## Gate mechanism (why it is hard)
