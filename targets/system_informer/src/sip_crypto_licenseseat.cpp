@@ -18,6 +18,7 @@
 #include <windows.h>
 #include <bcrypt.h>
 
+#include <stdlib.h>
 #include <string>
 #include <vector>
 
@@ -53,18 +54,58 @@ static uint32_t crc32_buf(const uint8_t *p, size_t n)
 
 extern "C" uint32_t sip_image_text_crc32(void)
 {
-    const uint8_t *base = reinterpret_cast<const uint8_t *>(&__ImageBase);
-    const IMAGE_NT_HEADERS *nt =
-        reinterpret_cast<const IMAGE_NT_HEADERS *>(base + __ImageBase.e_lfanew);
-    const IMAGE_SECTION_HEADER *sec = IMAGE_FIRST_SECTION(nt);
-    for (unsigned i = 0; i < nt->FileHeader.NumberOfSections; ++i) {
-        if (memcmp(sec[i].Name, ".text", 5) == 0) {
-            const uint8_t *va = base + sec[i].VirtualAddress;
-            size_t len = sec[i].Misc.VirtualSize ? sec[i].Misc.VirtualSize : sec[i].SizeOfRawData;
-            return crc32_buf(va, len);
+    /* CRC the ON-DISK raw .text of this module's own file, not the mapped image: ASLR relocations can make
+     * the in-memory .text differ per process, which would make the KDF input non-reproducible. The on-disk
+     * bytes are stable and are exactly what an attacker patches, which is the threat we bind against. */
+    HMODULE self = NULL;
+    if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                            GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                            reinterpret_cast<LPCWSTR>(&__ImageBase), &self))
+        return 0;
+    wchar_t path[MAX_PATH];
+    DWORD n = GetModuleFileNameW(self, path, MAX_PATH);
+    if (n == 0 || n >= MAX_PATH) return 0;
+
+    HANDLE f = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                           NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (f == INVALID_HANDLE_VALUE) return 0;
+    DWORD sz = GetFileSize(f, NULL);
+    uint32_t crc = 0;
+    if (sz != INVALID_FILE_SIZE && sz > 0x200) {
+        uint8_t *buf = static_cast<uint8_t *>(malloc(sz));
+        DWORD got = 0;
+        if (buf && ReadFile(f, buf, sz, &got, NULL) && got == sz) {
+            const IMAGE_DOS_HEADER *dos = reinterpret_cast<const IMAGE_DOS_HEADER *>(buf);
+            if ((DWORD)dos->e_lfanew + sizeof(IMAGE_NT_HEADERS) <= sz) {
+                const IMAGE_NT_HEADERS *nt =
+                    reinterpret_cast<const IMAGE_NT_HEADERS *>(buf + dos->e_lfanew);
+                const IMAGE_SECTION_HEADER *sec = IMAGE_FIRST_SECTION(nt);
+                for (unsigned i = 0; i < nt->FileHeader.NumberOfSections; ++i) {
+                    if (memcmp(sec[i].Name, ".text", 5) == 0) {
+                        DWORD off = sec[i].PointerToRawData, len = sec[i].SizeOfRawData;
+                        if ((uint64_t)off + len <= sz) crc = crc32_buf(buf + off, len);
+                        break;
+                    }
+                }
+            }
         }
+        free(buf);
     }
-    return 0;
+    CloseHandle(f);
+    return crc;
+}
+
+/* Diagnostic export: report this machine's HWID and this DLL's on-disk .text CRC, so a license can be
+ * issued for this exact build (license_signer.py --hwid <> --text-crc <>). Exposing these does not weaken
+ * the scheme — both are attacker-derivable; the secret is the issuer private key. */
+extern "C" __declspec(dllexport) void sip_report(char *hwid_out, int hwid_cap, uint32_t *crc_out)
+{
+    if (hwid_out && hwid_cap > 0) {
+        size_t cap = (size_t)hwid_cap - 1, n = cap;
+        if (sip_hwid(reinterpret_cast<uint8_t *>(hwid_out), &n)) hwid_out[n <= cap ? n : cap] = 0;
+        else hwid_out[0] = 0;
+    }
+    if (crc_out) *crc_out = sip_image_text_crc32();
 }
 
 /* ---- HWID + Ed25519 verify via LicenseSeat -------------------------------------------------------- */

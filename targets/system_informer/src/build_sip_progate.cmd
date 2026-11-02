@@ -22,7 +22,8 @@ call "C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Auxiliary\Build\
 if not exist "%OBJ%" mkdir "%OBJ%"
 
 echo [1/2] compiling...
-cl /c /nologo /std:c++17 /EHsc /MD /O2 /Zi ^
+REM /DDEMO_SOFT = filmable demo (anti-tamper logs instead of corrupting). Drop it for the "hard" build.
+cl /c /nologo /std:c++17 /EHsc /MD /O2 /Zi /DDEMO_SOFT ^
   /I"%LS%\include" /I"%VMP%\Include\C" ^
   /Fo"%OBJ%\\" /Fd"%OBJ%\vc.pdb" ^
   "%SRC%\pro_gate.cpp" "%SRC%\sip_crypto_licenseseat.cpp" || (echo COMPILE FAILED & exit /b 1)

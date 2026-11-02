@@ -153,16 +153,14 @@ def unpack_entitlements(buf: bytes) -> dict:
 
 # ── the entangled KDF (must match src/pro_gate.cpp byte for byte) ─────────────────────────────────
 def normalize_hwid(hwid: str) -> bytes:
-    """Accept HWID as hex ('AABB..') or raw text; return canonical bytes fed to the KDF.
+    """Canonical HWID bytes fed to the KDF = the exact device-id STRING bytes.
 
-    VMProtectGetCurrentHWID() returns a base64-ish string; what matters is that signer and verifier
-    agree. We canonicalise: if it parses as hex, use the hex bytes; else use utf-8 of the trimmed string.
+    This must match pro_gate.cpp byte for byte: sip_hwid() returns LicenseSeat device::generate_device_id()
+    verbatim (e.g. the 32-char hex string "c30e12..."), and the gate hashes those ASCII bytes directly. So
+    we hash the string's UTF-8 bytes too — we do NOT hex-decode it (that would feed 16 bytes vs the gate's
+    32, and the AES-GCM auth would always fail).
     """
-    h = hwid.strip()
-    try:
-        return bytes.fromhex(h)
-    except ValueError:
-        return h.encode("utf-8")
+    return hwid.strip().encode("utf-8")
 
 
 def derive_key(hwid_bytes: bytes, pubkey_raw: bytes, text_crc: int, slug: str, salt: bytes) -> bytes:
