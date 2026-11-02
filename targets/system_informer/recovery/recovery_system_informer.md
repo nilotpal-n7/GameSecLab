@@ -28,11 +28,23 @@ python -m reaforge.orchestrator recon <ExtendedTools.themida.dll> # DIE: Themida
 
 - VMProtect: reach the OEP/post-unpack state via the emulation loader (`reaforge/core/loader.py`,
   VmpLoader) and snapshot it to `dumps/system_informer_postoep.snap`.
-- Themida: `themida_unwrap.py` to strip the Falcon/WinLicense layers, then `pe_reconstruct.py` to rebuild
-  a loadable image and repair the IAT (Themida redirects imports through its own thunks). Without a
-  rebuilt IAT the later static/symbolic passes see garbage call targets.
+- Themida: one reproducible chain. The live full-memory dump is the only human step (the module must be
+  unpacked in memory first); the unwrap + rebuild are automated:
 
-`TODO(build)`: OEP RVA, IAT RVA/size, which imports are wrapped.
+  ```bash
+  # (0) emit the dump-capture command (run SI first so ExtendedTools is loaded + Themida-unpacked):
+  python -m reaforge.tools.themida_unwrap capture SystemInformer unpacked_full.dmp
+  # (1+2) auto-derive the IAT region, unwrap the API-wrapped thunks, rebuild a loadable PE.
+  #       The owner's preserved clean build (config THEMIDA["oracle"]) is the overlay oracle:
+  python -m reaforge.tools.themida_unwrap pipeline \
+      targets/system_informer/evidence/locked_binaries/ExtendedTools.dll \
+      unpacked_full.dmp ExtendedTools.rebuilt.dll \
+      targets/system_informer/evidence/locked_binaries/ExtendedTools.unpacked.dll ExtendedTools
+  ```
+
+  `themida_unwrap` (Unicorn, oracle-free) resolves each wrapped IAT thunk to the real API by emulating the
+  SecureEngine stub to its tail-jmp; `pe_reconstruct` with the clean oracle overlays the original sections
+  and restores the import table in one shot (valid only because it is the user's own binary).
 
 ## 2. Find the gate — VMEnter, not a compare
 
@@ -101,10 +113,15 @@ the oracle issuing a valid license, and show that without the private key the be
 a *dynamic* bypass, not a forged file:
 
 ```bash
+# one-shot: keygen HWID+CRC -> filled issue + verify + attack + deploy commands (nothing to hand-copy):
+python -m reaforge.orchestrator apply system_informer "Reviewer" --hwid <HWID> --text-crc 0x<CRC>
+# or the steps directly:
 python license_signer.py issue  --hwid <HWID> --text-crc 0x<CRC> --subject "Reviewer" --tier pro
 python license_signer.py verify licenses/Reviewer.sipm --hwid <HWID> --text-crc 0x<CRC>   # PASS
 python license_signer.py attack licenses/Reviewer.sipm --hwid <HWID> --text-crc 0x<CRC>   # all cracks FAIL
 ```
+(`targets/system_informer/apply_license.py` is the emitter; `--hwid`/`--text-crc` come from
+`sip_report_tool.exe`. It only prints — under the no-access rule you run the issue + deploy yourself.)
 
 Dynamic bypass (the realistic attacker move, like `bypass` mode on license_app): after devirt, patch the
 *runtime* `g_state` (or force `sip_access_mask` to return the base) so the handle opens with `0x0450`.

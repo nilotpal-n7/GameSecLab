@@ -11,9 +11,12 @@ Spirit of reaforge.core.loader (VMProtect): the protector-specific mechanism (he
 behind a reusable tool; the arch-agnostic emulation does the work.
 
 Make the dump with: Task Manager -> Details -> right-click the process (while it's at a post-unpack
-state, e.g. paused in x64dbg) -> Create dump file.
+state, e.g. paused in x64dbg) -> Create dump file. `capture` below emits a scriptable equivalent.
 
   python -m reaforge.tools.themida_unwrap <dump.dmp> <main_module_substr> <iat_rva_hex> <iat_size_hex>
+  python -m reaforge.tools.themida_unwrap capture <process-name-or-pid> [out.dmp]   # emit the live-dump cmd
+  python -m reaforge.tools.themida_unwrap pipeline <packed_module> <dump.dmp> <out.exe> [clean_oracle] [module_substr]
+      # auto-derive the IAT region, unwrap it, and rebuild a loadable PE (owner's clean binary -> oracle overlay)
 """
 from __future__ import annotations
 
@@ -174,7 +177,69 @@ def unwrap(dump, mod_sub, iat_rva, iat_sz, show=print):
     return out
 
 
+def capture_command(target, out="unpacked_full.dmp"):
+    """Emit the command to capture a FULL-memory dump of a LIVE, already-unpacked process — the one step
+    that needs the running process (mirrors reaforge.tools.procmon, whose capture is the user's elevated
+    step while the processing is automated). `target` is a process-name substring (e.g. "SystemInformer")
+    or a PID. Owner-only: dump a process you own, to analyse your own protected binary. Prints only."""
+    sel = (f"Get-Process -Id {target}" if str(target).isdigit()
+           else f"Get-Process | ? ProcessName -like '*{target}*' | select -First 1")
+    # Emitted as a pasteable multi-line block (a one-liner -Command would collide on the C# string quotes).
+    lines = [
+        "== capture a full-memory dump of the live, unpacked process (you run this) ==",
+        "  1) launch the app so the protected module is loaded and the protector has unpacked it in memory;",
+        "  2) EITHER Task Manager > Details > right-click the process > Create dump file,",
+        f"     OR paste this into a PowerShell window (dumps a process you own -> {out}):",
+        "",
+        '       $src = @"',
+        "       using System; using System.Runtime.InteropServices;",
+        "       public class Dbg { [DllImport(\"dbghelp.dll\")] public static extern bool MiniDumpWriteDump(",
+        "         IntPtr h, uint pid, Microsoft.Win32.SafeHandles.SafeFileHandle f, uint t,",
+        "         IntPtr e, IntPtr u, IntPtr c); }",
+        '"@',
+        "       Add-Type $src",
+        f"       $p = {sel}",
+        f"       $fs = [IO.File]::Create('{out}')",
+        "       [Dbg]::MiniDumpWriteDump($p.Handle, $p.Id, $fs.SafeFileHandle, 2, 0, 0, 0); $fs.Close()",
+        "",
+        "  3) then run the automated unwrap+rebuild:  python -m reaforge.tools.themida_unwrap pipeline ...",
+    ]
+    return "\n".join(lines)
+
+
+def pipeline(packed_module, dump, out, oracle=None, module_substr=None, show=print):
+    """Automate the whole POST-capture Themida break: derive the IAT region from the module PE, resolve the
+    API-wrapped IAT in the dump (unwrap, oracle-free), then rebuild a loadable PE (pe_reconstruct; with the
+    owner's clean binary as `oracle` it overlays the clean sections and restores imports in one shot). One
+    call for the reproducible chain; the only non-automated step is the live dump above."""
+    from reaforge.tools.pe_reconstruct import reconstruct
+    pe = pefile.PE(packed_module, fast_load=True)
+    iat_dir = pe.OPTIONAL_HEADER.DATA_DIRECTORY[12]   # IMAGE_DIRECTORY_ENTRY_IAT
+    imp_dir = pe.OPTIONAL_HEADER.DATA_DIRECTORY[1]    # IMPORT (fallback when the IAT dir is zeroed)
+    iat_rva = iat_dir.VirtualAddress or imp_dir.VirtualAddress
+    iat_size = iat_dir.Size or imp_dir.Size
+    mod_sub = module_substr or os.path.splitext(os.path.basename(packed_module))[0]
+    show(f"== themida pipeline ==  module ~{mod_sub!r}  IAT rva {iat_rva:#x} size {iat_size:#x}  (from {os.path.basename(packed_module)})")
+    show("\n[1/2] unwrap the API-wrapped IAT (evidence: wrapped -> real API):")
+    resolved = unwrap(dump, mod_sub, iat_rva, iat_size, show=show)
+    show("\n[2/2] rebuild a loadable PE:")
+    reconstruct(dump, out, oracle, show=show)
+    show(f"\nwrote {out}")
+    return resolved
+
+
 def main(argv):
+    if len(argv) >= 2 and argv[1] == "capture":
+        if len(argv) < 3:
+            sys.exit("usage: themida_unwrap capture <process-name-or-pid> [out.dmp]")
+        print(capture_command(argv[2], argv[3] if len(argv) > 3 else "unpacked_full.dmp"))
+        return
+    if len(argv) >= 2 and argv[1] == "pipeline":
+        if len(argv) < 5:
+            sys.exit("usage: themida_unwrap pipeline <packed_module> <dump.dmp> <out.exe> [clean_oracle] [module_substr]")
+        return pipeline(argv[2], argv[3], argv[4],
+                        oracle=argv[5] if len(argv) > 5 else None,
+                        module_substr=argv[6] if len(argv) > 6 else None)
     if len(argv) < 5:
         sys.exit(__doc__)
     return unwrap(argv[1], argv[2], int(argv[3], 16), int(argv[4], 16))

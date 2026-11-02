@@ -89,6 +89,17 @@ def test_license_app_keygen():
         assert expected_key(serial) == key, f"expected_key({serial:#x}) != {key:#x}"
 
 
+def test_quint_keygen_and_apply():
+    """Quint Bezier Formula-C keygen ground truth + apply_license renders the filled HKLM commands."""
+    from targets.quint_bezier.keygen import keygen_nameonly, name_sum
+    assert name_sum("Nilotpal") == 835
+    assert keygen_nameonly("Nilotpal") == (0, 0x9239A921821C49AB)
+    from targets.quint_bezier import apply_license
+    txt = apply_license.render("Nilotpal")
+    assert "0x9239A921821C49AB" in txt and r"HKLM\Software\QuintBezier" in txt
+    assert "LicensedTo" in txt and "ViewState" in txt and "CacheTag" in txt
+
+
 def test_hashlink_ref_hash_edges():
     """hl_hash_utf8 reference: empty, ascii, and the signed-char sign-extension edge."""
     from categories.hashlink.campaign import ref_hash
@@ -124,6 +135,19 @@ def test_campaign_x86_dll():
         print("  [skip] set RUN_CAMPAIGNS=1 to run the x86 DLL campaign"); return
     from targets.dead_cells import config as dc
     _run_validate(dc, "dead_cells (x86 DLL)")
+
+
+def test_system_informer_apply_and_themida():
+    """SIP apply_license renders the oracle-issue + deploy commands; themida_unwrap exposes capture/pipeline."""
+    from targets.system_informer import apply_license
+    txt = apply_license.render("Reviewer", hwid="c30e127afb5ab2d9e4b8af5200848f5c", crc=0x3AEAAED9)
+    assert "license_signer.py issue" in txt and "c30e127afb5ab2d9e4b8af5200848f5c" in txt
+    assert "0x3AEAAED9" in txt and "SystemInformer.sipm" in txt
+    assert "sip_report_tool" in apply_license.render("Reviewer")   # no HWID/CRC -> how to get them
+    from reaforge.tools.themida_unwrap import capture_command, pipeline  # noqa: F401
+    assert "MiniDumpWriteDump" in capture_command("SystemInformer")
+    from targets.system_informer.config import THEMIDA
+    assert THEMIDA["module"] == "ExtendedTools"
 
 
 def main():

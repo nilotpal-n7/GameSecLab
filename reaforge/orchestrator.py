@@ -10,6 +10,7 @@ Usage:
   python -m reaforge.orchestrator new-target <name> <category>  # scaffold targets/<name>/
   python -m reaforge.orchestrator run <title> [arg] [modes]     # recon + run the title's campaign
   python -m reaforge.orchestrator license <path> [anchors]      # unprotected target: locate the license check (IDA)
+  python -m reaforge.orchestrator apply <title> [name ...]      # unprotected target: keygen -> ready-to-run deploy cmds
 
 Protected targets (VMProtect/Themida) go through `run` -> recon -> classify -> emulation devirt. When
 recon finds no protector, there's nothing to devirt: `license` (and `run`'s no-protector branch) hand
@@ -250,7 +251,8 @@ def license_hint(target, out_dir=None, anchors=None):
           + (f'; $env:QN_ANCHORS = "{anchors}"' if anchors else ""))
     print(f'    & "{_ida_path()}" -A -S"{script}" "<copy of {name}>"')
     print(f'    Get-Content "{out}\\license_decomp.txt"')
-    print("  then: read the predicate -> targets/<t>/keygen.py (recover) or patch_islicensed.py (force-true).")
+    print("  then recover the predicate -> `apply <title> \"<name>\"` emits keygen + ready-to-run deploy")
+    print("  commands (or patch_islicensed.py for a force-true patch).")
     print("  reference break: targets/quint_bezier/recovery/recovery_quint.md")
 
 
@@ -265,6 +267,17 @@ def license_cmd(path, anchors=None):
         print(f"\n  note: recon classifies this as {prot!r} (protected) — the devirt path may apply; "
               f"see `run <title>`. Locating the check statically anyway:")
     license_hint(str(p), anchors=anchors)
+
+
+def apply_cmd(title, args):
+    """Run a target's apply_license.py: keygen -> ready-to-run deploy commands (the automated 'last
+    mile' of the unprotected-license path). It only PRINTS commands; under the no-access rule the user
+    runs them against their machine/install dir."""
+    script = TARGETS / title / "apply_license.py"
+    if not script.exists():
+        sys.exit(f"targets/{title}/apply_license.py not found — add a keygen+deploy emitter there "
+                 f"(see targets/quint_bezier/apply_license.py for the reference).")
+    subprocess.run([sys.executable, str(script), *args])
 
 
 def main():
@@ -283,6 +296,8 @@ def main():
         run_title(sys.argv[2], sys.argv[3:])
     elif cmd == "license" and len(sys.argv) >= 3:
         license_cmd(sys.argv[2], sys.argv[3] if len(sys.argv) >= 4 else None)
+    elif cmd == "apply" and len(sys.argv) >= 3:
+        apply_cmd(sys.argv[2], sys.argv[3:])
     else:
         sys.exit(__doc__)
 

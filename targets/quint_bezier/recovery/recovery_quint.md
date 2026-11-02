@@ -72,6 +72,9 @@ machine-wide. Writing them to **`HKLM\Software\QuintBezier`** (elevated) flipped
 service and the GUI.
 
 ```bash
+# one command does keygen + emits the filled-in commands to run (elevated); you run them:
+python -m reaforge.orchestrator apply quint_bezier "<name>"
+#   -> emits, with ViewState/CacheTag already substituted:
 reg add "HKLM\Software\QuintBezier" /v LicensedTo /t REG_SZ    /d "<name>"            /f
 reg add "HKLM\Software\QuintBezier" /v ViewState  /t REG_QWORD /d 0x0                 /f
 reg add "HKLM\Software\QuintBezier" /v CacheTag   /t REG_QWORD /d <keygen CacheTag>   /f
@@ -90,4 +93,5 @@ RVAs `0x5170` governor / `0x116E90` GUI) remains the zero-crypto fallback.
 - `reaforge/tools/license_recon.py` — general IDA license-locator (anchors → xref/pointer-table →
   decompile, with a size cap). The per-target `find_license.py` / `gen2_hunt.py` / `reg_details.py`
   here were the ad-hoc first cuts this generalizes.
-- `keygen.py` (Formula C), `patch_islicensed.py` (force-true fallback) — target-specific.
+- `keygen.py` (Formula C) + `apply_license.py` (keygen -> ready-to-run HKLM deploy commands, driven by
+  `orchestrator apply quint_bezier "<name>"`), `patch_islicensed.py` (force-true fallback) — target-specific.

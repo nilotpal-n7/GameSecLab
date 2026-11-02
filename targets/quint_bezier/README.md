@@ -52,6 +52,9 @@ unpack/devirt needed (the reaforge Themida toolchain is not required here).
   pointer-table refs → Hex-Rays/disasm, size-capped), parameterized by `QN_ANCHORS`/`QN_SEED`/`QN_CAP`.
   This is the reusable framework tool; prefer it for new targets.
 - `keygen.py` — Formula-C keygen: `python keygen.py "<name>"` → `ViewState`/`CacheTag` to write.
+- `apply_license.py` — the one-shot deploy: keygen + the exact ready-to-run HKLM `reg add` commands with
+  `CacheTag` already substituted (nothing to hand-copy). Via the orchestrator:
+  `python -m reaforge.orchestrator apply quint_bezier "<name>"`.
 - `patch_islicensed.py` — force-true patch of the Pro predicate (RVA `0x5170` governor / `0x116E90` GUI).
 - `find_license.py` / `gen2_hunt.py` / `reg_details.py` — the ad-hoc first cuts used during this break,
   kept for reference; `license_recon.py` generalizes them. Output now lands in `dumps/` (not `%TEMP%`).
@@ -61,6 +64,8 @@ unpack/devirt needed (the reaforge Themida toolchain is not required here).
 reaforge's orchestrator automates the **protected** path (authorize → recon → classify protector →
 emulation devirt). This target is **unprotected** (plain MSVC + symbols), so recon classifies "no
 protector" and the VM toolchain has nothing to lift — the work is static *locate + read + keygen*.
-That path is now a first-class tool (`license_recon.py`) rather than ad-hoc. Also: the HARD
+That path is now a first-class tool (`license_recon.py`), and the keygen→deploy last mile is a single
+command (`orchestrator apply quint_bezier "<name>"` via `apply_license.py`) — only *reading* the
+recovered predicate stays a human step. Also: the HARD
 no-access rule means Claude can't run anything against the install dir — every step was a command the
 user executed — so reaforge drove via handed commands, not by operating on the files directly.

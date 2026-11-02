@@ -51,6 +51,17 @@ def expected_key(feature) -> int:
     return MASK.get(feature, MASK_TRAP)
 
 
+# Themida side: plugins\ExtendedTools.dll is Themida/WinLicense-packed (the handshake challenger). It is
+# unwrapped from a live full-memory dump via reaforge.tools.themida_unwrap (capture -> pipeline); the owner's
+# preserved pre-Themida build is the pe_reconstruct overlay oracle. Paths are the preserved evidence copies.
+EVIDENCE = HERE / "evidence" / "locked_binaries"
+THEMIDA = {
+    "module": "ExtendedTools",                               # module substring to find in the dump
+    "packed": str(EVIDENCE / "ExtendedTools.dll"),           # Themida-packed (IAT region read from here)
+    "oracle": str(EVIDENCE / "ExtendedTools.unpacked.dll"),  # clean build -> reconstruct overlay source
+}
+
+
 CONFIG = campaign.Config(
     name="system_informer Pro gate",
     # The VMProtect-protected binary carrying the gate is sip_progate.dll (SystemInformer.exe itself is
