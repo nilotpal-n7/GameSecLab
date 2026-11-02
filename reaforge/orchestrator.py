@@ -16,6 +16,7 @@ Protected targets (VMProtect/Themida) go through `run` -> recon -> classify -> e
 recon finds no protector, there's nothing to devirt: `license` (and `run`'s no-protector branch) hand
 off to reaforge.tools.license_recon for a static locate+read, then keygen/patch.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -54,9 +55,11 @@ def authorize(path: str, reason: str):
 def _check_authorized(p: Path):
     data = _load_allow()
     if str(p) not in data:
-        sys.exit(f"REFUSED: {p} is not in authorized_targets.json.\n"
-                 f"Only analyze targets you own/are authorized for. Add it with:\n"
-                 f'  python -m reaforge.orchestrator authorize "{p}" "why you may analyze this"')
+        sys.exit(
+            f"REFUSED: {p} is not in authorized_targets.json.\n"
+            f"Only analyze targets you own/are authorized for. Add it with:\n"
+            f'  python -m reaforge.orchestrator authorize "{p}" "why you may analyze this"'
+        )
 
 
 def recon(path: str, plan: bool = True):
@@ -70,16 +73,15 @@ def recon(path: str, plan: bool = True):
     die = r"C:\Tools\DIE\diec.exe"
     if Path(die).exists():
         try:
-            facts["tools"]["die"] = subprocess.run([die, "-d", "-u", str(p)],
-                capture_output=True, text=True, timeout=120).stdout.strip()
-            facts["tools"]["die_entropy"] = subprocess.run([die, "-e", str(p)],
-                capture_output=True, text=True, timeout=120).stdout.strip()
+            facts["tools"]["die"] = subprocess.run([die, "-d", "-u", str(p)], capture_output=True, text=True, timeout=120).stdout.strip()
+            facts["tools"]["die_entropy"] = subprocess.run([die, "-e", str(p)], capture_output=True, text=True, timeout=120).stdout.strip()
         except Exception as e:
             facts["tools"]["die"] = f"error: {e}"
 
     # pefile (PE structure) if it's a PE
     try:
         import pefile
+
         pe = pefile.PE(str(p), fast_load=True)
         facts["tools"]["pe"] = {
             "machine": hex(pe.FILE_HEADER.Machine),
@@ -102,9 +104,10 @@ def recon(path: str, plan: bool = True):
     except ImportError:
         from reaforge.llm_backend import get_backend
     b = get_backend()
-    prompt = ("Given these static-recon facts about a binary I am authorized to analyze, "
-              "list the 3 best next reverse-engineering steps and which installed tool to use for each.\n\n"
-              + json.dumps(facts, indent=2))
+    prompt = (
+        "Given these static-recon facts about a binary I am authorized to analyze, "
+        "list the 3 best next reverse-engineering steps and which installed tool to use for each.\n\n" + json.dumps(facts, indent=2)
+    )
     print(f"\n[LLM backend: {b.name}] planning next steps...\n")
     print(b.complete(prompt))
     return facts
@@ -113,6 +116,7 @@ def recon(path: str, plan: bool = True):
 def protector_of(facts) -> str:
     """Classify the packer/protector from recon facts (delegates to the Protector registry)."""
     from reaforge.core.protectors import classify
+
     return classify(facts)
 
 
@@ -192,8 +196,9 @@ def new_target(name: str, category: str):
     (d / "README.md").write_text(
         f"# Target: {name} ({category} category)\n\n"
         f"Fill in `config.py` (TODOs), drop the packed binary in `dumps/`, authorize it, then:\n\n"
-        f"```bash\npython -m reaforge.orchestrator authorize \"<path to packed>\" \"why you own it\"\n"
-        f"python -m reaforge.core {name}\n```\n")
+        f'```bash\npython -m reaforge.orchestrator authorize "<path to packed>" "why you own it"\n'
+        f"python -m reaforge.core {name}\n```\n"
+    )
     print(f"scaffolded targets/{name}/ ({category}) — edit config.py, add + authorize the binary, then run it.")
 
 
@@ -204,11 +209,13 @@ def run_title(title: str, rest):
         if pth not in sys.path:
             sys.path.insert(0, pth)
     import importlib
+
     cfg_mod = importlib.import_module(f"targets.{title}.config")
     packed = cfg_mod.CONFIG.packed
     _check_authorized(Path(packed).resolve())
     if Path(packed).exists():
         from reaforge.core import protectors
+
         print(f"== recon: {title} ==")
         facts = recon(packed, plan=False)
         prot = protectors.for_facts(facts)
@@ -218,11 +225,11 @@ def run_title(title: str, rest):
             license_hint(packed, out_dir=TARGETS / title / "dumps")
             return
         if not prot.available():
-            sys.exit(f"  {prot.unavailable_message()}\n"
-                     f"  See targets/license_app/themida_plan.md for the unpack + protector-agnostic bypass route.")
+            sys.exit(f"  {prot.unavailable_message()}\n  See targets/license_app/themida_plan.md for the unpack + protector-agnostic bypass route.")
     else:
         print(f"  (packed binary not present yet: {packed})")
     from reaforge.core.__main__ import main as core_main
+
     core_main(["reaforge.core", title, *rest])
 
 
@@ -230,6 +237,7 @@ def _ida_path():
     """Best-guess IDA launcher from the capability registry; falls back to 'ida.exe'."""
     try:
         from reaforge.tool_registry import PATHS, _first_existing
+
         return _first_existing(PATHS.get("ida", [])) or _first_existing(PATHS.get("ida_headless", [])) or "ida.exe"
     except Exception:
         return "ida.exe"
@@ -247,11 +255,10 @@ def license_hint(target, out_dir=None, anchors=None):
     print("\n== unprotected -> static license RE (reaforge.tools.license_recon) ==")
     print("  no VM to lift; locate the license predicate, read it, then keygen or patch.")
     print("  run in IDA on a COPY (no-access rule: you run it, share the decompile):")
-    print(f'    $env:QN_OUT = "{out}\\license_decomp.txt"'
-          + (f'; $env:QN_ANCHORS = "{anchors}"' if anchors else ""))
+    print(f'    $env:QN_OUT = "{out}\\license_decomp.txt"' + (f'; $env:QN_ANCHORS = "{anchors}"' if anchors else ""))
     print(f'    & "{_ida_path()}" -A -S"{script}" "<copy of {name}>"')
     print(f'    Get-Content "{out}\\license_decomp.txt"')
-    print("  then recover the predicate -> `apply <title> \"<name>\"` emits keygen + ready-to-run deploy")
+    print('  then recover the predicate -> `apply <title> "<name>"` emits keygen + ready-to-run deploy')
     print("  commands (or patch_islicensed.py for a force-true patch).")
     print("  reference break: targets/quint_bezier/recovery/recovery_quint.md")
 
@@ -264,8 +271,7 @@ def license_cmd(path, anchors=None):
     facts = recon(str(p), plan=False)
     prot = protector_of(facts)
     if prot != "unknown":
-        print(f"\n  note: recon classifies this as {prot!r} (protected) — the devirt path may apply; "
-              f"see `run <title>`. Locating the check statically anyway:")
+        print(f"\n  note: recon classifies this as {prot!r} (protected) — the devirt path may apply; see `run <title>`. Locating the check statically anyway:")
     license_hint(str(p), anchors=anchors)
 
 
@@ -275,8 +281,7 @@ def apply_cmd(title, args):
     runs them against their machine/install dir."""
     script = TARGETS / title / "apply_license.py"
     if not script.exists():
-        sys.exit(f"targets/{title}/apply_license.py not found — add a keygen+deploy emitter there "
-                 f"(see targets/quint_bezier/apply_license.py for the reference).")
+        sys.exit(f"targets/{title}/apply_license.py not found — add a keygen+deploy emitter there (see targets/quint_bezier/apply_license.py for the reference).")
     subprocess.run([sys.executable, str(script), *args])
 
 

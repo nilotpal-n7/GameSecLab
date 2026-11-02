@@ -11,7 +11,7 @@ Dead Cells is a HashLink game, so the hashing ground truth is category-level
 
 - `config.py` — packed binary + snapshot path (tiny; HashLink does the rest).
 - `benchmark.md` — the full Dead Cells VMProtect 3.11 benchmark write-up (scope, versions, results).
-- `recovery/` — recovery notes.  `dumps/` — `libhl.vmp.dll`, snapshot, trace (**gitignored**).
+- `recovery/` — recovery notes. `dumps/` — `libhl.vmp.dll`, snapshot, trace (**gitignored**).
 
 ## Run
 

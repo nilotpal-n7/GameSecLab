@@ -18,6 +18,7 @@ state, e.g. paused in x64dbg) -> Create dump file. `capture` below emits a scrip
   python -m reaforge.tools.themida_unwrap pipeline <packed_module> <dump.dmp> <out.exe> [clean_oracle] [module_substr]
       # auto-derive the IAT region, unwrap it, and rebuild a loadable PE (owner's clean binary -> oracle overlay)
 """
+
 from __future__ import annotations
 
 import bisect
@@ -29,14 +30,18 @@ from minidump.minidumpfile import MinidumpFile
 from unicorn import UC_ARCH_X86, UC_HOOK_CODE, UC_MODE_64, UC_PROT_ALL, Uc, UcError
 from unicorn.x86_const import UC_X86_REG_GS_BASE, UC_X86_REG_RAX, UC_X86_REG_RIP, UC_X86_REG_RSP
 
-SENTINEL = 0xDEAD0000      # fake return on the wrapper's stack; the real API is the TAIL-jmp (stack back here)
+SENTINEL = 0xDEAD0000  # fake return on the wrapper's stack; the real API is the TAIL-jmp (stack back here)
 
 PAGE = 0x1000
 STACK_BASE, STACK_SZ = 0x7F0000000000, 0x100000
 
 
-def _align_dn(x): return x & ~(PAGE - 1)
-def _align_up(x): return (x + PAGE - 1) & ~(PAGE - 1)
+def _align_dn(x):
+    return x & ~(PAGE - 1)
+
+
+def _align_up(x):
+    return (x + PAGE - 1) & ~(PAGE - 1)
 
 
 def load(path):
@@ -60,7 +65,8 @@ def map_all(uc, rdr, segs):
             data = rdr.read(va, size)
         except Exception:
             continue
-        b = _align_dn(va); e = _align_up(va + size)
+        b = _align_dn(va)
+        e = _align_up(va + size)
         try:
             uc.mem_map(b, e - b, UC_PROT_ALL)
         except UcError:
@@ -96,6 +102,7 @@ def _oracle_iat_names(oracle_path):
     stubs whose SecureEngine emulation can't be driven to a tail-jmp (e.g. ExitProcess, whose wrapper would
     terminate). Owner-mode convenience; such entries are tagged 'oracle', not 'UNWRAPPED'."""
     import pefile
+
     names = {}
     o = pefile.PE(oracle_path)
     o.parse_data_directories(directories=[pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_IMPORT"]])
@@ -128,36 +135,46 @@ def unwrap(dump, mod_sub, iat_rva, iat_sz, show=print, oracle=None):
         i = bisect.bisect_right(mr_starts, a) - 1
         return 0 <= i < len(mod_ranges) and mod_ranges[i][0] <= a < mod_ranges[i][1]
 
-    def in_sys(a):                                         # a real API lives in a SYSTEM dll, not the exe
+    def in_sys(a):  # a real API lives in a SYSTEM dll, not the exe
         return in_module(a) and not (main_lo <= a < main_hi)
 
     uc = Uc(UC_ARCH_X86, UC_MODE_64)
     map_all(uc, rdr, segs)
-    try: uc.mem_map(STACK_BASE, STACK_SZ, UC_PROT_ALL)
-    except UcError: pass
-    if teb: uc.reg_write(UC_X86_REG_GS_BASE, teb)
+    try:
+        uc.mem_map(STACK_BASE, STACK_SZ, UC_PROT_ALL)
+    except UcError:
+        pass
+    if teb:
+        uc.reg_write(UC_X86_REG_GS_BASE, teb)
     amap = export_map(mods)
     exp_addrs = sorted(amap)
 
     def resolve_landing(a):
-        if a in amap: return amap[a]
-        i = bisect.bisect_right(exp_addrs, a) - 1          # nearest export at/below (jmp into export)
+        if a in amap:
+            return amap[a]
+        i = bisect.bisect_right(exp_addrs, a) - 1  # nearest export at/below (jmp into export)
         if i >= 0 and in_sys(a) and a - exp_addrs[i] < 0x40:
             return amap[exp_addrs[i]] + f"+{a - exp_addrs[i]:#x}"
         return None
 
     def trace(stub):
         land = {"a": None}
+
         def hook(u, addr, size, ud):
             if in_sys(addr):
                 sp = u.reg_read(UC_X86_REG_RSP)
-                try: top = int.from_bytes(u.mem_read(sp, 8), "little")
-                except UcError: top = 0
-                if top == SENTINEL:                        # tail-jmp to the real API (stack back to entry)
-                    land["a"] = addr; u.emu_stop()
-                else:                                      # intermediate anti-analysis call -> skip past it
-                    u.reg_write(UC_X86_REG_RIP, top); u.reg_write(UC_X86_REG_RSP, sp + 8)
+                try:
+                    top = int.from_bytes(u.mem_read(sp, 8), "little")
+                except UcError:
+                    top = 0
+                if top == SENTINEL:  # tail-jmp to the real API (stack back to entry)
+                    land["a"] = addr
+                    u.emu_stop()
+                else:  # intermediate anti-analysis call -> skip past it
+                    u.reg_write(UC_X86_REG_RIP, top)
+                    u.reg_write(UC_X86_REG_RSP, sp + 8)
                     u.reg_write(UC_X86_REG_RAX, 1)
+
         uc.reg_write(UC_X86_REG_RSP, STACK_BASE + STACK_SZ // 2)
         uc.mem_write(STACK_BASE + STACK_SZ // 2, SENTINEL.to_bytes(8, "little"))
         uc.reg_write(UC_X86_REG_RIP, stub)
@@ -182,21 +199,26 @@ def unwrap(dump, mod_sub, iat_rva, iat_sz, show=print, oracle=None):
             continue
         if v == 0:
             continue
-        if in_sys(v):                                       # already a real export pointer
-            api = resolve_landing(v) or "?"; direct += 1
+        if in_sys(v):  # already a real export pointer
+            api = resolve_landing(v) or "?"
+            direct += 1
             tag = "direct"
-        else:                                              # wrapper stub -> emulate to the real API
+        else:  # wrapper stub -> emulate to the real API
             land = trace(v)
-            api = (resolve_landing(land) if land else None)
+            api = resolve_landing(land) if land else None
             if api:
-                resolved += 1; tag = "UNWRAPPED"
-            elif (slot - base) in oracle_names:             # emulation couldn't land -> name from the oracle
-                api = oracle_names[slot - base]; named += 1; tag = "oracle"
+                resolved += 1
+                tag = "UNWRAPPED"
+            elif (slot - base) in oracle_names:  # emulation couldn't land -> name from the oracle
+                api = oracle_names[slot - base]
+                named += 1
+                tag = "oracle"
             else:
-                wrapped += 1; tag = "unresolved"
+                wrapped += 1
+                tag = "unresolved"
                 api = f"(stub {v:#x}, landed {land:#x})" if land else f"(stub {v:#x})"
         out.append((slot - base, v, tag, api))
-        show(f"  [+{slot-base:#06x}] {v:#018x}  {tag:10} {api}")
+        show(f"  [+{slot - base:#06x}] {v:#018x}  {tag:10} {api}")
     extra = f" + oracle-named {named}" if named else ""
     show(f"\n  direct {direct}  UNWRAPPED {resolved}{extra}  unresolved {wrapped}  (of {len(out)})")
     return out
@@ -207,8 +229,7 @@ def capture_command(target, out="unpacked_full.dmp"):
     that needs the running process (mirrors reaforge.tools.procmon, whose capture is the user's elevated
     step while the processing is automated). `target` is a process-name substring (e.g. "SystemInformer")
     or a PID. Owner-only: dump a process you own, to analyse your own protected binary. Prints only."""
-    sel = (f"Get-Process -Id {target}" if str(target).isdigit()
-           else f"Get-Process | ? ProcessName -like '*{target}*' | select -First 1")
+    sel = f"Get-Process -Id {target}" if str(target).isdigit() else f"Get-Process | ? ProcessName -like '*{target}*' | select -First 1"
     # Emitted as a pasteable multi-line block (a one-liner -Command would collide on the C# string quotes).
     lines = [
         "== capture a full-memory dump of the live, unpacked process (you run this) ==",
@@ -218,7 +239,7 @@ def capture_command(target, out="unpacked_full.dmp"):
         "",
         '       $src = @"',
         "       using System; using System.Runtime.InteropServices;",
-        "       public class Dbg { [DllImport(\"dbghelp.dll\")] public static extern bool MiniDumpWriteDump(",
+        '       public class Dbg { [DllImport("dbghelp.dll")] public static extern bool MiniDumpWriteDump(',
         "         IntPtr h, uint pid, Microsoft.Win32.SafeHandles.SafeFileHandle f, uint t,",
         "         IntPtr e, IntPtr u, IntPtr c); }",
         '"@',
@@ -250,7 +271,7 @@ def carve_module(dump, module_substr, out, show=print):
                 data = rdr.read(lo, hi - lo)
             except Exception:
                 continue
-            buf[lo - base:lo - base + len(data)] = data
+            buf[lo - base : lo - base + len(data)] = data
             present += len(data)
     with open(out, "wb") as f:
         f.write(buf)
@@ -265,6 +286,7 @@ def pipeline(packed_module, dump, out, oracle=None, module_substr=None, iat_rva=
     pe_reconstruct from the PACKED PE plus the owner's clean binary as the overlay oracle. The only
     non-automated step is the live dump itself (see `capture`)."""
     from reaforge.tools.pe_reconstruct import reconstruct
+
     mod_sub = module_substr or os.path.splitext(os.path.basename(packed_module))[0]
     show(f"== themida pipeline ==  module ~{mod_sub!r}")
 
@@ -301,13 +323,16 @@ def main(argv):
         return
     if len(argv) >= 2 and argv[1] == "pipeline":
         if len(argv) < 5:
-            sys.exit("usage: themida_unwrap pipeline <packed_module> <dump.dmp> <out.exe> "
-                     "[clean_oracle] [module_substr] [iat_rva_hex] [iat_size_hex]")
-        return pipeline(argv[2], argv[3], argv[4],
-                        oracle=argv[5] if len(argv) > 5 else None,
-                        module_substr=argv[6] if len(argv) > 6 else None,
-                        iat_rva=int(argv[7], 16) if len(argv) > 7 else None,
-                        iat_size=int(argv[8], 16) if len(argv) > 8 else None)
+            sys.exit("usage: themida_unwrap pipeline <packed_module> <dump.dmp> <out.exe> [clean_oracle] [module_substr] [iat_rva_hex] [iat_size_hex]")
+        return pipeline(
+            argv[2],
+            argv[3],
+            argv[4],
+            oracle=argv[5] if len(argv) > 5 else None,
+            module_substr=argv[6] if len(argv) > 6 else None,
+            iat_rva=int(argv[7], 16) if len(argv) > 7 else None,
+            iat_size=int(argv[8], 16) if len(argv) > 8 else None,
+        )
     if len(argv) < 5:
         sys.exit(__doc__)
     return unwrap(argv[1], argv[2], int(argv[3], 16), int(argv[4], 16))

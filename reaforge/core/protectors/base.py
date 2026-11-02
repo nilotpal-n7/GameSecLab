@@ -14,14 +14,11 @@ The contract for `unpack()`'s return value (the "environment") is what the campa
 `uc`, `arch`, `mapped_start`/`mapped_end`, `resolve_export(name)`, `resolve_rva(rva)`,
 `add_handler(symbol, fn, argc)`, `restore_snapshot(path)`, `close()`.
 """
+
 from __future__ import annotations
 
 # Lightweight identification table (DIE/recon substrings). Kept here so classify() needs no heavy import.
-ALIASES = {
-    "vmprotect": ("vmprotect",),
-    "themida": ("themida", "winlicense", "oreans"),
-    "denuvo": ("denuvo",),
-}
+ALIASES = {"vmprotect": ("vmprotect",), "themida": ("themida", "winlicense", "oreans"), "denuvo": ("denuvo",)}
 
 
 def _die_text(facts) -> str:
@@ -68,8 +65,7 @@ class Protector:
 
         Raise NotImplementedError when we have no means — `required_tools()` then says what to get.
         """
-        raise NotImplementedError(
-            f"{self.name}: no unpacker available here. Tools to get: {', '.join(self.required_tools()) or '(none known)'}")
+        raise NotImplementedError(f"{self.name}: no unpacker available here. Tools to get: {', '.join(self.required_tools()) or '(none known)'}")
 
     def vm_model(self):
         """Protector VM opcode/handler model, if one is shipped. None = the VM is emulated concretely
@@ -77,5 +73,4 @@ class Protector:
         return None
 
     def unavailable_message(self) -> str:
-        return (f"{self.name}: reaching its unpacked state is not automated here "
-                f"(tools to get: {', '.join(self.required_tools()) or 'n/a'}).")
+        return f"{self.name}: reaching its unpacked state is not automated here (tools to get: {', '.join(self.required_tools()) or 'n/a'})."

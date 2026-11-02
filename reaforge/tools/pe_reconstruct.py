@@ -15,6 +15,7 @@ Two source modes for the import table + de-virtualized code:
 
   python -m reaforge.tools.pe_reconstruct <dump.exe> <out.exe> [orig_oracle.exe]
 """
+
 from __future__ import annotations
 
 import sys
@@ -38,7 +39,7 @@ def reconstruct(dump, out, orig=None, oep=None, base=None, from_oracle=False, sh
     if from_oracle and orig is not None:
         o = pefile.PE(orig)
         D = o.OPTIONAL_HEADER.DATA_DIRECTORY
-        for i in (TLS, LOAD_CONFIG, BOUND_IMPORT):          # drop the protector's dirs
+        for i in (TLS, LOAD_CONFIG, BOUND_IMPORT):  # drop the protector's dirs
             D[i].VirtualAddress, D[i].Size = 0, 0
         o.OPTIONAL_HEADER.DllCharacteristics &= ~DYNAMIC_BASE  # no ASLR: hardcoded RVAs/IAT line up
         if base is not None:
@@ -46,8 +47,9 @@ def reconstruct(dump, out, orig=None, oep=None, base=None, from_oracle=False, sh
         if oep is not None:
             o.OPTIONAL_HEADER.AddressOfEntryPoint = oep
         o.write(out)
-        show(f"wrote {out}  (clean owner image, de-ASLR'd, protector dirs dropped)  "
-             f"OEP {o.OPTIONAL_HEADER.AddressOfEntryPoint:#x}  base {o.OPTIONAL_HEADER.ImageBase:#x}")
+        show(
+            f"wrote {out}  (clean owner image, de-ASLR'd, protector dirs dropped)  OEP {o.OPTIONAL_HEADER.AddressOfEntryPoint:#x}  base {o.OPTIONAL_HEADER.ImageBase:#x}"
+        )
         return out
 
     d = pefile.PE(dump)
@@ -59,7 +61,7 @@ def reconstruct(dump, out, orig=None, oep=None, base=None, from_oracle=False, sh
         for s in o.sections:
             nm = s.Name.decode(errors="ignore").rstrip("\x00")
             data = s.get_data()
-            if len(data) < s.Misc_VirtualSize:          # .bss etc: pad zeros so globals aren't packer garbage
+            if len(data) < s.Misc_VirtualSize:  # .bss etc: pad zeros so globals aren't packer garbage
                 data += b"\x00" * (s.Misc_VirtualSize - len(data))
             d.set_bytes_at_rva(s.VirtualAddress, data)
             if nm == ".idata":
@@ -69,9 +71,9 @@ def reconstruct(dump, out, orig=None, oep=None, base=None, from_oracle=False, sh
         if idata_rva is not None:
             writ_rvas.append(idata_rva)
         D, OD = d.OPTIONAL_HEADER.DATA_DIRECTORY, o.OPTIONAL_HEADER.DATA_DIRECTORY
-        for i in (IMPORT, EXCEPTION, BASERELOC, IAT):   # restore the real import/exception/reloc/IAT dirs
+        for i in (IMPORT, EXCEPTION, BASERELOC, IAT):  # restore the real import/exception/reloc/IAT dirs
             D[i].VirtualAddress, D[i].Size = OD[i].VirtualAddress, OD[i].Size
-        for i in (TLS, LOAD_CONFIG, BOUND_IMPORT):      # drop the protector's dirs
+        for i in (TLS, LOAD_CONFIG, BOUND_IMPORT):  # drop the protector's dirs
             D[i].VirtualAddress, D[i].Size = 0, 0
         oep = o.OPTIONAL_HEADER.AddressOfEntryPoint if oep is None else oep
         base = o.OPTIONAL_HEADER.ImageBase if base is None else base
@@ -79,7 +81,7 @@ def reconstruct(dump, out, orig=None, oep=None, base=None, from_oracle=False, sh
     if oep is not None:
         d.OPTIONAL_HEADER.AddressOfEntryPoint = oep
     if base is not None:
-        d.OPTIONAL_HEADER.DllCharacteristics &= ~DYNAMIC_BASE    # no ASLR: hardcoded RVAs/IAT line up
+        d.OPTIONAL_HEADER.DllCharacteristics &= ~DYNAMIC_BASE  # no ASLR: hardcoded RVAs/IAT line up
         d.OPTIONAL_HEADER.ImageBase = base
     for s in d.sections:
         hi = s.VirtualAddress + max(s.Misc_VirtualSize, s.SizeOfRawData)

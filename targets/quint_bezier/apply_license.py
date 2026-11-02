@@ -14,6 +14,7 @@ write is invisible to it and won't flip Pro.
   python apply_license.py "Name" --machine OemId ProcType NumProc ProcRev ProcLevel   # Formula A
   python -m reaforge.orchestrator apply quint_bezier "Name" # same, via the orchestrator
 """
+
 from __future__ import annotations
 
 import sys
@@ -68,7 +69,7 @@ def main(argv):
     machine = None
     if "--machine" in argv:
         i = argv.index("--machine")
-        vals = argv[i + 1:i + 6]
+        vals = argv[i + 1 : i + 6]
         if len(vals) != 5:
             sys.exit("--machine needs: OemId ProcType NumProc ProcRev ProcLevel (from GetSystemInfo)")
         machine = [int(x, 0) for x in vals]

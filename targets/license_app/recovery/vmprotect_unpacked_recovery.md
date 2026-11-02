@@ -17,12 +17,12 @@ No debugger, no DBI, no anti-debug fight — under full emulation none of VMProt
 
 ## Proof the protection is stripped
 
-| | packed | unpacked |
-| --- | --- | --- |
-| DIE | `VMProtect[packed]` | `Unknown` (no protector) |
-| `.text` | 0 bytes | 88 KB real code (entropy 6.5) |
-| strings | encrypted | `LICENSED` / `INVALID LICENSE` / `hex-key` restored |
-| imports | 8 (hidden) | `.idata` rebuilt, 122 entries |
+|         | packed              | unpacked                                            |
+| ------- | ------------------- | --------------------------------------------------- |
+| DIE     | `VMProtect[packed]` | `Unknown` (no protector)                            |
+| `.text` | 0 bytes             | 88 KB real code (entropy 6.5)                       |
+| strings | encrypted           | `LICENSED` / `INVALID LICENSE` / `hex-key` restored |
+| imports | 8 (hidden)          | `.idata` rebuilt, 122 entries                       |
 
 ## Recovered `main` (IDA Hex-Rays on the dump; `reaforge/ida_unpacked.py`)
 

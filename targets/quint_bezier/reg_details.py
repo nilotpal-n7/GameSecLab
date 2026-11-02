@@ -8,6 +8,7 @@ subkey string literal is visible. Output -> targets/quint_bezier/dumps/qn_reg_de
 
   ida -A -S"<path>\reg_details.py" "<a COPY of QuintGovernor>.exe"
 """
+
 import os
 
 import ida_auto
@@ -23,8 +24,8 @@ except Exception:
     have_hr = False
 
 OUT = os.environ.get("QN_OUT") or r"C:\Tools\GameSecLab\targets\quint_bezier\dumps\qn_reg_details.txt"
-FUNCS = [0x14003D3D0, 0x140033A00, 0x140033260]          # value reader, LicensedTo read, subkey setter
-GLOBALS = [0x1401114B8, 0x1401114C0]                      # subkey-path globals (ViewState/CacheTag, LicensedTo)
+FUNCS = [0x14003D3D0, 0x140033A00, 0x140033260]  # value reader, LicensedTo read, subkey setter
+GLOBALS = [0x1401114B8, 0x1401114C0]  # subkey-path globals (ViewState/CacheTag, LicensedTo)
 
 # add every function that references the subkey-path globals (the initializer with the literal)
 for g in GLOBALS:
@@ -41,7 +42,8 @@ for fea in FUNCS:
     done = False
     if have_hr:
         try:
-            L.append(str(ida_hexrays.decompile(fea))); done = True
+            L.append(str(ida_hexrays.decompile(fea)))
+            done = True
         except Exception as e:
             L.append(f"  (decompile failed: {e}; disasm)")
     if not done:

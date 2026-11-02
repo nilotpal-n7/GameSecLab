@@ -2,6 +2,7 @@
 Decompiles the license functions and writes pseudocode to targets/license_app/dumps/ida_decompile.txt.
 Also usable from REAForge as an automated 'decompile' step.
 """
+
 import ida_auto
 import ida_hexrays
 import idautils

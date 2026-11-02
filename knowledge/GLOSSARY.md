@@ -5,14 +5,14 @@ Plain-words definitions. Add a term the first time you meet it.
 ## Binaries & files
 
 - **PE (Portable Executable)** — the file format of Windows `.exe`/`.dll`. Has headers, then
-  *sections* (`.text` = code, `.rdata` = read-only data/strings, `.data` = globals, `.rsrc` = icons/version info).
+  _sections_ (`.text` = code, `.rdata` = read-only data/strings, `.data` = globals, `.rsrc` = icons/version info).
 - **Import table** — the list of DLL functions a PE needs. Tells you a lot about what a program does.
 - **PDB** — debug-symbol file produced by the MSVC linker: function names, types, line numbers.
-  Shipping one with a game hands attackers a map. The exe's *debug directory* stores the PDB path.
+  Shipping one with a game hands attackers a map. The exe's _debug directory_ stores the PDB path.
 - **Authenticode / code signing** — a certificate signature on a PE proving who published it and
   that it was not modified after signing.
 - **DWARF** — the debug-info format used by GNU toolchains (gcc/MinGW, Rust's `windows-gnu`
-  target). Stored *inside* the exe as `.debug_*` sections instead of a separate PDB.
+  target). Stored _inside_ the exe as `.debug_*` sections instead of a separate PDB.
 - **Symbol table / name mangling** — function names stored in the binary. Rust and C++ encode
   ("mangle") them, e.g. `_ZN7veloren...`; tools can demangle them back to readable names.
 - **Toolchain** — the compiler + linker + runtime libraries used to build a program. MSVC ships
@@ -26,7 +26,7 @@ Plain-words definitions. Add a term the first time you meet it.
   hide payloads there; in MinGW builds it's often just the COFF symbol table.
 - **COFF symbol table** — the classic in-file list of symbol names + addresses (`objdump -t`).
 - **Demangling** — turning `_ZN14veloren_common...` back into `veloren_common::comp::health::...` (`c++filt`).
-- **`.pdata` / `.xdata`** — x64 exception/unwind tables. Dense address arrays -> high entropy that is *not* encryption.
+- **`.pdata` / `.xdata`** — x64 exception/unwind tables. Dense address arrays -> high entropy that is _not_ encryption.
 - **ASLR** — Address Space Layout Randomization: the exe/DLLs load at a different address every run,
   so hard-coded addresses break. NX/DEP = data pages can't be executed.
 - **XREF (cross-reference)** — in Ghidra/IDA, "who uses this string/function?". Find a string -> follow its XREFs -> land in the code.
@@ -40,13 +40,13 @@ Plain-words definitions. Add a term the first time you meet it.
   bytecode run by an embedded VM (VMProtect, Themida). Makes static analysis much harder.
 - **DRM** — copy protection (e.g. Denuvo, Steam DRM). Not the same as anti-cheat.
 - **Anti-cheat** — software that detects/prevents tampering with a running game (EAC, BattlEye, Vanguard).
-- **Mutation vs Virtualization vs Ultra** (VMProtect compilation types) — *Mutation* rewrites code into
-  equivalent-but-messy **native** x86 (fast, weakest); *Virtualization* converts it to **bytecode for an embedded
-  VM** (slow, strong); *Ultra* = mutate then virtualize (strongest).
+- **Mutation vs Virtualization vs Ultra** (VMProtect compilation types) — _Mutation_ rewrites code into
+  equivalent-but-messy **native** x86 (fast, weakest); _Virtualization_ converts it to **bytecode for an embedded
+  VM** (slow, strong); _Ultra_ = mutate then virtualize (strongest).
 - **VM dispatcher / handler / bytecode** — a virtualized function becomes an array of bytecode and a loop (the
-  *dispatcher*) that reads each opcode and jumps to a small *handler* that performs it. Recovering the function =
+  _dispatcher_) that reads each opcode and jumps to a small _handler_ that performs it. Recovering the function =
   identifying the handlers and replaying the bytecode (**devirtualization**).
-- **Packer stub / OEP** — a packer replaces the real entry with a *stub* that decrypts the image in memory, then
+- **Packer stub / OEP** — a packer replaces the real entry with a _stub_ that decrypts the image in memory, then
   jumps to the **OEP (Original Entry Point)** = where the real program starts. Static tools see only the stub.
 - **Memory Protection (integrity CRC)** — the protector hashes its own code at runtime; any **byte patch** = CRC
   mismatch = it bails. Defeat by editing a **register/flag at runtime** (no bytes change) instead of patching.
@@ -95,16 +95,16 @@ Plain-words definitions. Add a term the first time you meet it.
 - **Calling convention (Win64):** first arg in **RCX**. In a method, RCX = `&self`/`&mut self`, so
   `mov [rcx+0x50],...` is writing a field at offset 0x50 of the object.
 
-- **Enum tag + payload** — a Rust/C++ tagged union is stored as a small *tag* (which variant) followed by
-  that variant's data. `DamageSource::Buff(Bleeding)` = tag `0`, payload `0x22`. Rust's *niche optimisation*
+- **Enum tag + payload** — a Rust/C++ tagged union is stored as a small _tag_ (which variant) followed by
+  that variant's data. `DamageSource::Buff(Bleeding)` = tag `0`, payload `0x22`. Rust's _niche optimisation_
   reuses impossible tag values to mean `None`, so `Option<T>` often costs no extra bytes.
 - **Padding bytes** — gaps the compiler inserts for alignment. Their contents are leftover junk (Veloren
   byte `0x27` flips 00/40), so hashing or comparing whole structs byte-for-byte gives false mismatches.
 
 ## Game architecture
 
-- **ECS (Entity-Component-System)** — entities are just IDs; data lives in per-type *component storages*
-  (all `Health` values together, all `Position` values together); *systems* loop over them each tick.
+- **ECS (Entity-Component-System)** — entities are just IDs; data lives in per-type _component storages_
+  (all `Health` values together, all `Position` values together); _systems_ loop over them each tick.
   Veloren uses the `specs` library. Memory-hacking impact: no "Player object" to walk — you find the
   storage array and your entity's slot.
 - **Event-driven damage** — attacks don't subtract health directly; they emit an event

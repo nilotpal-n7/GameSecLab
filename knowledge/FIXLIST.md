@@ -21,7 +21,7 @@ Each item: **what**, **why (which attack it answers)**, **how (UE specifics)**. 
       and debug commands. How: Project Launcher / `RunUAT BuildCookRun -clientconfig=Shipping`.
 - [ ] **Encrypt and sign paks.** Why: stops casual asset extraction/modding. How: Project Settings
       -> Crypto -> generate AES key + enable pak signing. Caveat: the key must live in the exe to
-      decrypt, so it *will* be recovered by a determined attacker — it raises the bar, it is not a wall.
+      decrypt, so it _will_ be recovered by a determined attacker — it raises the bar, it is not a wall.
 - [ ] **Treat DRM and anti-cheat as speed bumps, not walls.** Why: the Khazan install showed a
       Denuvo-protected AAA game defeated with a hypervisor-level bypass. Anything the client can
       run, the client's owner can eventually change. Real protection = server authority (see anti-cheat synthesis).

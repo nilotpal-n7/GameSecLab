@@ -1,6 +1,6 @@
 # OLLVM layer — compile-time obfuscation and re-recovery
 
-**Layer added:** OLLVM-family compile-time obfuscation on the *same* `license_app.c` source.
+**Layer added:** OLLVM-family compile-time obfuscation on the _same_ `license_app.c` source.
 **Measurement:** how much harder is it to re-derive the clean-build keygen after this layer?
 
 ## Toolchain
@@ -23,7 +23,7 @@ shows.)
 
 - **Size:** clean `143,872` → OLLVM `153,600` bytes (+10 KB).
 - **Semantics preserved:** `license_app_ollvm.exe 75685AB2` → `LICENSED` (exit 0); junk key → `INVALID LICENSE`.
-  **The clean-build keygen still works unchanged** — obfuscation changed the *presentation*, not the algorithm.
+  **The clean-build keygen still works unchanged** — obfuscation changed the _presentation_, not the algorithm.
 
 ## What each pass did to the recovery
 
@@ -31,9 +31,9 @@ shows.)
 
 Plaintext scan of the two builds:
 
-| string | clean build | OLLVM build |
-| --- | --- | --- |
-| `LICENSED` / `INVALID LICENSE` / `hex-key` | present | **gone** |
+| string                                     | clean build | OLLVM build |
+| ------------------------------------------ | ----------- | ----------- |
+| `LICENSED` / `INVALID LICENSE` / `hex-key` | present     | **gone**    |
 
 In the clean build we found `check_license` in one step by x-ref'ing the `"LICENSED"` string. In the OLLVM build that anchor is encrypted,
 so the first headless pass (anchored on strings) produced an **empty** result — we had to re-anchor on `main`.
@@ -64,11 +64,11 @@ return (unsigned int)sub_140006900(key, 0, ...) == v4;              // strtoul(k
 The constants `0x1505`, `33`, `0xF`, the shifts and `+i*7` are no longer visible. **But** each `dword_140024XXX`
 is a **statically-initialized global**, so the real value folds out by reading `.data`:
 
-| global (@VA) | stored value | `stored + imm` | real constant |
-| --- | --- | --- | --- |
-| `dword_14002400C` | `0x2812918C` | `672305548 - 672300167` | **5381 = 0x1505** (seed) |
-| `dword_140024010` | `0x2260064B` | `576718411 - 576718378` | **33** (multiplier) |
-| `dword_14002407C` | `0x4C5C2956` | `1281108310 - 1281108295` | **15 = 0xF** (mask) |
+| global (@VA)      | stored value | `stored + imm`            | real constant            |
+| ----------------- | ------------ | ------------------------- | ------------------------ |
+| `dword_14002400C` | `0x2812918C` | `672305548 - 672300167`   | **5381 = 0x1505** (seed) |
+| `dword_140024010` | `0x2260064B` | `576718411 - 576718378`   | **33** (multiplier)      |
+| `dword_14002407C` | `0x4C5C2956` | `1281108310 - 1281108295` | **15 = 0xF** (mask)      |
 
 (Folded directly from the on-disk PE — see the `pefile` snippet in NOTES. A constant-propagation pass in
 IDA/Ghidra does this automatically.) Cost: one const-fold pass, then the algorithm reads exactly as the clean build.
@@ -81,16 +81,16 @@ IDA/Ghidra does this automatically.) Cost: one const-fold pass, then the algorit
   in the clean build.
 - **Nuance:** flattening barely touched `check_license` itself. At `-O2` the 8-iteration loop is unrolled to
   straight-line arithmetic with no branches, so there is almost no control flow to flatten — `cff` bites
-  branchy functions (`main`, the CRT), while `cie`/`cse` are what actually obscured the *check*.
+  branchy functions (`main`, the CRT), while `cie`/`cse` are what actually obscured the _check_.
 
 ## Cost delta: clean → OLLVM
 
-| | clean | OLLVM |
-| --- | --- | --- |
-| Find the check | x-ref `"LICENSED"` (instant) | string encrypted → re-anchor on `main` |
-| Read the constants | visible in pseudocode | encrypted → read `.data` + const-fold |
-| Decompile size | 1 fn / ~15 lines | 510 fns / 34,585 lines reachable |
-| Keygen | derived in minutes | **same keygen still valid** (`→ LICENSED`) |
+|                    | clean                        | OLLVM                                      |
+| ------------------ | ---------------------------- | ------------------------------------------ |
+| Find the check     | x-ref `"LICENSED"` (instant) | string encrypted → re-anchor on `main`     |
+| Read the constants | visible in pseudocode        | encrypted → read `.data` + const-fold      |
+| Decompile size     | 1 fn / ~15 lines             | 510 fns / 34,585 lines reachable           |
+| Keygen             | derived in minutes           | **same keygen still valid** (`→ LICENSED`) |
 
 ## Honest takeaway
 

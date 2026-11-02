@@ -10,6 +10,7 @@ dynamic analyst would. For software you own / are authorized to analyse.
 
 Notes: needs frida (pip). Uses the Frida 17 Module API (Process.getModuleByName(m).getExportByName(n)).
 """
+
 from __future__ import annotations
 
 import sys
@@ -17,11 +18,19 @@ import time
 
 # Default crypto exports to watch, by module. Extend per target as needed.
 DEFAULT_HOOKS = {
-    "bcrypt.dll": ["BCryptOpenAlgorithmProvider", "BCryptCreateHash", "BCryptHashData", "BCryptFinishHash",
-                   "BCryptGenerateSymmetricKey", "BCryptDeriveKey", "BCryptKeyDerivation", "BCryptDecrypt",
-                   "BCryptEncrypt", "BCryptSetProperty"],
-    "libcrypto-1_1-x64.dll": ["EVP_DecryptInit_ex", "EVP_DecryptUpdate", "EVP_DecryptFinal_ex",
-                              "EVP_CIPHER_CTX_ctrl", "EVP_aes_256_gcm", "EVP_sha256", "HKDF", "HMAC"],
+    "bcrypt.dll": [
+        "BCryptOpenAlgorithmProvider",
+        "BCryptCreateHash",
+        "BCryptHashData",
+        "BCryptFinishHash",
+        "BCryptGenerateSymmetricKey",
+        "BCryptDeriveKey",
+        "BCryptKeyDerivation",
+        "BCryptDecrypt",
+        "BCryptEncrypt",
+        "BCryptSetProperty",
+    ],
+    "libcrypto-1_1-x64.dll": ["EVP_DecryptInit_ex", "EVP_DecryptUpdate", "EVP_DecryptFinal_ex", "EVP_CIPHER_CTX_ctrl", "EVP_aes_256_gcm", "EVP_sha256", "HKDF", "HMAC"],
     "advapi32.dll": ["CryptDecrypt", "CryptDeriveKey", "CryptHashData", "CryptCreateHash"],
 }
 # GetProcAddress names containing any of these are reported (primitives resolved dynamically).
@@ -71,6 +80,7 @@ def trace(exe, args=(), cwd=None, secs=6, hooks=None, hints=CRYPTO_HINTS, show=p
     import json
 
     import frida
+
     hooks = hooks or DEFAULT_HOOKS
     seq, dynamic = [], []
     pid = frida.spawn([exe, *args], cwd=cwd)
@@ -103,11 +113,11 @@ def trace(exe, args=(), cwd=None, secs=6, hooks=None, hints=CRYPTO_HINTS, show=p
             pass
     show(f"\n== crypto call sequence ({len(seq)}) ==")
     for i, s in enumerate(seq):
-        show(f"  {i+1:2}. {s}")
+        show(f"  {i + 1:2}. {s}")
     if dynamic:
         show(f"\n== crypto primitives resolved via GetProcAddress ({len(set(dynamic))}) ==")
         for i, s in enumerate(dict.fromkeys(dynamic)):
-            show(f"  {i+1:2}. {s}")
+            show(f"  {i + 1:2}. {s}")
     return seq, dynamic
 
 
@@ -118,9 +128,13 @@ def main(argv):
     cwd = None
     secs = 6
     if "--cwd" in rest:
-        i = rest.index("--cwd"); cwd = rest[i + 1]; del rest[i:i + 2]
+        i = rest.index("--cwd")
+        cwd = rest[i + 1]
+        del rest[i : i + 2]
     if "--secs" in rest:
-        i = rest.index("--secs"); secs = int(rest[i + 1]); del rest[i:i + 2]
+        i = rest.index("--secs")
+        secs = int(rest[i + 1])
+        del rest[i : i + 2]
     exe, args = rest[0], rest[1:]
     trace(exe, args, cwd=cwd, secs=secs)
 

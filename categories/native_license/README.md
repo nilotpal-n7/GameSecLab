@@ -14,13 +14,13 @@ validation battery, then recover / peel / prove the key formula symbolically. It
 
 ## Per-title config supplies
 
-| field | meaning |
-| --- | --- |
-| `packed`, `snap` | the binary + its post-unpack snapshot |
-| `check_rva` | RVA of the virtualized check function |
-| `expected(serial)` | the title's reference keygen — used ONLY to validate / cross-check, never to drive recovery |
-| `prove(want, serial_sym)` | optional z3 all-inputs proof of the recovered formula |
-| `keybuf`, `ret_sentinel`, `marker`, `serial_api` | harness addresses / the import to hook |
+| field                                            | meaning                                                                                     |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `packed`, `snap`                                 | the binary + its post-unpack snapshot                                                       |
+| `check_rva`                                      | RVA of the virtualized check function                                                       |
+| `expected(serial)`                               | the title's reference keygen — used ONLY to validate / cross-check, never to drive recovery |
+| `prove(want, serial_sym)`                        | optional z3 all-inputs proof of the recovered formula                                       |
+| `keybuf`, `ret_sentinel`, `marker`, `serial_api` | harness addresses / the import to hook                                                      |
 
 See `targets/license_app/config.py` for the reference title (our clean crackme).
 

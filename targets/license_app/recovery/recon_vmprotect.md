@@ -14,7 +14,7 @@ Total 7.78: packed
   .reloc  512 bytes  0.59
 ```
 
-**Means:** VMProtect moved your real `.text/.rdata/.data` *into* the big encrypted section `.G#b` (randomized,
+**Means:** VMProtect moved your real `.text/.rdata/.data` _into_ the big encrypted section `.G#b` (randomized,
 unreadable section name, entropy 7.79 ≈ encrypted). Static tools now see almost nothing — the code only exists
 in cleartext in memory, after the stub unpacks it. This is why the break is **dynamic** (run it, then look).
 
@@ -27,7 +27,7 @@ license_app.vmp.exe  :  8 imports  (KERNEL32 only — minimal loader set)
 
 **Means:** **Import Protection** collapsed the import table from 74 to 8. The protected binary imports only the
 handful of KERNEL32 calls the stub needs to bootstrap (alloc/protect memory, resolve the rest). The real imports
-are resolved *by the stub at runtime* and hidden from the on-disk IAT — which is exactly what **Scylla's "Get
+are resolved _by the stub at runtime_ and hidden from the on-disk IAT — which is exactly what **Scylla's "Get
 Imports / Fix Dump"** rebuilds if you choose to unpack.
 
 ## 3. Strings — plaintext scan, clean vs protected

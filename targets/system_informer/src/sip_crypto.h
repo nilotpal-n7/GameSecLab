@@ -28,18 +28,15 @@
 extern "C" {
 #endif
 
-void     sip_hkdf_sha256(const uint8_t *ikm, size_t ikm_len,
-                         const uint8_t *salt, size_t salt_len,
-                         const uint8_t *info, size_t info_len,
-                         uint8_t *out32);
+void sip_hkdf_sha256(const uint8_t *ikm, size_t ikm_len, const uint8_t *salt, size_t salt_len, const uint8_t *info,
+                     size_t info_len, uint8_t *out32);
 
-int      sip_aesgcm_decrypt(const uint8_t key[32], const uint8_t nonce[12],
-                            const uint8_t *ct, size_t ct_len, uint8_t *pt_out);
+int sip_aesgcm_decrypt(const uint8_t key[32], const uint8_t nonce[12], const uint8_t *ct, size_t ct_len,
+                       uint8_t *pt_out);
 
-int      sip_ed25519_verify(const uint8_t pub[32], const uint8_t *msg, size_t msg_len,
-                            const uint8_t sig[64]);
+int sip_ed25519_verify(const uint8_t pub[32], const uint8_t *msg, size_t msg_len, const uint8_t sig[64]);
 
-int      sip_hwid(uint8_t *out, size_t *len);        /* 1 on success */
+int sip_hwid(uint8_t *out, size_t *len); /* 1 on success */
 
 uint32_t sip_image_text_crc32(void);
 

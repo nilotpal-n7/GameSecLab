@@ -6,6 +6,7 @@ categories/hashlink/campaign.py. This title only names its packed binary + snaps
 
 Run via the CLI:   python -m reaforge.core dead_cells [N] [modes]
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,13 +16,7 @@ from categories.hashlink import campaign
 HERE = Path(__file__).resolve().parent
 DUMPS = HERE / "dumps"
 
-CONFIG = campaign.Config(
-    name="Dead Cells libhl.dll",
-    packed=str(DUMPS / "libhl.vmp.dll"),
-    snap=str(DUMPS / "dll32_postunpack.snap"),
-    export="hl_hash_utf8",
-    N=4,
-)
+CONFIG = campaign.Config(name="Dead Cells libhl.dll", packed=str(DUMPS / "libhl.vmp.dll"), snap=str(DUMPS / "dll32_postunpack.snap"), export="hl_hash_utf8", N=4)
 
 
 def run(packed=None, arg=None, modes=("validate", "recover", "peel", "prove")):

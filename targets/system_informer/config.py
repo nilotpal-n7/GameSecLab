@@ -17,6 +17,7 @@ Protected path exercised end to end:
 
 Run via:   python -m reaforge.core system_informer [feature] [modes]
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -33,11 +34,11 @@ SLUG = "enterprise-forensics"
 # These are carried ENCRYPTED in the license payload - they are not immediates in the protected binary;
 # a correct recovery must pull them out of the decrypted entitlements, not read them from .rdata.
 MASK = {
-    "dump":   0x00000450,  # Process Memory Dumper (PhUiCreateDumpFileProcess / mdump.c)
+    "dump": 0x00000450,  # Process Memory Dumper (PhUiCreateDumpFileProcess / mdump.c)
     "inject": 0x0000002A,  # DLL Injection (call site TODO)
-    "edit":   0x00000038,  # live Memory Editor write access (memedit.c)
+    "edit": 0x00000038,  # live Memory Editor write access (memedit.c)
 }
-MASK_TRAP = 0x00001000     # unlicensed trap (PROCESS_SUSPEND_RESUME): handle opens, Pro op denies
+MASK_TRAP = 0x00001000  # unlicensed trap (PROCESS_SUSPEND_RESUME): handle opens, Pro op denies
 
 # Feature index order must match SipFeature in si_pro_mask.h.
 FEATURES = ("dump", "inject", "edit")
@@ -56,8 +57,8 @@ def expected_key(feature) -> int:
 # preserved pre-Themida build is the pe_reconstruct overlay oracle. Paths are the preserved evidence copies.
 EVIDENCE = HERE / "evidence" / "locked_binaries"
 THEMIDA = {
-    "module": "ExtendedTools",                               # module substring to find in the dump
-    "packed": str(EVIDENCE / "ExtendedTools.dll"),           # Themida-packed (IAT region read from here)
+    "module": "ExtendedTools",  # module substring to find in the dump
+    "packed": str(EVIDENCE / "ExtendedTools.dll"),  # Themida-packed (IAT region read from here)
     "oracle": str(EVIDENCE / "ExtendedTools.unpacked.dll"),  # clean build -> reconstruct overlay source
 }
 

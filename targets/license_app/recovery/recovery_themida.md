@@ -7,7 +7,7 @@ Target: `license_app.themida.exe` — **Themida x64 3.2.4 (2026, demo)** protect
 
 - **Entry Point Virtualization:** the first 18 bytes of the entry (`0x1490–0x14A2`) are virtualized.
 - **check_license virtualized:** macro region `0x14FB–0x158E` (our `VM_START/VM_END`) runs in a SecureEngine VM.
-- **Demo restriction:** *all* virtualization macros are forced to **Falcon Tiny** (the weakest VM) regardless
+- **Demo restriction:** _all_ virtualization macros are forced to **Falcon Tiny** (the weakest VM) regardless
   of the EAGLE64 Black selection — true EAGLE64 needs a licensed Themida.
 - Full-strength otherwise: packing (112 KB → 1.8 MB), anti-debug, Advanced API-Wrapping, string encryption,
   Detect File/Registry Monitors, Anti-File-patching, Anti-Sandbox.
@@ -17,7 +17,7 @@ Target: `license_app.themida.exe` — **Themida x64 3.2.4 (2026, demo)** protect
 - **Anti-debug beaten** by ScyllaHide's `Themida x86/x64` profile — the demo nag appeared under the debugger
   with no "debugger found".
 - **Hardware breakpoints are detected** (Themida reads the DR registers → "debugger found"). Enabling
-  ScyllaHide **DRx Protection** hides them, but then it also blocks x64dbg from *installing* its own HW BPs.
+  ScyllaHide **DRx Protection** hides them, but then it also blocks x64dbg from _installing_ its own HW BPs.
 - **Clean OEP capture resisted** (HW BP neutralized; memory-access BPs fire on SecureEngine's decrypt reads).
   Modern Themida resists public unpacking the same way VMProtect 3.11 resists NoVmp — that version lag IS the
   lesson. A full clean dump (with the wrapped IAT rebuilt) is the hard, licensed-tool / manual frontier.
@@ -65,7 +65,7 @@ Target: `license_app.themida.exe` — **Themida x64 3.2.4 (2026, demo)** protect
   Run: `python -m reaforge.tools.vm_lift <dump.DMP> themida 14e0`
 - **VM-lifter: full arithmetic FORM — DONE, oracle-free** (`vm_lift.py form` + `reaforge.core.peel.prove_recurrence`).
   Not just the constant for one machine — the whole keygen as a function of a **tainted machine-id**. `machine_id()`
-  runs *before* `strtoul` and the `expected_key` recurrence stays largely in registers, so tainting `mid` at the
+  runs _before_ `strtoul` and the `expected_key` recurrence stays largely in registers, so tainting `mid` at the
   `GetVolumeInformationA` stub (with the taint-recording SymEngine shadow) **survives the VM for ~1,625 instrs** —
   far enough to recover the symbolic `want(mid)` straight from the SecureEngine VM. `peel.prove_recurrence` then peels
   the rounds off `best`'s **own z3 subterms** (the VM's bit-sliced `Concat/Extract` representation defeats passing
@@ -79,14 +79,14 @@ Target: `license_app.themida.exe` — **Themida x64 3.2.4 (2026, demo)** protect
   Run: `python -m reaforge.tools.vm_lift form <dump.DMP> themida 14e0`
 - **VM-lifter: EPV entry — DONE, oracle-free** (`vm_lift.py entry`). The last virtualized region: the Entry-Point-
   Virtualization block (`0x1490`, `jmp 0x1402d2a08` into the VM). Unlike `check_license` this is **control flow**, not a
-  computed value, so the lift recovers the block's *effect*: run the VM from `0x1490` with **sentinel registers** and a
+  computed value, so the lift recovers the block's _effect_: run the VM from `0x1490` with **sentinel registers** and a
   clean stack, and stop when control leaves the VM segment back into native code. Recovered (2,704 VM instrs):
   `rax = 0x140007080; mov dword [0x140007080], 0; jmp 0x1400010A0` (RSP delta 0 — no call/push). Oracle cross-check:
   the native entry is `mov rax,[0x14043870]` (= `0x140007080`) / `mov [rax],0` / `jmp 0x1400010A0` — **exit-target
   match, register + store match**. The exit edge and state delta are read straight from the VM; the oracle only confirms.
   Run: `python -m reaforge.tools.vm_lift entry <dump.DMP> themida 1490 [oracle.exe]`
 
-**Devirt complete:** both virtualized regions (the `check_license` VM body *and* the EPV entry) are now lifted
+**Devirt complete:** both virtualized regions (the `check_license` VM body _and_ the EPV entry) are now lifted
 oracle-free — the constant, the full keygen recurrence (proven over all 2^32 mid), and the entry block's effect.
 
 ## The bypass (no unpack, no devirt)

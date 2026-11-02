@@ -13,6 +13,7 @@ Slow (opt-in: set RUN_CAMPAIGNS=1; needs vmp-lazy-unpack + the authorized binari
 
 Run:  python -m reaforge.tests.test_smoke       (or: pytest reaforge/tests/test_smoke.py)
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -31,10 +32,11 @@ for _p in (str(ROOT), VMP_LAZY):
 def test_core_imports():
     """engine/peel import with no emulation deps; build_canon covers both bitnesses."""
     from reaforge.core import engine, peel  # noqa: F401
-    c64, _, _ = engine.build_canon(64)      # (canon, ucreg, full)
+
+    c64, _, _ = engine.build_canon(64)  # (canon, ucreg, full)
     c32, _, _ = engine.build_canon(32)
     assert c64["al"] == ("rax", 1, 0) and c64["rax"] == ("rax", 8, 0)
-    assert c32["al"] == ("eax", 1, 0) and "rax" not in c32          # 32-bit has no 64-bit regs
+    assert c32["al"] == ("eax", 1, 0) and "rax" not in c32  # 32-bit has no 64-bit regs
     assert c32["ax"] == ("eax", 2, 0)
 
 
@@ -42,10 +44,12 @@ def test_category_and_title_modules_import():
     """Category engines (EXE + DLL paths) and both title configs import and expose CONFIG/run."""
     from categories.hashlink import campaign as hashlink  # x86 DLL mechanism
     from categories.native_license import campaign as native  # x64 EXE mechanism
+
     assert hasattr(native, "Config") and hasattr(native, "run")
     assert hasattr(hashlink, "Config") and hasattr(hashlink, "run")
     from targets.dead_cells import config as dc
     from targets.license_app import config as la
+
     assert la.CONFIG.check_rva == 0x1000 and callable(la.CONFIG.expected)
     assert dc.CONFIG.export == "hl_hash_utf8"
 
@@ -53,13 +57,14 @@ def test_category_and_title_modules_import():
 def test_protector_tools_wired():
     """Themida from-dump tools import and the protector exposes unwrap/reconstruct/lift_vm."""
     from reaforge.tools import pe_reconstruct, themida_unwrap, vm_lift  # noqa: F401
+
     assert callable(themida_unwrap.unwrap) and callable(pe_reconstruct.reconstruct)
     assert all(callable(getattr(vm_lift, f)) for f in ("lift", "emulate", "lift_form", "lift_entry"))
     from reaforge.core.protectors import for_name
+
     t = for_name("themida")
     assert t.available()
-    assert all(hasattr(t, m) for m in
-               ("unwrap_iat", "reconstruct", "lift_vm", "lift_vm_form", "lift_vm_entry"))
+    assert all(hasattr(t, m) for m in ("unwrap_iat", "reconstruct", "lift_vm", "lift_vm_form", "lift_vm_entry"))
 
 
 def test_prove_recurrence_offline():
@@ -68,10 +73,11 @@ def test_prove_recurrence_offline():
     import claripy
 
     from reaforge.core import peel
+
     mid = claripy.BVS("inp_mid", 32)
     acc = claripy.BVV(0x1505, 32) ^ mid
     for i in range(8):
-        acc = ((acc * 33) ^ (claripy.LShR(mid, 4 * i) & 0xF)) + 7 * i   # == expected_key(mid)
+        acc = ((acc * 33) ^ (claripy.LShR(mid, 4 * i) & 0xF)) + 7 * i  # == expected_key(mid)
     res = peel.prove_recurrence(acc, mid, out=lambda *a: None)
     assert res["seed"] == 0x1505 and res["seed_proven"]
     assert set(res["mult"]) == {33} and res["shifts"] == [0, 4, 8, 12, 16, 20, 24, 28]
@@ -81,10 +87,8 @@ def test_prove_recurrence_offline():
 def test_license_app_keygen():
     """Clean-build keygen matches the VM-validated ground truth (5 serials)."""
     from targets.license_app.config import expected_key
-    known = {
-        0x12345678: 0x7A3B3935, 0xAABBCCDD: 0x3E988000, 0xDEADBEEF: 0x593BA6C6,
-        0x00000000: 0xB8BF23C9, 0xFFFFFFFF: 0x4E25F1B6,
-    }
+
+    known = {0x12345678: 0x7A3B3935, 0xAABBCCDD: 0x3E988000, 0xDEADBEEF: 0x593BA6C6, 0x00000000: 0xB8BF23C9, 0xFFFFFFFF: 0x4E25F1B6}
     for serial, key in known.items():
         assert expected_key(serial) == key, f"expected_key({serial:#x}) != {key:#x}"
 
@@ -92,9 +96,11 @@ def test_license_app_keygen():
 def test_quint_keygen_and_apply():
     """Quint Bezier Formula-C keygen ground truth + apply_license renders the filled HKLM commands."""
     from targets.quint_bezier.keygen import keygen_nameonly, name_sum
+
     assert name_sum("Nilotpal") == 835
     assert keygen_nameonly("Nilotpal") == (0, 0x9239A921821C49AB)
     from targets.quint_bezier import apply_license
+
     txt = apply_license.render("Nilotpal")
     assert "0x9239A921821C49AB" in txt and r"HKLM\Software\QuintBezier" in txt
     assert "LicensedTo" in txt and "ViewState" in txt and "CacheTag" in txt
@@ -103,14 +109,16 @@ def test_quint_keygen_and_apply():
 def test_hashlink_ref_hash_edges():
     """hl_hash_utf8 reference: empty, ascii, and the signed-char sign-extension edge."""
     from categories.hashlink.campaign import ref_hash
+
     assert ref_hash(b"") == 0
-    assert ref_hash(b"a") == 97                      # 223*0 + 97
-    assert ref_hash(b"ab") == 223 * 97 + 98          # 21729
-    assert ref_hash(b"\xff") == 0xFFFFFFFF           # (unsigned)(signed char)-1, signed modulo keeps -1
+    assert ref_hash(b"a") == 97  # 223*0 + 97
+    assert ref_hash(b"ab") == 223 * 97 + 98  # 21729
+    assert ref_hash(b"\xff") == 0xFFFFFFFF  # (unsigned)(signed char)-1, signed modulo keeps -1
 
 
 def _run_validate(mod, title):
     from reaforge.core.__main__ import _check_authorized
+
     _check_authorized(mod.CONFIG.packed)
     assert Path(mod.CONFIG.packed).exists(), f"{title}: packed binary missing"
     buf = io.StringIO()
@@ -124,32 +132,40 @@ def _run_validate(mod, title):
 def test_campaign_x64_exe():
     """x64 EXE case: license_app check_license validate battery (opt-in)."""
     if not os.environ.get("RUN_CAMPAIGNS"):
-        print("  [skip] set RUN_CAMPAIGNS=1 to run the x64 EXE campaign"); return
+        print("  [skip] set RUN_CAMPAIGNS=1 to run the x64 EXE campaign")
+        return
     from targets.license_app import config as la
+
     _run_validate(la, "license_app (x64 EXE)")
 
 
 def test_campaign_x86_dll():
     """x86 DLL case: Dead Cells libhl.dll hl_hash_utf8 validate battery (opt-in)."""
     if not os.environ.get("RUN_CAMPAIGNS"):
-        print("  [skip] set RUN_CAMPAIGNS=1 to run the x86 DLL campaign"); return
+        print("  [skip] set RUN_CAMPAIGNS=1 to run the x86 DLL campaign")
+        return
     from targets.dead_cells import config as dc
+
     _run_validate(dc, "dead_cells (x86 DLL)")
 
 
 def test_system_informer_apply_and_themida():
     """SIP apply_license renders the oracle-issue + deploy commands; themida_unwrap exposes capture/pipeline."""
     from targets.system_informer import apply_license
+
     txt = apply_license.render("Reviewer", hwid="c30e127afb5ab2d9e4b8af5200848f5c", crc=0x3AEAAED9)
     assert "license_signer.py issue" in txt and "c30e127afb5ab2d9e4b8af5200848f5c" in txt
     assert "0x3AEAAED9" in txt and "SystemInformer.sipm" in txt
-    assert "sip_report_tool" in apply_license.render("Reviewer")   # no HWID/CRC -> how to get them
+    assert "sip_report_tool" in apply_license.render("Reviewer")  # no HWID/CRC -> how to get them
     from reaforge.tools.themida_unwrap import capture_command, carve_module, pipeline  # noqa: F401
+
     assert "MiniDumpWriteDump" in capture_command("SystemInformer")
     from reaforge.tools.crypto_trace import DEFAULT_HOOKS, trace  # noqa: F401
     from reaforge.tools.pe_reconstruct import reconstruct  # noqa: F401
+
     assert "bcrypt.dll" in DEFAULT_HOOKS and "BCryptDecrypt" in DEFAULT_HOOKS["bcrypt.dll"]
     from targets.system_informer.config import THEMIDA
+
     assert THEMIDA["module"] == "ExtendedTools"
 
 
@@ -158,9 +174,11 @@ def main():
     fails = 0
     for t in tests:
         try:
-            t(); print(f"  PASS  {t.__name__}")
+            t()
+            print(f"  PASS  {t.__name__}")
         except Exception as e:
-            fails += 1; print(f"  FAIL  {t.__name__}: {e}")
+            fails += 1
+            print(f"  FAIL  {t.__name__}: {e}")
     print(f"\n{len(tests) - fails}/{len(tests)} passed")
     return 1 if fails else 0
 

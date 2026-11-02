@@ -5,12 +5,12 @@ referenced paper/tool **downloaded and verified real** (not hallucinated), tied 
 
 ## 1. Why our earlier attempts failed — now fully explained
 
-| Attempt | Why it failed (per the architecture doc) |
-| --- | --- |
-| x64dbg + ScyllaHide | §4.4 direct-syscall `ProcessDebugPort/DebugObjectHandle/DebugFlags` + §4.2 exception-driven checks; §4.1 reads `KdDebuggerEnabled` straight from `KUSER_SHARED_DATA` (0x7FFE02D4), bypassing PEB fakes. |
-| x64dbg exception "pass single-step" | §3 interleaved self-checksumming folds `.text`/`.vmp` bytes into the rolling key; any `0xCC` corrupts it → delayed crash. |
-| Plain Pin (DBI) | **§4.3 virtualized RDTSC timing.** Under Pin the target ran **792M instrs (~300× slower)**; paired-`RDTSC` Δt is enormous → detected. |
-| Our single-step re-raise pintool | `db=0` — the trap flag is **never set** under Pin, confirming 3.11's anti-DBI is **not** the 3.0.9 single-step. It's timing (above). |
+| Attempt                             | Why it failed (per the architecture doc)                                                                                                                                                                |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| x64dbg + ScyllaHide                 | §4.4 direct-syscall `ProcessDebugPort/DebugObjectHandle/DebugFlags` + §4.2 exception-driven checks; §4.1 reads `KdDebuggerEnabled` straight from `KUSER_SHARED_DATA` (0x7FFE02D4), bypassing PEB fakes. |
+| x64dbg exception "pass single-step" | §3 interleaved self-checksumming folds `.text`/`.vmp` bytes into the rolling key; any `0xCC` corrupts it → delayed crash.                                                                               |
+| Plain Pin (DBI)                     | **§4.3 virtualized RDTSC timing.** Under Pin the target ran **792M instrs (~300× slower)**; paired-`RDTSC` Δt is enormous → detected.                                                                   |
+| Our single-step re-raise pintool    | `db=0` — the trap flag is **never set** under Pin, confirming 3.11's anti-DBI is **not** the 3.0.9 single-step. It's timing (above).                                                                    |
 
 **The lesson (senior-RE):** against this many runtime checks, don't fight the runtime — **emulate** it in a CPU
 we fully control, where no check (debugger flags, CPUID, RDTSC clock, page permissions) can see us.

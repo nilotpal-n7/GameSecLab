@@ -11,7 +11,7 @@ Pin injects analysis code into a live process; never attach it to someone else's
 ## Why Pin, next to the tools we already have
 
 - **Ghidra/IDA** = static (the on-disk bytes). **x64dbg** = interactive single-stepping.
-- **Pin** = programmatic observation of *every executed instruction* with almost no manual driving. It sees
+- **Pin** = programmatic observation of _every executed instruction_ with almost no manual driving. It sees
   **JIT'd / self-generated code** that never exists on disk — exactly what VM-protectors emit. That's why it
   is the right tool for full-bypass-chain step 3 ("find the native CPUID/RDTSC a VM can't virtualize").
 

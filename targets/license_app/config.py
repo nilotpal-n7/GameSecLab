@@ -7,6 +7,7 @@ its packed binary + snapshot. Everything mechanical is in categories/native_lice
 
 Run via the CLI:   python -m reaforge.core license_app [serial_hex] [modes]
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -32,12 +33,16 @@ def expected_key(mid: int) -> int:
 
 def _prove_b(want, serial_sym):
     """Prove want(serial) == the pristine 0x1505^s; ((acc*33)^nibble)+7i recurrence over ALL 2^32."""
-    Sz = peel.conv(serial_sym); bz = peel.conv(want)
+    Sz = peel.conv(serial_sym)
+    bz = peel.conv(want)
     acc = z3.BitVecVal(0x1505, 32) ^ Sz
     for i in range(8):
         acc = (acc * z3.BitVecVal(33, 32)) ^ (z3.LShR(Sz, z3.BitVecVal(4 * i, 32)) & z3.BitVecVal(0xF, 32))
         acc = acc + z3.BitVecVal((i * 7) & M, 32)
-    sv = z3.Solver(); sv.set("timeout", 180000); sv.add(bz != acc); r = sv.check()
+    sv = z3.Solver()
+    sv.set("timeout", 180000)
+    sv.add(bz != acc)
+    r = sv.check()
     if r == z3.unsat:
         print("  [Proof B] UNSAT over all 2^32 ==> want == pristine 0x1505^s; ((acc*33)^nibble)+7i")
     elif r == z3.unknown:
@@ -54,8 +59,8 @@ CONFIG = campaign.Config(
     expected=expected_key,
     prove=_prove_b,
     default_serial=0xAABBCCDD,
-    keybuf=0x00000add00000000,
-    ret_sentinel=0x7ff900002000,
+    keybuf=0x00000ADD00000000,
+    ret_sentinel=0x7FF900002000,
     marker=0x13371337,
 )
 

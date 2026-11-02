@@ -1,7 +1,7 @@
 # reaforge/core/protectors — the protector seam
 
 Nothing in the devirt engine is hardcoded to VMProtect. A `Protector` subclass owns everything
-specific to one protector *family*; the engine (`engine.py`) and peeler (`peel.py`) stay generic, and
+specific to one protector _family_; the engine (`engine.py`) and peeler (`peel.py`) stay generic, and
 the campaigns reach the unpacked state through the registry — never by importing a loader directly.
 
 ```

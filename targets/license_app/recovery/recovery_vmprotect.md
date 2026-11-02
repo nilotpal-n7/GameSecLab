@@ -2,7 +2,7 @@
 
 **Layer added:** the whole `check_license` algorithm is turned into **VMProtect VM bytecode** (not native
 instructions), plus the binary is packed. This is the real step up from OLLVM: OLLVM only changed how the native
-instructions *looked*; VMProtect removes the native arithmetic entirely and runs it on an embedded interpreter.
+instructions _looked_; VMProtect removes the native arithmetic entirely and runs it on an embedded interpreter.
 
 ## Protect side — DONE (scripted, no GUI)
 
@@ -23,14 +23,14 @@ instructions *looked*; VMProtect removes the native arithmetic entirely and runs
 
 ### Verification
 
-| check | result |
-| --- | --- |
-| marker found & virtualized | `Loading [V] 140001010 … "check_license"` |
-| semantics preserved through the VM | `.\license_app.vmp.exe 75685AB2` → `LICENSED`; junk → `INVALID LICENSE` |
-| SDK DLL dependency after protection | **none** |
-| size | 143,360 → **1,507,328 bytes (~1050%)** (heavier than CLI default — extra layers on) |
-| demo watermark | startup messagebox "protected with demo version of VMProtect" (Demo only) |
-| DIE | `Protector: VMProtect[packed]`, high-entropy packed section |
+| check                               | result                                                                              |
+| ----------------------------------- | ----------------------------------------------------------------------------------- |
+| marker found & virtualized          | `Loading [V] 140001010 … "check_license"`                                           |
+| semantics preserved through the VM  | `.\license_app.vmp.exe 75685AB2` → `LICENSED`; junk → `INVALID LICENSE`             |
+| SDK DLL dependency after protection | **none**                                                                            |
+| size                                | 143,360 → **1,507,328 bytes (~1050%)** (heavier than CLI default — extra layers on) |
+| demo watermark                      | startup messagebox "protected with demo version of VMProtect" (Demo only)           |
+| DIE                                 | `Protector: VMProtect[packed]`, high-entropy packed section                         |
 
 ## Break side — the tooling reality (why the plan changes)
 
@@ -42,7 +42,7 @@ The original plan was **NoVmp + VTIL** devirtualization. Checked before building
 
 **Conclusion: NoVmp/VTIL will not devirtualize this binary.** Building it (hours in VS2026) to watch it fail
 on 3.11 is a negative result, not a skill. So the break path is a real choice (see below). This version
-coupling *is* a genuine lesson: public automated devirtualizers lag the protector by years, which is exactly
+coupling _is_ a genuine lesson: public automated devirtualizers lag the protector by years, which is exactly
 why modern VMProtect is considered strong.
 
 ## Break options (pick one — tracked in the next-step box)

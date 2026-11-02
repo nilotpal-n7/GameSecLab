@@ -24,17 +24,17 @@ Hikari clang-cl + msys make (the MSBuild/ClangCL route fails in VS2026). Validat
 
 **Result on the protected binary** (`reaforge/pintools/vmp_probe.cpp` → `vmp_probe.log`):
 
-| observation | value |
-| --- | --- |
-| instructions executed before death | **~792,000,000** (vs 2.7M clean) — the whole VM runs |
-| exceptions delivered to the app (`CTXCHG`) | **0** — the single-step exception never fires under Pin |
-| demo nag / output | none |
-| exit | code **4**, no clean exit, our Fini never ran |
-| syscalls | normal pattern (0x50 ×many early = the packer's page ops), then abrupt death |
+| observation                                | value                                                                        |
+| ------------------------------------------ | ---------------------------------------------------------------------------- |
+| instructions executed before death         | **~792,000,000** (vs 2.7M clean) — the whole VM runs                         |
+| exceptions delivered to the app (`CTXCHG`) | **0** — the single-step exception never fires under Pin                      |
+| demo nag / output                          | none                                                                         |
+| exit                                       | code **4**, no clean exit, our Fini never ran                                |
+| syscalls                                   | normal pattern (0x50 ×many early = the packer's page ops), then abrupt death |
 
 **Interpretation:** confirms the PDF's theory on our 3.11 binary — under Pin the trap-flag single-step
 exception is **not raised** (Pin's JIT doesn't honor TF), so VMProtect's handler never runs and it detects the
-instrumentation. The kill happens *late* (after the VM executes), via a path that is not a hookable export and
+instrumentation. The kill happens _late_ (after the VM executes), via a path that is not a hookable export and
 not a visible exception.
 
 ## Where this leaves us (honest)

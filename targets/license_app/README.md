@@ -4,7 +4,7 @@ Our own hardware-bound Windows license check — the VMProtect 3.11 crackme we b
 end-to-end. x64 PE (MinGW).
 
 - `machine_id()` = C: volume serial; `check_license()` accepts only the matching 8-hex key.
-- **clean build** `src/license_app.c` — clean baseline.  **VMProtect** `src/license_app_hardened.c` — the version we packed
+- **clean build** `src/license_app.c` — clean baseline. **VMProtect** `src/license_app_hardened.c` — the version we packed
   with VMProtect 3.11 Ultra (`dumps/license_app.vmp.exe`, the authorized analysis target).
 - The reference keygen (clean-build algorithm) lives in `config.py` as `expected_key` — used only to
   validate / cross-check recovery, never to drive it.
@@ -12,7 +12,7 @@ end-to-end. x64 PE (MinGW).
 ## Layout
 
 - `config.py` — the **only** place license_app specifics live (RVA, keygen, Proof-B recurrence, paths).
-- `src/` — our C sources (tracked).  `recovery/` — the recovery write-ups clean/OLLVM/VMProtect + recovered keygen.
+- `src/` — our C sources (tracked). `recovery/` — the recovery write-ups clean/OLLVM/VMProtect + recovered keygen.
 - `protect_and_break.md`, `vmprotect_break_cheatsheet.md` — the protect-then-reverse walkthrough.
 - `themida_plan.md` — the next layer (Themida/Oreans): protect hand-off + unpack + protector-agnostic bypass.
 - `screenshots/` — x64dbg / anti-debug evidence.

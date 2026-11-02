@@ -3,6 +3,7 @@
 Run:  python -m reaforge.tool_registry   (or: python tool_registry.py)
 Prints a capability report and writes capabilities.json next to it.
 """
+
 from __future__ import annotations
 
 import json
@@ -14,31 +15,30 @@ HERE = Path(__file__).resolve().parent
 
 # (name, kind, how-to-detect). path checks are Windows-first with sensible fallbacks.
 PATHS = {
-    "ghidra":   [r"C:\Tools\ghidra\ghidraRun.bat", r"C:\Tools\ghidra\support\analyzeHeadless.bat"],
-    "x64dbg":   [r"C:\Tools\x96dbg\release\x96dbg.exe", r"C:\Tools\x96dbg\release\x64\x64dbg.exe"],
-    "die":      [r"C:\Tools\DIE\diec.exe", r"C:\Tools\DIE\die.exe"],
-    "gcc":      [r"C:\Tools\msys64\ucrt64\bin\gcc.exe"],
+    "ghidra": [r"C:\Tools\ghidra\ghidraRun.bat", r"C:\Tools\ghidra\support\analyzeHeadless.bat"],
+    "x64dbg": [r"C:\Tools\x96dbg\release\x96dbg.exe", r"C:\Tools\x96dbg\release\x64\x64dbg.exe"],
+    "die": [r"C:\Tools\DIE\diec.exe", r"C:\Tools\DIE\die.exe"],
+    "gcc": [r"C:\Tools\msys64\ucrt64\bin\gcc.exe"],
     "ollvm_clang": [r"C:\Tools\ollvm\install\bin\clang.exe"],  # Hikari/Arkari OLLVM fork (OLLVM layer)
-    "ida":      [r"C:\Program Files\IDA Professional 9.1\ida.exe"],
+    "ida": [r"C:\Program Files\IDA Professional 9.1\ida.exe"],
     "ida_headless": [r"C:\Program Files\IDA Professional 9.1\idat.exe"],
-    "scyllahide": [r"C:\Tools\x96dbg\release\x64\plugins\ScyllaHideX64DBGPlugin.dp64",
-                   r"C:\Tools\x96dbg\release\x32\plugins\ScyllaHideX64DBGPlugin.dp32"],
-    "novmp":    [r"C:\Tools\NoVmp\NoVmp.exe"],
-    "vmprotect":[r"C:\Program Files\VMProtect Demo\VMProtect.exe", r"C:\Tools\VMProtect\VMProtect.exe"],
-    "vmprotect_con":[r"C:\Program Files\VMProtect Demo\VMProtect_Con.exe"],
-    "themida":  [r"C:\Tools\ThemidaDemo\Themida64.exe", r"C:\Tools\ThemidaDemo\Themida.exe"],
-    "pin":      [r"C:\Tools\PIN\pin-external-4.4-99977-g54fbb8814-clang-windows\pin.exe", r"C:\Tools\PIN\pin.exe"],
-    "procmon":  [r"C:\Tools\ProcessMonitor\Procmon64.exe", r"C:\Tools\ProcessMonitor\Procmon.exe"],
-    "pe_bear":  [r"C:\Tools\PE-bear\PE-bear.exe", r"C:\Tools\_downloads\research\pe-bear\PE-bear.exe"],
+    "scyllahide": [r"C:\Tools\x96dbg\release\x64\plugins\ScyllaHideX64DBGPlugin.dp64", r"C:\Tools\x96dbg\release\x32\plugins\ScyllaHideX64DBGPlugin.dp32"],
+    "novmp": [r"C:\Tools\NoVmp\NoVmp.exe"],
+    "vmprotect": [r"C:\Program Files\VMProtect Demo\VMProtect.exe", r"C:\Tools\VMProtect\VMProtect.exe"],
+    "vmprotect_con": [r"C:\Program Files\VMProtect Demo\VMProtect_Con.exe"],
+    "themida": [r"C:\Tools\ThemidaDemo\Themida64.exe", r"C:\Tools\ThemidaDemo\Themida.exe"],
+    "pin": [r"C:\Tools\PIN\pin-external-4.4-99977-g54fbb8814-clang-windows\pin.exe", r"C:\Tools\PIN\pin.exe"],
+    "procmon": [r"C:\Tools\ProcessMonitor\Procmon64.exe", r"C:\Tools\ProcessMonitor\Procmon.exe"],
+    "pe_bear": [r"C:\Tools\PE-bear\PE-bear.exe", r"C:\Tools\_downloads\research\pe-bear\PE-bear.exe"],
 }
 PY_LIBS = ["capstone", "unicorn", "keystone", "lief", "pefile", "r2pipe", "frida", "angr", "triton"]
 
 # Research source checkouts we build on / build from (presence detected, not an exe).
 RESEARCH = {
     "vmp-lazy-unpack": r"C:\Tools\_downloads\research\vmp-lazy-unpack",  # VMProtect emulation-unpack env
-    "vtil-core":       r"C:\Tools\_downloads\research\vtil-core",        # VTIL IR (build NoVmp for VMProtect <=3.6)
-    "pe-bear-src":     r"C:\Tools\_downloads\research\pe-bear",          # PE-bear source (build for the GUI PE editor)
-    "mba-tools":       r"C:\Tools\_downloads\research\mba-tools",        # GAMBA / SiMBA MBA simplifiers
+    "vtil-core": r"C:\Tools\_downloads\research\vtil-core",  # VTIL IR (build NoVmp for VMProtect <=3.6)
+    "pe-bear-src": r"C:\Tools\_downloads\research\pe-bear",  # PE-bear source (build for the GUI PE editor)
+    "mba-tools": r"C:\Tools\_downloads\research\mba-tools",  # GAMBA / SiMBA MBA simplifiers
 }
 
 # WSL layout (see ENVIRONMENTS.md): Ubuntu = plain build box + Tigress;
@@ -46,11 +46,7 @@ RESEARCH = {
 import re as _re
 
 WSL_DISTROS = ["Ubuntu", "archlinux"]
-WSL_TOOLS = {
-    "Ubuntu":    ["gcc", "gdb", "tigress"],
-    "archlinux": ["gcc", "clang", "gdb", "radare2", "rizin", "cutter",
-                  "ghidra", "ropper", "ROPgadget", "nasm"],
-}
+WSL_TOOLS = {"Ubuntu": ["gcc", "gdb", "tigress"], "archlinux": ["gcc", "clang", "gdb", "radare2", "rizin", "cutter", "ghidra", "ropper", "ROPgadget", "nasm"]}
 # Strips OSC (shell-integration) + CSI escape noise some interactive distros emit.
 _ANSI = _re.compile(r"\x1b\][^\x07]*(?:\x07|\x1b\\)|\x1b\[[0-9;?]*[A-Za-z]")
 
@@ -74,9 +70,7 @@ def _which_in(distro, tool):
     """Path of `tool` inside a WSL distro, or None. Validated: the probe must exit 0
     AND emit an actual path — so 'command not found' is no longer mistaken for found."""
     try:
-        out = subprocess.run(["wsl", "-d", distro, "bash", "-lic",
-                              f"command -v {tool} 2>/dev/null || true"],
-                             capture_output=True, text=True, timeout=25)
+        out = subprocess.run(["wsl", "-d", distro, "bash", "-lic", f"command -v {tool} 2>/dev/null || true"], capture_output=True, text=True, timeout=25)
     except Exception:
         return None
     if out.returncode != 0:
@@ -90,8 +84,7 @@ def _which_in(distro, tool):
 
 def _distro_up(distro):
     try:
-        out = subprocess.run(["wsl", "-d", distro, "bash", "-lic", "true"],
-                             capture_output=True, text=True, timeout=20)
+        out = subprocess.run(["wsl", "-d", distro, "bash", "-lic", "true"], capture_output=True, text=True, timeout=20)
         return out.returncode == 0
     except Exception:
         return False
@@ -121,6 +114,7 @@ def collect():
 def _probe_ollama():
     try:
         import urllib.request
+
         with urllib.request.urlopen("http://localhost:11434/api/tags", timeout=3) as r:
             data = json.loads(r.read())
             return [m.get("name") for m in data.get("models", [])] or "running (no models)"
@@ -146,7 +140,7 @@ def main():
     print("\n[ai_backends]")
     for k, v in caps["ai_backends"].items():
         print(f"  {k}: {v}")
-    print(f"\nwrote {HERE/'capabilities.json'}")
+    print(f"\nwrote {HERE / 'capabilities.json'}")
 
 
 if __name__ == "__main__":

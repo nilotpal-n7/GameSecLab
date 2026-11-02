@@ -16,15 +16,15 @@ virtualization + anti-tamper, and unpacking/devirtualizing them is a real, in-de
 
 ## The BUILD stack (protect your own program) — all professional, mostly free
 
-| Your wishlist item | Professional tool that provides it |
-| --- | --- |
-| Custom emulated CPU (virtualization) | **VMProtect** (demo, vmpsoft.com) and/or **Themida/WinLicense** (demo, oreans.com) — real commercial VMs |
-| Mutation / JIT-ish code | VMProtect "Mutation", Themida mutation engine; (research-grade extra: Tigress `Jit`, already installed) |
-| Encryption + packing | VMProtect/Themida pack + encrypt the binary |
-| Debugger checks | VMProtect/Themida built-in multi-layer anti-debug |
-| Integrity / tamper checks | VMProtect/Themida memory-integrity + section checksums |
-| Timing checks | built into the protectors; can also add `rdtsc` deltas in source |
-| Hardware binding + OS fingerprinting | **WinLicense** / VMProtect licensing (hardware-locked serials) — or hand-roll `cpuid`/MAC/MachineGuid |
+| Your wishlist item                     | Professional tool that provides it                                                                                                                               |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Custom emulated CPU (virtualization)   | **VMProtect** (demo, vmpsoft.com) and/or **Themida/WinLicense** (demo, oreans.com) — real commercial VMs                                                         |
+| Mutation / JIT-ish code                | VMProtect "Mutation", Themida mutation engine; (research-grade extra: Tigress `Jit`, already installed)                                                          |
+| Encryption + packing                   | VMProtect/Themida pack + encrypt the binary                                                                                                                      |
+| Debugger checks                        | VMProtect/Themida built-in multi-layer anti-debug                                                                                                                |
+| Integrity / tamper checks              | VMProtect/Themida memory-integrity + section checksums                                                                                                           |
+| Timing checks                          | built into the protectors; can also add `rdtsc` deltas in source                                                                                                 |
+| Hardware binding + OS fingerprinting   | **WinLicense** / VMProtect licensing (hardware-locked serials) — or hand-roll `cpuid`/MAC/MachineGuid                                                            |
 | Compile-time obfuscation (extra layer) | **OLLVM fork for x64**: **Hikari** or **Pluto** (CFG flattening, bogus flow, instr. substitution, string enc.). Note: O-MVLL is iOS/Android only — not for this. |
 
 **Platform shift:** this capstone is **Windows x64 PE** (not WSL/ELF) — VMProtect/Themida protect PE files.
@@ -33,14 +33,14 @@ That's good: it matches your real target (Unreal games are Windows PE) and uses 
 
 ## The BREAK stack (reverse your own protected binary) — the real skill set
 
-| Step | Tool (status) |
-| --- | --- |
-| Run + observe, defeat anti-debug | **x64dbg** (have: `C:\Tools\x96dbg`) + **ScyllaHide** plugin (to install) |
-| Dump the unpacked image from memory | **Scylla** (ships with x64dbg) |
-| Static analysis / decompile | **Ghidra** (have: `C:\Tools\ghidra`) |
-| Devirtualize VMProtect x64 (3.0–3.5) | **NoVmp** (GPL, built on **VTIL**) + **vmpfix** |
-| Symbolic devirtualization (engine-agnostic) | **Triton** or **angr** |
-| Themida/CodeVirtualizer devirt | HWBP on `VirtualProtect` → dump at OEP; CodeVirtualizer static-devirt writeups |
+| Step                                        | Tool (status)                                                                  |
+| ------------------------------------------- | ------------------------------------------------------------------------------ |
+| Run + observe, defeat anti-debug            | **x64dbg** (have: `C:\Tools\x96dbg`) + **ScyllaHide** plugin (to install)      |
+| Dump the unpacked image from memory         | **Scylla** (ships with x64dbg)                                                 |
+| Static analysis / decompile                 | **Ghidra** (have: `C:\Tools\ghidra`)                                           |
+| Devirtualize VMProtect x64 (3.0–3.5)        | **NoVmp** (GPL, built on **VTIL**) + **vmpfix**                                |
+| Symbolic devirtualization (engine-agnostic) | **Triton** or **angr**                                                         |
+| Themida/CodeVirtualizer devirt              | HWBP on `VirtualProtect` → dump at OEP; CodeVirtualizer static-devirt writeups |
 
 ---
 
@@ -76,7 +76,7 @@ to prove the skills transfer.
 
 ---
 
-## Full bypass chain —  "RE-like" bypass chain on our own target
+## Full bypass chain — "RE-like" bypass chain on our own target
 
 See `knowledge/method/re_techniques.md` for the technique->tool map. Make `license_app` resemble
 RE, then reproduce the whole bypass chain legally on our own binary:

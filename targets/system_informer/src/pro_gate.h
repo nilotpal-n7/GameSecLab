@@ -25,23 +25,23 @@ extern "C" {
 /* Feature selectors (which decrypted ACCESS_MASK base the gate hands back). Consumers in SI's C code
  * include only this header; the branchless selection lives in si_pro_mask.h, which reuses this enum. */
 typedef enum SipFeature {
-    SIP_FEAT_DUMP   = 0, /* Process Memory Dumper  (PhWriteMiniDumpProcess / mdump.c) base 0x0450 */
-    SIP_FEAT_INJECT = 1, /* DLL Injection                                            base 0x002A */
-    SIP_FEAT_EDIT   = 2, /* live Memory Editor write access (memedit.c)              base 0x0038 */
-    SIP_FEAT__COUNT = 3
+	SIP_FEAT_DUMP = 0,   /* Process Memory Dumper  (PhWriteMiniDumpProcess / mdump.c) base 0x0450 */
+	SIP_FEAT_INJECT = 1, /* DLL Injection                                            base 0x002A */
+	SIP_FEAT_EDIT = 2,   /* live Memory Editor write access (memedit.c)              base 0x0038 */
+	SIP_FEAT__COUNT = 3
 } SipFeature;
 
 /* Result of sip_gate_init(). The feature code only ever needs OK vs not-OK, but the distinct codes let
  * the RE walkthrough show WHERE a given tampering lands (decrypt failure vs signature vs expiry). */
 typedef enum SipInitResult {
-    SIP_OK              = 0,
-    SIP_NO_LICENSE      = 1, /* no machine file present                                          */
-    SIP_BAD_FORMAT      = 2, /* magic/version/length wrong                                       */
-    SIP_SIG_INVALID     = 3, /* Ed25519 signature check failed (forged/tampered, no private key) */
-    SIP_KDF_MISMATCH    = 4, /* AES-GCM auth failed: wrong HWID, patched .text, or swapped pubkey */
-    SIP_EXPIRED         = 5,
-    SIP_SLUG_MISMATCH   = 6,
-    SIP_DEBUGGER        = 7  /* anti-debug tripped during init (see DEMO_SOFT)                   */
+	SIP_OK = 0,
+	SIP_NO_LICENSE = 1,   /* no machine file present                                          */
+	SIP_BAD_FORMAT = 2,   /* magic/version/length wrong                                       */
+	SIP_SIG_INVALID = 3,  /* Ed25519 signature check failed (forged/tampered, no private key) */
+	SIP_KDF_MISMATCH = 4, /* AES-GCM auth failed: wrong HWID, patched .text, or swapped pubkey */
+	SIP_EXPIRED = 5,
+	SIP_SLUG_MISMATCH = 6,
+	SIP_DEBUGGER = 7 /* anti-debug tripped during init (see DEMO_SOFT)                   */
 } SipInitResult;
 
 /* Load + verify the offline machine file and cache the entangled Pro state. `machine_file_path` may be

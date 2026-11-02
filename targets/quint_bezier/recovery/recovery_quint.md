@@ -65,7 +65,7 @@ Pick a name; set `ViewState = 0`; compute `CacheTag = (nameSum << 48) ^ K`. For 
 
 ## Deployment gotcha (the real-world part)
 
-Writing the three values to **HKCU** only was *not* enough: QuintGovernor runs as a **SYSTEM service**
+Writing the three values to **HKCU** only was _not_ enough: QuintGovernor runs as a **SYSTEM service**
 (`HKLM: CoreStart/GUIStart/InstalledSessionAgent`), whose "HKCU" is the SYSTEM hive — it can't see the
 user's `HKCU\Software\QuintBezier`. The predicate reads **HKLM first, then HKCU**, so the values must be
 machine-wide. Writing them to **`HKLM\Software\QuintBezier`** (elevated) flipped it to Pro for both the
@@ -82,7 +82,7 @@ reg add "HKLM\Software\QuintBezier" /v CacheTag   /t REG_QWORD /d <keygen CacheT
 
 ## Takeaway
 
-The scheme *looks* layered (Gen1/Gen2, online conversion, an RSA key file), but the actual Pro decision
+The scheme _looks_ layered (Gen1/Gen2, online conversion, an RSA key file), but the actual Pro decision
 is a single hardcoded-constant XOR identity on three registry values — recovered purely by static RE,
 no server and no private key. The only non-obvious bit was operational: a SYSTEM service needs the
 license machine-wide (HKLM), not per-user. Force-true patching the predicate (`../patch_islicensed.py`,

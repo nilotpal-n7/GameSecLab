@@ -12,6 +12,7 @@ no-access rule Claude never writes into the install dir, so the deploy line is P
   python apply_license.py "Reviewer"                                      # prints how to get HWID+CRC first
   python -m reaforge.orchestrator apply system_informer "Reviewer" --hwid <hex> --text-crc 0x<crc>
 """
+
 from __future__ import annotations
 
 import sys
@@ -29,8 +30,7 @@ def render(subject, hwid=None, crc=None, tier="pro", out=None, install_exe="Syst
         lines += [
             "  need the machine HWID + the protected DLL's image CRC first (run beside sip_progate.dll):",
             "    .\\sip_report_tool.exe                         # prints HWID=... and TEXT_CRC=0x...",
-            "  then re-run with:  apply_license.py "
-            f"{subject!r} --hwid <HWID> --text-crc 0x<CRC>",
+            f"  then re-run with:  apply_license.py {subject!r} --hwid <HWID> --text-crc 0x<CRC>",
         ]
         return "\n".join(lines)
 
@@ -41,8 +41,7 @@ def render(subject, hwid=None, crc=None, tier="pro", out=None, install_exe="Syst
         f"  slug      : {SLUG}",
         "",
         "  # 1) issue (oracle; uses the issuer private key the user holds - framework step):",
-        f'  python license_signer.py issue --hwid {hwid} --text-crc {crc_hex} '
-        f'--subject "{subject}" --tier {tier} --out {out}',
+        f'  python license_signer.py issue --hwid {hwid} --text-crc {crc_hex} --subject "{subject}" --tier {tier} --out {out}',
         "",
         "  # 2) verify the issued license (oracle-side, and the attack demo that shallow cracks fail):",
         f"  python license_signer.py verify {out} --hwid {hwid} --text-crc {crc_hex}",

@@ -12,19 +12,26 @@
 
 /* Virtualize THIS function with Tigress (--Functions=check_key). */
 int check_key(const char *key) {
-    int len = (int)strlen(key);
-    if (len != 10) return 0;
-    unsigned int acc = 0x1505u;                 /* seed */
-    for (int i = 0; i < len; i++) {
-        acc = (acc * 33u) ^ (unsigned char)key[i];
-        acc += (unsigned int)(i * 7);
-    }
-    return acc == 0x32629093u;                  /* winning keys hash to this */
+	int len = (int)strlen(key);
+	if (len != 10)
+		return 0;
+	unsigned int acc = 0x1505u; /* seed */
+	for (int i = 0; i < len; i++) {
+		acc = (acc * 33u) ^ (unsigned char)key[i];
+		acc += (unsigned int)(i * 7);
+	}
+	return acc == 0x32629093u; /* winning keys hash to this */
 }
 
 int main(int argc, char **argv) {
-    if (argc != 2) { printf("usage: %s <key>\n", argv[0]); return 2; }
-    if (check_key(argv[1])) { printf("WIN: key accepted\n"); return 0; }
-    printf("LOSE: wrong key\n");
-    return 1;
+	if (argc != 2) {
+		printf("usage: %s <key>\n", argv[0]);
+		return 2;
+	}
+	if (check_key(argv[1])) {
+		printf("WIN: key accepted\n");
+		return 0;
+	}
+	printf("LOSE: wrong key\n");
+	return 1;
 }

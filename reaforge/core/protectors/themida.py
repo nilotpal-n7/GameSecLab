@@ -24,6 +24,7 @@ path is wired to our own reaforge tools, no reference binary:
 devirtualizes the VM'd regions (EPV entry + VM_START/VM_END body). `vm_model()` stays None — the VM is
 emulated, never hardcoded.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -34,9 +35,10 @@ from reaforge.core.protectors.base import Protector
 @dataclass
 class ThemidaUnpacked:
     """What a from-dump unpack yields: the rebuilt exe, the resolved IAT, and whether VM'd code remains."""
+
     exe: str | None
-    imports: list              # [(rva, slot_val, tag, api), ...] from themida_unwrap
-    vm_regions_pending: bool = True   # the EPV entry + VM_START/END body still need vm_lift
+    imports: list  # [(rva, slot_val, tag, api), ...] from themida_unwrap
+    vm_regions_pending: bool = True  # the EPV entry + VM_START/END body still need vm_lift
 
     @property
     def resolved(self) -> int:
@@ -56,52 +58,69 @@ class Themida(Protector):
         try:
             import pefile  # noqa: F401
             import unicorn  # noqa: F401
+
             return True
         except ImportError:
             return False
 
     def required_tools(self) -> list[str]:
-        return ["x64dbg + ScyllaHide (past anti-debug, to reach OEP)",
-                "a full-memory process dump (Task Manager -> Create dump file)",
-                "reaforge.tools.themida_unwrap + pe_reconstruct (ours; from the dump on)"]
+        return [
+            "x64dbg + ScyllaHide (past anti-debug, to reach OEP)",
+            "a full-memory process dump (Task Manager -> Create dump file)",
+            "reaforge.tools.themida_unwrap + pe_reconstruct (ours; from the dump on)",
+        ]
 
     def unwrap_iat(self, dump, main_module_substr, iat_rva, iat_size, show=print):
         """Resolve the API-wrapped IAT from a full-memory dump (oracle-free). -> list of (rva,val,tag,api)."""
         from reaforge.tools.themida_unwrap import unwrap
+
         return unwrap(dump, main_module_substr, iat_rva, iat_size, show=show)
 
     def reconstruct(self, dump_exe, out, orig=None, oep=None, base=None, show=print):
         """Rebuild a runnable PE from the dump (orig = your own clean binary oracle, optional)."""
         from reaforge.tools.pe_reconstruct import reconstruct
+
         return reconstruct(dump_exe, out, orig=orig, oep=oep, base=base, show=show)
 
-    def lift_vm(self, dump, main_module_substr, func_rva, serial=0x75685AB2,
-                expected_key=None, show=print):
+    def lift_vm(self, dump, main_module_substr, func_rva, serial=0x75685AB2, expected_key=None, show=print):
         """De-virtualize a VM'd function from a full-memory dump: emulate the SecureEngine VM and
         recover the constant the input is checked against, self-validated (oracle-free)."""
         from reaforge.tools.vm_lift import lift
-        return lift(dump, main_module_substr, func_rva, serial=serial,
-                    expected_key=expected_key, show=show)
 
-    def lift_vm_form(self, dump, main_module_substr, func_rva, serial=0x75685AB2,
-                     expected_key=None, show=print):
+        return lift(dump, main_module_substr, func_rva, serial=serial, expected_key=expected_key, show=show)
+
+    def lift_vm_form(self, dump, main_module_substr, func_rva, serial=0x75685AB2, expected_key=None, show=print):
         """Lift the VM'd function's full arithmetic FORM: taint the input, extract the symbolic
         want(input) from the VM, and SMT-prove the recovered recurrence over all inputs (oracle-free,
         via reaforge.core.peel.prove_recurrence)."""
         from reaforge.tools.vm_lift import lift_form
-        return lift_form(dump, main_module_substr, func_rva, serial=serial,
-                         expected_key=expected_key, show=show)
+
+        return lift_form(dump, main_module_substr, func_rva, serial=serial, expected_key=expected_key, show=show)
 
     def lift_vm_entry(self, dump, main_module_substr, entry_rva, oracle=None, show=print):
         """Lift an EPV'd (Entry-Point-Virtualized) basic block: run the VM from the block entry with
         sentinel registers and recover its effect — exit edge + register/memory state delta — which is
         the native block the VM replaced (control-flow, so a delta rather than a computed value)."""
         from reaforge.tools.vm_lift import lift_entry
+
         return lift_entry(dump, main_module_substr, entry_rva, oracle=oracle, show=show)
 
-    def unpack(self, packed, snap=None, progress=lambda m: None, *,
-               dump=None, main_module_substr=None, iat_rva=None, iat_size=None,
-               dump_exe=None, out=None, orig=None, oep=None, base=None):
+    def unpack(
+        self,
+        packed,
+        snap=None,
+        progress=lambda m: None,
+        *,
+        dump=None,
+        main_module_substr=None,
+        iat_rva=None,
+        iat_size=None,
+        dump_exe=None,
+        out=None,
+        orig=None,
+        oep=None,
+        base=None,
+    ):
         """From a full-memory `dump`: unwrap the IAT, then (if `dump_exe`/`out` given) reconstruct.
 
         Without a dump we can't reach the unpacked state automatically (Themida anti-debug) — raise and
@@ -112,7 +131,8 @@ class Themida(Protector):
                 "Themida: no automated unpack from the packed file — our emulation-unpack is VMProtect-"
                 "specific and Themida's anti-debug blocks it. Reach the dump manually (see "
                 "targets/license_app/recovery/recovery_themida.md), then call unpack(dump=..., "
-                "main_module_substr=..., iat_rva=..., iat_size=...). Tools: " + ", ".join(self.required_tools()))
+                "main_module_substr=..., iat_rva=..., iat_size=...). Tools: " + ", ".join(self.required_tools())
+            )
         imports = self.unwrap_iat(dump, main_module_substr, iat_rva, iat_size, show=progress)
         exe = None
         if dump_exe and out:
@@ -120,4 +140,4 @@ class Themida(Protector):
         return ThemidaUnpacked(exe=exe, imports=imports)
 
     def vm_model(self):
-        return None   # SecureEngine VM is emulated by vm_lift, not hardcoded — see module docstring
+        return None  # SecureEngine VM is emulated by vm_lift, not hardcoded — see module docstring

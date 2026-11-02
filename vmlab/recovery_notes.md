@@ -70,15 +70,15 @@ Stack-machine VM: `check_key` = `while(true) switch(*puVar8)` where **puVar8 = P
 `&_3_check_key_$array` = bytecode) and **puVar7 = SP**. push = sp+=2, binary op pops 2 / pushes 1,
 `default: goto` re-enters the switch (threaded dispatch, hides the loop).
 
-| Opcode(s) | Operation | Maps to |
-| --- | --- | --- |
-| push-const / push-&arg / push-&local | operands | 0x1505, 33, 7, 10, 0x32629093, `key`, `i`, `acc` |
-| load byte via ptr / zero-extend | `key[i]` as uchar | `key[i]` |
-| MUL / XOR / ADD (diversified: several opcodes each) | core math | `*33`, `^ key[i]`, `acc += …`, `i*7` |
-| NEG, SHL, SHR, OR, AND, SUB, LE (EncodeArithmetic) | MBA primitives | the rewritten math (below) |
-| branch-if-zero (0x5f) | encoded compare | `acc ^ 0x32629093 == 0`; `len != 10` via sub/xor nonzero |
-| branch-if-true / unconditional jump | control flow | loop back-edge |
-| CALL extern (1 = strlen) / return top | boundary | `strlen(key)`, `return` |
+| Opcode(s)                                           | Operation         | Maps to                                                  |
+| --------------------------------------------------- | ----------------- | -------------------------------------------------------- |
+| push-const / push-&arg / push-&local                | operands          | 0x1505, 33, 7, 10, 0x32629093, `key`, `i`, `acc`         |
+| load byte via ptr / zero-extend                     | `key[i]` as uchar | `key[i]`                                                 |
+| MUL / XOR / ADD (diversified: several opcodes each) | core math         | `*33`, `^ key[i]`, `acc += …`, `i*7`                     |
+| NEG, SHL, SHR, OR, AND, SUB, LE (EncodeArithmetic)  | MBA primitives    | the rewritten math (below)                               |
+| branch-if-zero (0x5f)                               | encoded compare   | `acc ^ 0x32629093 == 0`; `len != 10` via sub/xor nonzero |
+| branch-if-true / unconditional jump                 | control flow      | loop back-edge                                           |
+| CALL extern (1 = strlen) / return top               | boundary          | `strlen(key)`, `return`                                  |
 
 **EncodeArithmetic rewrote the math as MBA** (peel these back):
 `x*33 = (x<<5)+x`; `a+b = (a^b)+((a&b)<<1)`; `a^b = (a|b)-(a&b)`. There is **no eq/ne opcode** — all
@@ -95,7 +95,7 @@ simplifiers earn their keep (the same peeling our `reaforge/core/peel.py` automa
 
 - Bytecode `_3_check_key_$array` starts with a push-&key op — matches the opcode map (first op).
 - `keycheck_plain_elf` check_key decompile == recovered VM logic:
-    `acc=0x1505; do { acc = ((acc*33) ^ key[i]) + i*7; i7+=7; } while(i7 != 0x46 /*70=7*10*/); return acc==0x32629093;`
+  `acc=0x1505; do { acc = ((acc*33) ^ key[i]) + i*7; i7+=7; } while(i7 != 0x46 /*70=7*10*/); return acc==0x32629093;`
 - Compiler details learned: **strength reduction** (i*7 kept as a running +7 counter, no multiply) and a
   **disguised loop bound** (`while(i7 != 70)` instead of `i<10`). Virtualized -> recovered -> verified: full circle.
 
@@ -109,7 +109,7 @@ Added `if (ptrace(PTRACE_TRACEME,0,0,0) < 0) return 0;` to check_key, then virtu
 - under gdb: LOSE — debugger detected even though check_key is virtualized (anti-debug lives in the VM)
 - under gdb + `LD_PRELOAD=noptrace.so` (fake ptrace returns 0): **WIN** — bypassed
 
-**Lesson:** virtualization protects the *logic*, not the *external-call boundary*. The anti-debug calls libc
+**Lesson:** virtualization protects the _logic_, not the _external-call boundary_. The anti-debug calls libc
 `ptrace`; the VM invokes it via a call opcode, so intercepting `ptrace` (LD_PRELOAD) defeats it without
 touching the obfuscated code. Other bypasses: patch/NOP the branch, `gdb catch syscall ptrace` + `return 0`,
 fake `/proc/self/status` TracerPid.

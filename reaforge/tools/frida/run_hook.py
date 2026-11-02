@@ -7,12 +7,14 @@ Usage (from any shell):
 
 The game must already be running (singleplayer). Press Enter to detach.
 """
+
 import os
 import sys
 
 import frida
 
 TARGET = "veloren-voxygen.exe"
+
 
 def main():
     if len(sys.argv) < 2:
@@ -25,7 +27,7 @@ def main():
         source = f.read()
 
     print(f"[*] attaching to {TARGET} ...")
-    session = frida.attach(TARGET)            # raises if not running
+    session = frida.attach(TARGET)  # raises if not running
     script = session.create_script(source)
     script.on("message", on_message)
     script.load()
@@ -39,6 +41,7 @@ def main():
             secs = None
     if secs is not None:
         import time
+
         print(f"[*] loaded. Running for {secs:.0f}s; play now.")
         sys.stdout.flush()
         time.sleep(secs)
@@ -57,11 +60,13 @@ def main():
         print("[*] detached.")
         return 0
 
+
 def on_message(message, data):
     if message["type"] == "send":
         print(message["payload"])
     elif message["type"] == "error":
         print("[script error] " + message.get("stack", message.get("description", "?")))
+
 
 if __name__ == "__main__":
     sys.exit(main())

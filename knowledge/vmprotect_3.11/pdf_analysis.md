@@ -20,7 +20,7 @@ trip never arrives at its catcher, someone (a debugger/DBI) stole it → "A debu
 
 VMProtect lays a **tripwire for itself** and stands ready to catch whoever trips it:
 
-- It flips a switch that tells the CPU: *"after the very next instruction, STOP and shout."* (the shout = a
+- It flips a switch that tells the CPU: _"after the very next instruction, STOP and shout."_ (the shout = a
   **single-step exception**).
 - VMProtect has placed **its own catcher** (an exception handler) right there to catch the shout.
 
@@ -30,7 +30,7 @@ Now two worlds:
   here" → keeps running.
 - **Debugger attached:** In Windows, a debugged program's exceptions go to the **debugger first** ("first
   chance"). The debugger normally **keeps the shout** (pauses or handles it), so it never reaches VMProtect's
-  catcher. VMProtect notices its catcher got nothing → *"a debugger stole my tripwire"* → aborts.
+  catcher. VMProtect notices its catcher got nothing → _"a debugger stole my tripwire"_ → aborts.
 
 So the detection isn't "is a debugger flag set?" — it's cleverer: **"did MY exception handler get to run?"**
 A debugger, by default, breaks that assumption.
@@ -38,7 +38,7 @@ A debugger, by default, breaks that assumption.
 ### The concrete example (what the instructions look like)
 
 The **trap flag (TF)** is **bit 8 of the EFLAGS register = `0x100`**. When TF=1, the CPU raises
-`EXCEPTION_SINGLE_STEP` (code **`0x80000004`**) after the *next* instruction, then auto-clears TF.
+`EXCEPTION_SINGLE_STEP` (code **`0x80000004`**) after the _next_ instruction, then auto-clears TF.
 
 ```asm
 pushfd                  ; push the flags register onto the stack
@@ -60,14 +60,14 @@ That skip is exactly what VMProtect is watching for.
 
 1. **Tell the debugger to pass it through.** In x64dbg: add exception `0x80000004`, set **Break On = Do not
    break** and **Exception handled by = Debuggee**. Now x64dbg hands the single-step exception to VMProtect's
-   own catcher → the tripwire "works" → no detection. *(This is the quick test.)*
+   own catcher → the tripwire "works" → no detection. _(This is the quick test.)_
 2. **Use a DBI (Intel Pin) that re-raises the exception** (the paper's Fig 15: "DBI → Raise Exception →
    Bypass"). A Pin tool detects the trap-flag/`POPFD` moment and explicitly delivers the single-step exception
    so VMProtect's handler runs. More work, but it's the documented method and becomes a reusable REAForge tool.
 
 ### Why ScyllaHide failed (ties it together)
 
-ScyllaHide hides *flags and API answers* (BeingDebugged, NtQueryInformationProcess, timing, DRx…). It has **no
+ScyllaHide hides _flags and API answers_ (BeingDebugged, NtQueryInformationProcess, timing, DRx…). It has **no
 single-step/trap-flag handler** — look at its option list: breakpoint, illegal-instruction, guard-page… but no
 single-step. So it literally cannot cover this trick, no matter how many hooks we enable. That's why maxing it
 out still got detected.

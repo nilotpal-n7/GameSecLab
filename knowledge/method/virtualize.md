@@ -2,7 +2,7 @@
 
 **Why this track exists.** You wanted to study how Denuvo-style protection works. Denuvo on a shipping
 game is off-limits (circumventing commercial DRM is illegal under DMCA §1201 and equivalents, even in a
-private lab, even if you own the game). But the *techniques* Denuvo uses — **code virtualization** and
+private lab, even if you own the game). But the _techniques_ Denuvo uses — **code virtualization** and
 **anti-debug** — are studied completely legally on code you own. This track does exactly that, and it has
 one thing a real Denuvo target never gives you: the **answer key** (you compile the same source plain AND
 virtualized, so you can check your recovery).
@@ -20,10 +20,10 @@ virtualized, so you can check your recovery).
 
 ## Correcting the plan we started from
 
-- **Tigress is NOT a Windows program and does NOT eat a whole game.** It rewrites *C source functions* and
+- **Tigress is NOT a Windows program and does NOT eat a whole game.** It rewrites _C source functions_ and
   emits new C source. You run it in WSL on one `.c` file, then compile the output. Feeding it a built game,
   or an entire engine, is a dead end — real anti-tamper also only virtualizes a handful of critical functions.
-- **Start with a standalone toy, not a Doom function.** Doom/Quake (id Software, GPL) are great *legal*
+- **Start with a standalone toy, not a Doom function.** Doom/Quake (id Software, GPL) are great _legal_
   targets for the portfolio-story version later, but their build setup adds friction with zero extra
   learning for step 1. We virtualize one tiny function first; graduate to a real GPL game function after.
 - **The deliverable is the recovery, not the obfuscation.** The skill you're demonstrating is: open the
@@ -105,12 +105,12 @@ id Software GPL'd **Doom** and **Quake** (both C, both genuine commercial AAA of
 
 - Doom: <https://github.com/id-Software/DOOM>
 - Quake: <https://github.com/id-Software/Quake>
-Pick ONE self-contained function (e.g. a cheat-code / input check), virtualize just that with Tigress, and
-recover it. Your project sentence becomes: *"virtualized a routine inside id Software's Doom with Tigress,
-then reverse-engineered it out with Ghidra"* — the Denuvo-on-a-real-game story, 100% legal.
+  Pick ONE self-contained function (e.g. a cheat-code / input check), virtualize just that with Tigress, and
+  recover it. Your project sentence becomes: _"virtualized a routine inside id Software's Doom with Tigress,
+  then reverse-engineered it out with Ghidra"_ — the Denuvo-on-a-real-game story, 100% legal.
 
 ## Ties back to the course
 
 This is the attacker side of **anti-cheat synthesis** (anti-tamper/anti-cheat synthesis). Understanding how a VM-obfuscated
-function looks in a disassembler is exactly what you need to decide how to harden your *own* games — and what
+function looks in a disassembler is exactly what you need to decide how to harden your _own_ games — and what
 is worth the performance cost vs. what a determined attacker recovers anyway.

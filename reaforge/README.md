@@ -2,7 +2,7 @@
 
 A small, growable framework that **detects every RE tool installed on this machine**, runs them in a
 pipeline, and uses an **LLM backend** to plan/interpret — so next time a similar target shows up, it's a few
-commands, not from scratch. Built as we learn, so by the end you understand every step *and* have it automated.
+commands, not from scratch. Built as we learn, so by the end you understand every step _and_ have it automated.
 
 ## Scope / ethics guard (built in)
 
@@ -41,7 +41,7 @@ local code can POST to. So REAForge's "AI" is a pluggable backend:
 - **Local Ollama** (`http://localhost:11434`) — fully offline; needs Ollama installed (not installed yet).
 - **Manual bridge** — REAForge writes the prompt to a file; you paste it here (to me), paste the answer back.
   Works today with zero setup, and is how we'll "embed" this chat while we build.
-- **Claude Code driver** — when REAForge is run *from this session*, I (Claude Code) act as the planner,
+- **Claude Code driver** — when REAForge is run _from this session_, I (Claude Code) act as the planner,
   reading its JSON facts and deciding next steps. That's the live AI loop until you wire a key/Ollama.
 
 ## Usage

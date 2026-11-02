@@ -17,6 +17,7 @@ unpacked gate returns the trap mask until a real decrypt populates g_state. (rec
 
   python targets/system_informer/break_gate.py
 """
+
 from __future__ import annotations
 
 import os
@@ -66,8 +67,7 @@ def main():
         except Exception:
             return None
 
-    exports = {n: addr_of(n) for n in
-               ("sip_access_mask", "sip_gate_init", "sip_is_pro", "sip_xdll_respond")}
+    exports = {n: addr_of(n) for n in ("sip_access_mask", "sip_gate_init", "sip_is_pro", "sip_xdll_respond")}
     print("\n== [1] gate exports in the unpacked image (base 0x%X) ==" % ld.mapped_start)
     for n, a in exports.items():
         rva = (a - ld.mapped_start) if a else None
@@ -88,8 +88,7 @@ def main():
         if ins.mnemonic in ("ret", "call"):
             break
     if target:
-        print(f"   -> VMEnter body @ 0x{target:X} (rva 0x{target - ld.mapped_start:X}) -- "
-              f"the VMProtect VM stub (push key / jmp dispatcher), not native mask code:")
+        print(f"   -> VMEnter body @ 0x{target:X} (rva 0x{target - ld.mapped_start:X}) -- the VMProtect VM stub (push key / jmp dispatcher), not native mask code:")
         for ins in md.disasm(bytes(uc.mem_read(target, 0x30)), target):
             print(f"     0x{ins.address:X}  {ins.mnemonic:8} {ins.op_str}")
             if ins.mnemonic in ("jmp", "ret"):
@@ -112,13 +111,11 @@ def main():
     all_trap = True
     for f, name in FEATURES.items():
         m = call_mask(f)
-        trap = (m == TRAP)
+        trap = m == TRAP
         all_trap &= trap
-        tag = "TRAP 0x1000 (PROCESS_SUSPEND_RESUME) -> Pro op DENIED by the kernel" if trap \
-              else f"!! non-trap (licensed base would be 0x{EXPECTED_LICENSED[f]:04X})"
+        tag = "TRAP 0x1000 (PROCESS_SUSPEND_RESUME) -> Pro op DENIED by the kernel" if trap else f"!! non-trap (licensed base would be 0x{EXPECTED_LICENSED[f]:04X})"
         print(f"   sip_access_mask({f} = {name:6}) = 0x{m:08X}   {tag}")
-    print("   verdict:", "ALL TRAP -- gate is fail-closed without a decrypted license."
-          if all_trap else "some non-trap (unexpected in an unlicensed emulated state).")
+    print("   verdict:", "ALL TRAP -- gate is fail-closed without a decrypted license." if all_trap else "some non-trap (unexpected in an unlicensed emulated state).")
 
     gi = exports["sip_gate_init"]
     if gi:
@@ -127,10 +124,18 @@ def main():
         sp = ((uc.reg_read(ux.UC_X86_REG_RSP) & ~0xF) - 0x800) & ~0xF
         uc.mem_write(sp, struct.pack("<Q", RET))
         uc.reg_write(ux.UC_X86_REG_RSP, sp)
-        uc.reg_write(ux.UC_X86_REG_RCX, 0)       # machine_file_path = NULL
+        uc.reg_write(ux.UC_X86_REG_RCX, 0)  # machine_file_path = NULL
         uc.reg_write(ux.UC_X86_REG_RIP, gi)
-        codes = {0: "SIP_OK", 1: "SIP_NO_LICENSE", 2: "SIP_BAD_FORMAT", 3: "SIP_SIG_INVALID",
-                 4: "SIP_KDF_MISMATCH", 5: "SIP_EXPIRED", 6: "SIP_SLUG_MISMATCH", 7: "SIP_DEBUGGER"}
+        codes = {
+            0: "SIP_OK",
+            1: "SIP_NO_LICENSE",
+            2: "SIP_BAD_FORMAT",
+            3: "SIP_SIG_INVALID",
+            4: "SIP_KDF_MISMATCH",
+            5: "SIP_EXPIRED",
+            6: "SIP_SLUG_MISMATCH",
+            7: "SIP_DEBUGGER",
+        }
         try:
             uc.emu_start(gi, RET, timeout=600 * 1000 * 1000)
             r = uc.reg_read(ux.UC_X86_REG_RAX) & 0xFFFFFFFF

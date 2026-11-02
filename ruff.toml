@@ -17,6 +17,7 @@ select = ["E", "F", "W", "I"]
 ignore = [
     "E401",  # multiple imports on one line (compact headers)
     "E402",  # module import not at top (sys.path bootstrap must run first)
+    "E501",  # line length violations (stops squiggly underlines on dense long lines)
     "E701",  # multiple statements on one line (colon)
     "E702",  # multiple statements on one line (semicolon)
     "E703",  # statement ends with semicolon
@@ -27,3 +28,10 @@ ignore = [
 
 [lint.isort]
 known-first-party = ["reaforge", "categories", "targets"]
+lines-after-imports = -1     # don't force blank lines between bootstrap logic and imports
+split-on-trailing-comma = false
+
+[format]
+# Prevents Ruff formatter from splitting semicolons, colons, or long lines into multi-line blocks
+line-ending = "lf"
+skip-magic-trailing-comma = true

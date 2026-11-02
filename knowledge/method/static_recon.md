@@ -44,7 +44,7 @@ Get-ChildItem $G -Include *.exe,*.dll -Recurse | Get-AuthenticodeSignature | For
 
 **What each command does:**
 
-- `Get-ChildItem ... Format-Table` — lists files with sizes: *what ships, and how big*.
+- `Get-ChildItem ... Format-Table` — lists files with sizes: _what ships, and how big_.
 - `Get-FileHash -Algorithm SHA256` — a fingerprint of each exe. Every offset/signature you find later
   is only valid for this exact hash (a game update = new hash = re-check everything).
 - `Get-AuthenticodeSignature` — is the file code-signed, and by whom? `NotSigned` = no proof of origin.
@@ -73,7 +73,7 @@ GUI: open `die.exe`, drag in `veloren-voxygen.exe`.
   Red `(Heur)` lines are **guesses** — always confirm them with a second signal (entropy, sections).
 - **Entropy / Sections are hidden by default:** tick the **Advanced** checkbox (top right). Extra
   buttons appear on the right side (Entropy, Strings, Hex, Memory map, ...). If your build doesn't
-  show a Sections view, the CLI commands below give you both entropy *and* every section.
+  show a Sections view, the CLI commands below give you both entropy _and_ every section.
 
 CLI (paste this output to Claude):
 
@@ -180,15 +180,15 @@ any new words to GLOSSARY.md. Then paste your recon notes to Claude for review.
 
 ## 3. ANTI-CHEAT LENS
 
-| Recon finding | What it gives an attacker | Defense |
-| --- | --- | --- |
-| No packer / protector | Clean disassembly in Ghidra in minutes | Protector (VMProtect/Themida) on sensitive functions only — full-exe virtualization hurts performance |
-| Embedded symbols / shipped `.pdb` | Function names = instant map of the code | Strip symbols from release builds; keep them private for crash reports |
-| Plain-text gameplay data | Edit damage/health without touching code | Pack + encrypt + sign assets; server holds authoritative values anyway |
-| Unsigned binaries | Can't tell a modified exe from the real one | Authenticode signing; anti-cheat verifies module signatures at load |
-| Server binary shipped | Attackers can study server logic offline | Fine for open source; closed games keep server code private |
+| Recon finding                     | What it gives an attacker                   | Defense                                                                                               |
+| --------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| No packer / protector             | Clean disassembly in Ghidra in minutes      | Protector (VMProtect/Themida) on sensitive functions only — full-exe virtualization hurts performance |
+| Embedded symbols / shipped `.pdb` | Function names = instant map of the code    | Strip symbols from release builds; keep them private for crash reports                                |
+| Plain-text gameplay data          | Edit damage/health without touching code    | Pack + encrypt + sign assets; server holds authoritative values anyway                                |
+| Unsigned binaries                 | Can't tell a modified exe from the real one | Authenticode signing; anti-cheat verifies module signatures at load                                   |
+| Server binary shipped             | Attackers can study server logic offline    | Fine for open source; closed games keep server code private                                           |
 
-**The big lesson:** everything above only *slows down* an attacker. The Khazan install already
+**The big lesson:** everything above only _slows down_ an attacker. The Khazan install already
 showed that even Denuvo on a AAA game gets defeated. The only thing static protection cannot
 be stripped from is **logic that runs on a server you control** — keep that in mind for every stage.
 
@@ -213,5 +213,5 @@ Same questions, Unreal-specific signals — you will practice these on Lyra:
 ## 5. DELIVERABLE
 
 your recon notes, written by you, reviewed by Claude. Static recon is done when you can
-answer, without notes: *What is Veloren built with, is it protected, what did the developers
-leave in, where do stats live, and who is the authority on game state?*
+answer, without notes: _What is Veloren built with, is it protected, what did the developers
+leave in, where do stats live, and who is the authority on game state?_

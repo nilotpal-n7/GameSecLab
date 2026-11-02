@@ -14,6 +14,7 @@ own / may analyze):
 
 Run from anywhere; this bootstraps the repo root and the vmp-lazy-unpack checkout onto sys.path.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -22,7 +23,7 @@ import os
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]          # C:\Tools\GameSecLab
+ROOT = Path(__file__).resolve().parents[2]  # C:\Tools\GameSecLab
 VMP_LAZY = os.environ.get("VMP_LAZY_UNPACK", r"C:\Tools\_downloads\research\vmp-lazy-unpack")
 for _p in (str(ROOT), VMP_LAZY):
     if _p not in sys.path:
@@ -40,14 +41,18 @@ def _check_authorized(packed):
     p = str(Path(packed).resolve())
     data = json.loads(ALLOW.read_text()) if ALLOW.exists() else {}
     if p not in data:
-        sys.exit(f"REFUSED: {p} is not in authorized_targets.json.\n"
-                 f"Only analyze targets you own / are authorized for. Add it with:\n"
-                 f'  python -m reaforge.orchestrator authorize "{p}" "why you may analyze this"')
+        sys.exit(
+            f"REFUSED: {p} is not in authorized_targets.json.\n"
+            f"Only analyze targets you own / are authorized for. Add it with:\n"
+            f'  python -m reaforge.orchestrator authorize "{p}" "why you may analyze this"'
+        )
 
 
 def main(argv):
     if len(argv) < 2 or argv[1] in ("-h", "--help"):
-        print(__doc__); print(f"  titles: {', '.join(_titles())}"); return
+        print(__doc__)
+        print(f"  titles: {', '.join(_titles())}")
+        return
     title = argv[1]
     if title not in _titles():
         sys.exit(f"unknown title {title!r}. known: {', '.join(_titles())}")
@@ -56,8 +61,7 @@ def main(argv):
     except Exception as e:
         sys.exit(f"could not load targets/{title}/config.py: {e}")
 
-    arg = argv[2] if len(argv) > 2 and "," not in argv[2] and argv[2] not in (
-        "validate", "recover", "peel", "prove", "bypass") else None
+    arg = argv[2] if len(argv) > 2 and "," not in argv[2] and argv[2] not in ("validate", "recover", "peel", "prove", "bypass") else None
     modes_tok = argv[3] if arg and len(argv) > 3 else (argv[2] if not arg and len(argv) > 2 else None)
     modes = tuple(modes_tok.split(",")) if modes_tok else ("validate", "recover", "peel", "prove")
 

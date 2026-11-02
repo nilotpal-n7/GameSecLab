@@ -29,11 +29,13 @@ for ea in list(roots):
             if cf:
                 targets.add(cf.start_ea)
 
+
 def decomp(ea):
     try:
         return str(ida_hexrays.decompile(ea))
     except Exception as e:
         return "// decompile failed @ 0x%x: %s" % (ea, e)
+
 
 lines = []
 for ea in sorted(targets):

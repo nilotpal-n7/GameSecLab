@@ -16,6 +16,7 @@ Runs inside IDA against whatever binary IDA opened. Parameterize via env so it's
 
   ida -A -S"<path>\license_recon.py" "<a COPY of the target>.exe"
 """
+
 import os
 import struct
 
@@ -32,9 +33,27 @@ try:
 except Exception:
     have_hr = False
 
-DEFAULT_ANCHORS = ("LicensedTo", "Registered User", "Activat", "activat", "ViewState", "CacheTag",
-                   "Genuine", "License", "licen", "Serial", "serial", "unlock", "RegKey", "RegName",
-                   ".key", "Trial", "Expired", "Gen1", "Gen2")
+DEFAULT_ANCHORS = (
+    "LicensedTo",
+    "Registered User",
+    "Activat",
+    "activat",
+    "ViewState",
+    "CacheTag",
+    "Genuine",
+    "License",
+    "licen",
+    "Serial",
+    "serial",
+    "unlock",
+    "RegKey",
+    "RegName",
+    ".key",
+    "Trial",
+    "Expired",
+    "Gen1",
+    "Gen2",
+)
 ANCHORS = tuple(a for a in os.environ.get("QN_ANCHORS", "").split(",") if a) or DEFAULT_ANCHORS
 SEED = [int(x, 16) for x in os.environ.get("QN_SEED", "").replace(" ", "").split(",") if x]
 HEAD_CAP = int(os.environ.get("QN_CAP", "700"))
@@ -65,12 +84,14 @@ for a in ANCHORS:
         for xr in idautils.XrefsTo(va):
             f = ida_funcs.get_func(xr.frm)
             if f:
-                funcs.add(f.start_ea); hits.setdefault(f.start_ea, set()).add(a)
-        for p in find_all(struct.pack("<Q", va)):               # pointer-table indirection
+                funcs.add(f.start_ea)
+                hits.setdefault(f.start_ea, set()).add(a)
+        for p in find_all(struct.pack("<Q", va)):  # pointer-table indirection
             for xr in idautils.XrefsTo(p):
                 f = ida_funcs.get_func(xr.frm)
                 if f:
-                    funcs.add(f.start_ea); hits.setdefault(f.start_ea, set()).add(a + "*")
+                    funcs.add(f.start_ea)
+                    hits.setdefault(f.start_ea, set()).add(a + "*")
 
 L = [f"// license_recon; hexrays={have_hr}; anchors={len(ANCHORS)}; functions={len(funcs)}; cap={HEAD_CAP}"]
 for fea in sorted(funcs):
@@ -78,11 +99,13 @@ for fea in sorted(funcs):
     n = sum(1 for _ in idautils.Heads(f.start_ea, f.end_ea))
     L.append(f"\n==== {ida_funcs.get_func_name(fea)} @ {fea:#x}  heads={n}  refs={sorted(hits.get(fea, []))} ====")
     if n > HEAD_CAP:
-        L.append(f"  (skipped: {n} instrs > cap {HEAD_CAP})"); continue
+        L.append(f"  (skipped: {n} instrs > cap {HEAD_CAP})")
+        continue
     done = False
     if have_hr:
         try:
-            L.append(str(ida_hexrays.decompile(fea))); done = True
+            L.append(str(ida_hexrays.decompile(fea)))
+            done = True
         except Exception as e:
             L.append(f"  (decompile failed: {e}; disasm)")
     if not done:

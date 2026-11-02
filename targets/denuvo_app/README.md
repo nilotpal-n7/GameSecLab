@@ -11,7 +11,7 @@ start cleanly if we ever build our own Denuvo-free/Denuvo-protected analog.
 Denuvo is **online / anti-tamper DRM**, not a self-contained VM you statically devirtualize like
 VMProtect or Themida. It mutates per-build, ties activation to hardware + a license server, and
 peppers the binary with tamper checks. The reaforge protector class `reaforge/core/protectors/denuvo.py`
-already *recognizes* it and refuses cleanly, pointing here.
+already _recognizes_ it and refuses cleanly, pointing here.
 
 ## Scope rule (unchanged)
 

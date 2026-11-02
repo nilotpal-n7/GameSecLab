@@ -30,8 +30,8 @@ they model VMProtect's packer, rolling-key self-checksums, import protection and
 `python -m reaforge.orchestrator run license_app` detects this (recon classifies the protector) and
 **refuses the VMProtect path** on a Themida binary rather than crashing — pointing here instead.
 
-Public Themida tooling lags the protector the same way NoVmp lags VMProtect: unpackers like *magicmida*,
-*Themidie*, and *unlicense* target older/!3.x builds and specific options; modern Themida is largely a
+Public Themida tooling lags the protector the same way NoVmp lags VMProtect: unpackers like _magicmida_,
+_Themidie_, and _unlicense_ target older/!3.x builds and specific options; modern Themida is largely a
 **manual** unpack + manual VM analysis job.
 
 ## Break route (recommended order)

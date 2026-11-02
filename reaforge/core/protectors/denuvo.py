@@ -5,6 +5,7 @@ Denuvo is online/anti-tamper DRM, not a self-contained VM you statically devirtu
 it on a third-party title is DMCA §1201 territory. This class exists so the registry can *recognize*
 Denuvo and refuse it cleanly, pointing at the only in-scope path: your OWN protected analog.
 """
+
 from __future__ import annotations
 
 from reaforge.core.protectors.base import Protector
@@ -23,4 +24,5 @@ class Denuvo(Protector):
     def unpack(self, packed, snap=None, progress=lambda m: None):
         raise NotImplementedError(
             "Denuvo is anti-tamper / online DRM, not a static VM to devirtualize, and breaking it on a "
-            "shipping game is out of scope (DMCA §1201). Only your own Denuvo-free analog is in scope.")
+            "shipping game is out of scope (DMCA §1201). Only your own Denuvo-free analog is in scope."
+        )

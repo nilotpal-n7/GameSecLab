@@ -11,6 +11,7 @@ qnActivate). Output -> %QN_OUT% or %TEMP%\qn_license_decomp.txt. Review/redact b
 
   ida -A -S"<path>\find_license.py" "<a COPY of the target>.exe"
 """
+
 import os
 import struct
 
@@ -28,10 +29,30 @@ except Exception:
     have_hr = False
 
 OUT = os.environ.get("QN_OUT") or r"C:\Tools\GameSecLab\targets\quint_bezier\dumps\qn_license_decomp.txt"
-ANCHORS = ("Quint Bezier Pro", "LicensedTo", "QN_ACTION_TOOK_LICENSE_EXPIRED", "probezier.key",
-           "quintbezier.key", "prolasso.key", "Registered User", "ShowGraphLicenseName", "Genuine",
-           "LICENSE_EXPIRED", "Activat", "activat", "RegKey", "RegName", "ViewState", "CacheTag",
-           "Invalid", "Thank", "nq.com", "unlock", "Serial", "serial")
+ANCHORS = (
+    "Quint Bezier Pro",
+    "LicensedTo",
+    "QN_ACTION_TOOK_LICENSE_EXPIRED",
+    "probezier.key",
+    "quintbezier.key",
+    "prolasso.key",
+    "Registered User",
+    "ShowGraphLicenseName",
+    "Genuine",
+    "LICENSE_EXPIRED",
+    "Activat",
+    "activat",
+    "RegKey",
+    "RegName",
+    "ViewState",
+    "CacheTag",
+    "Invalid",
+    "Thank",
+    "nq.com",
+    "unlock",
+    "Serial",
+    "serial",
+)
 
 # snapshot every segment's bytes once
 segs = []
@@ -67,7 +88,7 @@ for va in all_vas:
         ref_eas.add(xr.frm)
     for dr in idautils.DataRefsTo(va):
         ref_eas.add(dr)
-    for ptr_ea in find_all(struct.pack("<Q", va)):            # pointer-table slot holding &string
+    for ptr_ea in find_all(struct.pack("<Q", va)):  # pointer-table slot holding &string
         for xr in idautils.XrefsTo(ptr_ea):
             ref_eas.add(xr.frm)
         for dr in idautils.DataRefsTo(ptr_ea):
@@ -80,14 +101,14 @@ for ea in ref_eas:
     if f:
         funcs.setdefault(f.start_ea, set()).add(ea)
 
-L = [f"// anchors found: { {a: len(v) for a, v in anchor_vas.items()} }",
-     f"// referencing sites: {len(ref_eas)}   functions: {len(funcs)}   hexrays={have_hr}"]
+L = [f"// anchors found: { {a: len(v) for a, v in anchor_vas.items()} }", f"// referencing sites: {len(ref_eas)}   functions: {len(funcs)}   hexrays={have_hr}"]
 for fea, sites in sorted(funcs.items()):
     L.append(f"\n==== {ida_funcs.get_func_name(fea)} @ {fea:#x}   ({len(sites)} ref site(s)) ====")
     done = False
     if have_hr:
         try:
-            L.append(str(ida_hexrays.decompile(fea))); done = True
+            L.append(str(ida_hexrays.decompile(fea)))
+            done = True
         except Exception as e:
             L.append(f"  (decompile failed: {e}; disasm below)")
     if not done:

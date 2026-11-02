@@ -10,13 +10,14 @@ Runs on a COPY so the original in Program Files is untouched; Claude never reads
 
   python patch_islicensed.py <QuintGovernor copy>.exe [--rva 0x5170] [--out <path>]
 """
+
 from __future__ import annotations
 
 import sys
 
 import pefile
 
-PATCH = bytes([0xB8, 0x01, 0x00, 0x00, 0x00, 0xC3])   # mov eax,1 ; ret
+PATCH = bytes([0xB8, 0x01, 0x00, 0x00, 0x00, 0xC3])  # mov eax,1 ; ret
 
 
 def rva_to_off(pe, rva):
@@ -36,8 +37,8 @@ def main(argv):
     pe = pefile.PE(src)
     off = rva_to_off(pe, rva)
     data = bytearray(pe.__data__)
-    before = bytes(data[off:off + len(PATCH)])
-    data[off:off + len(PATCH)] = PATCH
+    before = bytes(data[off : off + len(PATCH)])
+    data[off : off + len(PATCH)] = PATCH
     with open(out, "wb") as f:
         f.write(data)
     print(f"patched is-licensed @ RVA {rva:#x} (file offset {off:#x})")

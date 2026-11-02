@@ -21,6 +21,7 @@ private key. This file encodes the user's own licensing scheme — keep it priva
   python keygen.py "Licensed Name"                      # Formula B (machine-independent)
   python keygen.py "Licensed Name" --machine <sysinfo>  # Formula A (needs GetSystemInfo fields)
 """
+
 from __future__ import annotations
 
 import sys
@@ -67,14 +68,16 @@ def main(argv):
     if "--machine" in argv:
         # python keygen.py NAME --machine OemId ProcType NumProc ProcRev ProcLevel
         i = argv.index("--machine")
-        vals = [int(x, 0) for x in argv[i + 1:i + 6]]
+        vals = [int(x, 0) for x in argv[i + 1 : i + 6]]
         if len(vals) != 5:
             sys.exit("--machine needs: OemId ProcType NumProc ProcRev ProcLevel (from GetSystemInfo)")
         vs, ct = keygen_machine(name, *vals)
-        print("== Formula A (machine-bound) =="); _emit(name, vs, ct)
+        print("== Formula A (machine-bound) ==")
+        _emit(name, vs, ct)
     else:
         vs, ct = keygen_nameonly(name)
-        print("== Formula B (machine-independent) =="); _emit(name, vs, ct)
+        print("== Formula B (machine-independent) ==")
+        _emit(name, vs, ct)
         print("\n  ViewState/CacheTag are 64-bit; write them in the type the key reader expects")
         print("  (confirm REG_QWORD vs REG_BINARY[8] and the subkey before deploying).")
 

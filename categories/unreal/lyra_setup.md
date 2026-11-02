@@ -13,14 +13,14 @@ then treat it as a black box like a store-bought Unreal game. This unlocks the U
 
 ## 0. Your PC (checked 2026-10-22) and what to install
 
-| Item | You have | Verdict |
-| --- | --- | --- |
-| Free disk on C: | 257 GB | OK — budget ~150 GB (table below) |
-| RAM | 15.4 GB | **Tight** (Epic recommends 32). Works, just slower; close browsers/Discord while compiling |
-| CPU | Core Ultra 7 155H, 22 threads | Good for compiling |
-| GPU | Intel Arc (integrated) | Editor will be slow → set **Engine Scalability → Low** in the editor |
-| Visual Studio | 2026 Enterprise 18.8, MSVC 14.51, Win11 SDK 26100 | Compiler + SDK already correct; add one workload (step 1) |
-| Epic Games Launcher | not installed | step 2 |
+| Item                | You have                                          | Verdict                                                                                    |
+| ------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Free disk on C:     | 257 GB                                            | OK — budget ~150 GB (table below)                                                          |
+| RAM                 | 15.4 GB                                           | **Tight** (Epic recommends 32). Works, just slower; close browsers/Discord while compiling |
+| CPU                 | Core Ultra 7 155H, 22 threads                     | Good for compiling                                                                         |
+| GPU                 | Intel Arc (integrated)                            | Editor will be slow → set **Engine Scalability → Low** in the editor                       |
+| Visual Studio       | 2026 Enterprise 18.8, MSVC 14.51, Win11 SDK 26100 | Compiler + SDK already correct; add one workload (step 1)                                  |
+| Epic Games Launcher | not installed                                     | step 2                                                                                     |
 
 **Disk budget:** engine 50–70 GB · Lyra project + compiled editor + shader cache 25–40 GB ·
 packaged Shipping build 5–10 GB · temp headroom ~20 GB.
@@ -39,7 +39,7 @@ packaged Shipping build 5–10 GB · temp headroom ~20 GB.
 ## Step 2 — Epic Games Launcher + account (20 min + sign-in)
 
 1. Download the **Epic Games Launcher** from <https://www.epicgames.com/store/download> and install it.
-2. Sign in (or make a free Epic account). This is *your* account — I won't enter credentials for you.
+2. Sign in (or make a free Epic account). This is _your_ account — I won't enter credentials for you.
 3. If downloads fail with SSL/certificate errors, the Fortinet firewall that blocked Veloren's download
    server may be interfering — try another network.
 
@@ -111,9 +111,9 @@ Paste that back and we'll write a Lyra RECON section.
 
 ## Tools to fetch when we start offset recovery (all into `C:\Tools\`)
 
-| Tool | Source | Note |
-| --- | --- | --- |
+| Tool                 | Source                                | Note                                   |
+| -------------------- | ------------------------------------- | -------------------------------------- |
 | UE4SS (experimental) | github.com/UE4SS-RE/RE-UE4SS releases | pick the experimental build for UE 5.8 |
-| Dumper-7 | github.com/Encryqed/Dumper-7 | all UE4/UE5; build the DLL in your VS |
-| FModel | fmodel.app | pak/asset browser |
-| System Informer | (optional) | process/handle inspection |
+| Dumper-7             | github.com/Encryqed/Dumper-7          | all UE4/UE5; build the DLL in your VS  |
+| FModel               | fmodel.app                            | pak/asset browser                      |
+| System Informer      | (optional)                            | process/handle inspection              |

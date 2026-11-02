@@ -13,6 +13,7 @@ Target-aware (keys off the opened file name):
   idat.exe -A -S"reaforge\tools\ida_sip_gate.py" -L"<log>" "<copy of target>"
   output: $QN_OUT (default %TEMP%\ida_sip_gate.txt)
 """
+
 import os
 
 import ida_auto
@@ -74,6 +75,7 @@ except Exception:
     _base = 0
 try:
     import ida_ida
+
     _entry = ida_ida.inf_get_start_ea()
 except Exception:
     _entry = idc.BADADDR
@@ -131,6 +133,7 @@ for name in GATE:
                 w("    " + ln)
         except Exception as e:
             w(f"  [hexrays failed: {e}]  (virtualized body -> no native C, as expected)")
+
 
 def decompile_func(fea, label):
     fn = ida_funcs.get_func(fea)

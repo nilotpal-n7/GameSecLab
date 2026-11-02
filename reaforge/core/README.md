@@ -35,7 +35,7 @@ environment, the VM's resolver walks a zeroed PEB → null → execution derails
 1. **Build the loader env into our harness** — PEB/LDR + a minimal kernel32/ntdll export table + resolver +
    API stubs. Most educational; a real subsystem (several iterations).
 2. **Reuse `vmp-lazy-unpack`'s harness** — it already sets up the env + API hooks; extend it to keep emulating
-   *past OEP* into `check_license`, feed a key, and read the result / trace the compare. Faster path.
+   _past OEP_ into `check_license`, feed a key, and read the result / trace the compare. Faster path.
 3. **Add the symbolic layer** once emulation is faithful: symbolize the serial (and/or key), run the single
    concrete path, and read off the formula / solve for the valid key (angr is now installed for the SMT step;
    or Triton-style taint on the Unicorn trace).

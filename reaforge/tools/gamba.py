@@ -15,6 +15,7 @@ clean-build unrolled form below IS the recovered VMProtect expression up to prov
 Own-code driver that imports GAMBA as a library (external repo is not executed directly).
 Run:  python -I reaforge/devirt/demba_gamba.py
 """
+
 import os
 import sys
 
@@ -24,29 +25,31 @@ import simplify_general as G  # exposes simplify_mba(expr, bitCount, useZ3, modR
 
 BITS = 32
 
+
 def run(label, expr, useZ3=True):
     print(f"\n=== {label} ===")
-    print(f"  in : {expr if len(expr)<160 else expr[:157]+'...'}  (len={len(expr)})")
+    print(f"  in : {expr if len(expr) < 160 else expr[:157] + '...'}  (len={len(expr)})")
     try:
         out = G.simplify_mba(expr, BITS, useZ3=useZ3, modRed=True)
-        print(f"  out: {out if len(str(out))<220 else str(out)[:217]+'...'}  (len={len(str(out))})")
+        print(f"  out: {out if len(str(out)) < 220 else str(out)[:217] + '...'}  (len={len(str(out))})")
     except Exception as e:
         print(f"  GAMBA error: {e!r}")
 
+
 def one_round(acc_term, i):
-    nib = f"((s >> {4*i}) & 15)"
-    return f"((((({acc_term}) << 5) + ({acc_term})) ^ {nib}) + {7*i})"
+    nib = f"((s >> {4 * i}) & 15)"
+    return f"((((({acc_term}) << 5) + ({acc_term})) ^ {nib}) + {7 * i})"
+
 
 if __name__ == "__main__":
     # 1) intra-round: shift-encoded *33 inside the round (x = accumulator, s = serial)
     run("single round, shift-encoded *33  (((x<<5)+x) ^ ((s>>28)&15)) + 49", one_round("x", 7))
 
     # 2) intra-round, pure multiply form for comparison
-    run("single round, explicit *33  ((x*33) ^ ((s>>28)&15)) + 49",
-        "(((x * 33) ^ ((s >> 28) & 15)) + 49)")
+    run("single round, explicit *33  ((x*33) ^ ((s>>28)&15)) + 49", "(((x * 33) ^ ((s >> 28) & 15)) + 49)")
 
     # 3) full 8-round unrolled hash over serial s (== want, by Proof B). Watch GAMBA NOT roll the loop.
-    acc = "(5381 ^ s)"                       # acc_0 = 0x1505 ^ serial
+    acc = "(5381 ^ s)"  # acc_0 = 0x1505 ^ serial
     for i in range(8):
         acc = one_round(acc, i)
     run("full 8-round unrolled hash (expect: simplified but NOT re-rolled to a loop)", acc, useZ3=False)

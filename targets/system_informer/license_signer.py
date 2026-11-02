@@ -76,6 +76,7 @@ USAGE
 
 The mask bases and slug match targets/system_informer/config.py (the single source of truth for them).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -92,7 +93,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 HERE = Path(__file__).resolve().parent
-KEYDIR = HERE / "issuer_keys"               # gitignored; holds the private key the user controls
+KEYDIR = HERE / "issuer_keys"  # gitignored; holds the private key the user controls
 PRIV_PEM = KEYDIR / "sip_issuer_ed25519.pem"
 PUB_RAW = KEYDIR / "sip_issuer_ed25519.pub"
 
@@ -109,9 +110,9 @@ SLUG_DEFAULT = "enterprise-forensics"
 # fails GCM auth -> the plugin stays in Community mode. Response-as-key: no naked boolean crosses the seam.
 # sip_gate_init() is untouched by this: it takes sig = last 64 bytes, verifies everything before (so the
 # XDLB bytes are signed), and reads ct by its length at offset 40 (so the trailing section is ignored).
-XDLL_INFO = b"SIP-xdll-v1"       # == info in pro_gate.cpp sip_xdll_respond (salt = HWID, ikm = seed||challenge)
-XDLL_SECTION_MAGIC = b"XDLB"     # outer-file section tag
-XUNLOCK_MAGIC = b"XUNL"          # plaintext magic inside the unlock blob (followed by u32 feature flags)
+XDLL_INFO = b"SIP-xdll-v1"  # == info in pro_gate.cpp sip_xdll_respond (salt = HWID, ikm = seed||challenge)
+XDLL_SECTION_MAGIC = b"XDLB"  # outer-file section tag
+XUNLOCK_MAGIC = b"XUNL"  # plaintext magic inside the unlock blob (followed by u32 feature flags)
 
 # The four ACCESS_MASK bases the branchless gate selects between. Single source of truth = config.py;
 # duplicated here as defaults so the signer runs stand-alone for filming. Keep them in sync.
@@ -135,12 +136,23 @@ def _lp(s: str) -> bytes:
 def _read_lp(buf: bytes, off: int) -> tuple[str, int]:
     (n,) = struct.unpack_from("<H", buf, off)
     off += 2
-    return buf[off:off + n].decode("utf-8"), off + n
+    return buf[off : off + n].decode("utf-8"), off + n
 
 
-def pack_entitlements(*, subject: str, slug: str, tier: int, issued: int, expires: int,
-                      license_id: bytes, xdll_seed: bytes,
-                      mask_dump: int, mask_inject: int, mask_edit: int, mask_trap: int) -> bytes:
+def pack_entitlements(
+    *,
+    subject: str,
+    slug: str,
+    tier: int,
+    issued: int,
+    expires: int,
+    license_id: bytes,
+    xdll_seed: bytes,
+    mask_dump: int,
+    mask_inject: int,
+    mask_edit: int,
+    mask_trap: int,
+) -> bytes:
     out = bytearray(ENT_MAGIC)
     out += license_id
     out += struct.pack("<QQI", issued, expires, tier)
@@ -155,15 +167,29 @@ def unpack_entitlements(buf: bytes) -> dict:
     if buf[:4] != ENT_MAGIC:
         raise ValueError("bad entitlement magic")
     off = 4
-    license_id = buf[off:off + 16]; off += 16
-    issued, expires, tier = struct.unpack_from("<QQI", buf, off); off += 20
+    license_id = buf[off : off + 16]
+    off += 16
+    issued, expires, tier = struct.unpack_from("<QQI", buf, off)
+    off += 20
     subject, off = _read_lp(buf, off)
     slug, off = _read_lp(buf, off)
-    mask_dump, mask_inject, mask_edit, mask_trap = struct.unpack_from("<IIII", buf, off); off += 16
-    xdll_seed = buf[off:off + 32]; off += 32
-    return dict(license_id=license_id, issued=issued, expires=expires, tier=tier, subject=subject,
-                slug=slug, mask_dump=mask_dump, mask_inject=mask_inject, mask_edit=mask_edit,
-                mask_trap=mask_trap, xdll_seed=xdll_seed)
+    mask_dump, mask_inject, mask_edit, mask_trap = struct.unpack_from("<IIII", buf, off)
+    off += 16
+    xdll_seed = buf[off : off + 32]
+    off += 32
+    return dict(
+        license_id=license_id,
+        issued=issued,
+        expires=expires,
+        tier=tier,
+        subject=subject,
+        slug=slug,
+        mask_dump=mask_dump,
+        mask_inject=mask_inject,
+        mask_edit=mask_edit,
+        mask_trap=mask_trap,
+        xdll_seed=xdll_seed,
+    )
 
 
 # ── the entangled KDF (must match src/pro_gate.cpp byte for byte) ─────────────────────────────────
@@ -186,8 +212,7 @@ def derive_key(hwid_bytes: bytes, pubkey_raw: bytes, text_crc: int, slug: str, s
 def derive_xdll_key(xdll_seed: bytes, challenge: bytes, hwid_bytes: bytes) -> bytes:
     """The cross-DLL handshake response == the key that unlocks the ExtendedTools blob. Must match
     pro_gate.cpp sip_xdll_respond byte for byte: HKDF(ikm = seed||challenge, salt = HWID, info = "SIP-xdll-v1")."""
-    return HKDF(algorithm=hashes.SHA256(), length=32, salt=hwid_bytes,
-                info=XDLL_INFO).derive(xdll_seed + challenge)
+    return HKDF(algorithm=hashes.SHA256(), length=32, salt=hwid_bytes, info=XDLL_INFO).derive(xdll_seed + challenge)
 
 
 def build_xdll_section(xdll_seed: bytes, hwid_bytes: bytes) -> bytes:
@@ -196,8 +221,8 @@ def build_xdll_section(xdll_seed: bytes, hwid_bytes: bytes) -> bytes:
     challenge = os.urandom(32)
     xnonce = os.urandom(12)
     xkey = derive_xdll_key(xdll_seed, challenge, hwid_bytes)
-    pt = XUNLOCK_MAGIC + struct.pack("<I", 1)        # feature flags = 1 (Pro)
-    xct = AESGCM(xkey).encrypt(xnonce, pt, None)     # 16-byte tag appended
+    pt = XUNLOCK_MAGIC + struct.pack("<I", 1)  # feature flags = 1 (Pro)
+    xct = AESGCM(xkey).encrypt(xnonce, pt, None)  # 16-byte tag appended
     return XDLL_SECTION_MAGIC + challenge + xnonce + struct.pack("<H", len(xct)) + xct
 
 
@@ -217,9 +242,7 @@ def cmd_genkey(_args) -> None:
     if PRIV_PEM.exists():
         sys.exit(f"refusing to overwrite existing key {PRIV_PEM} (delete it by hand if you really mean to)")
     priv = Ed25519PrivateKey.generate()
-    PRIV_PEM.write_bytes(priv.private_bytes(serialization.Encoding.PEM,
-                                            serialization.PrivateFormat.PKCS8,
-                                            serialization.NoEncryption()))
+    PRIV_PEM.write_bytes(priv.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
     pub = pubkey_raw_from_priv(priv)
     PUB_RAW.write_bytes(pub)
     print(f"issuer keypair written:\n  private: {PRIV_PEM}  (KEEP SECRET — this is the whole security root)")
@@ -237,8 +260,7 @@ def cmd_pubkey_c(_args) -> None:
 
 
 # ── issue / verify ────────────────────────────────────────────────────────────────────────────────
-def build_file(priv: Ed25519PrivateKey, hwid_bytes: bytes, text_crc: int, payload: bytes,
-               slug: str, demo_soft: bool, xdll_seed: bytes) -> bytes:
+def build_file(priv: Ed25519PrivateKey, hwid_bytes: bytes, text_crc: int, payload: bytes, slug: str, demo_soft: bool, xdll_seed: bytes) -> bytes:
     pub = pubkey_raw_from_priv(priv)
     salt = os.urandom(16)
     nonce = os.urandom(12)
@@ -246,7 +268,7 @@ def build_file(priv: Ed25519PrivateKey, hwid_bytes: bytes, text_crc: int, payloa
     ct = AESGCM(key).encrypt(nonce, payload, None)  # tag appended
     flags = 0x01 if demo_soft else 0x00
     header = MAGIC + struct.pack("<BBH", VERSION, flags, 0) + salt + nonce + struct.pack("<I", len(ct)) + ct
-    header += build_xdll_section(xdll_seed, hwid_bytes)   # signed region, after ct, before sig (see note above)
+    header += build_xdll_section(xdll_seed, hwid_bytes)  # signed region, after ct, before sig (see note above)
     sig = priv.sign(header)
     return header + sig
 
@@ -256,12 +278,20 @@ def cmd_issue(args) -> None:
     hwid_bytes = normalize_hwid(args.hwid)
     tier = TIER_PRO if args.tier == "pro" else TIER_FREE
     expires = 0 if args.expires in (None, "never") else int(time.time()) + int(args.expires) * 86400
-    xdll_seed = os.urandom(32)   # one seed: feeds both the ENTL payload (sip_progate) and the XDLB unlock (ExtendedTools)
+    xdll_seed = os.urandom(32)  # one seed: feeds both the ENTL payload (sip_progate) and the XDLB unlock (ExtendedTools)
     payload = pack_entitlements(
-        subject=args.subject, slug=args.slug, tier=tier, issued=int(time.time()), expires=expires,
-        license_id=uuid.uuid4().bytes, xdll_seed=xdll_seed,
-        mask_dump=args.mask_dump, mask_inject=args.mask_inject, mask_edit=args.mask_edit,
-        mask_trap=args.mask_trap)
+        subject=args.subject,
+        slug=args.slug,
+        tier=tier,
+        issued=int(time.time()),
+        expires=expires,
+        license_id=uuid.uuid4().bytes,
+        xdll_seed=xdll_seed,
+        mask_dump=args.mask_dump,
+        mask_inject=args.mask_inject,
+        mask_edit=args.mask_edit,
+        mask_trap=args.mask_trap,
+    )
     blob = build_file(priv, hwid_bytes, args.text_crc, payload, args.slug, args.demo_soft, xdll_seed)
     out = Path(args.out) if args.out else HERE / "licenses" / f"{args.subject.replace(' ', '_')}.sipm"
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -274,8 +304,7 @@ def cmd_issue(args) -> None:
     print(f"  expires   : {'perpetual' if expires == 0 else time.strftime('%Y-%m-%d', time.gmtime(expires))}")
 
 
-def verify_file(blob: bytes, hwid_bytes: bytes, text_crc: int, pubkey_raw: bytes,
-                slug: str) -> tuple[bool, str, dict | None]:
+def verify_file(blob: bytes, hwid_bytes: bytes, text_crc: int, pubkey_raw: bytes, slug: str) -> tuple[bool, str, dict | None]:
     """The reference verifier — mirrors exactly what src/pro_gate.cpp must do.
 
     Returns (ok, reason, entitlements). ok=False with a reason string on any failure; this is what a
@@ -296,7 +325,7 @@ def verify_file(blob: bytes, hwid_bytes: bytes, text_crc: int, pubkey_raw: bytes
     salt = blob[8:24]
     nonce = blob[24:36]
     (ct_len,) = struct.unpack_from("<I", blob, 36)
-    ct = blob[40:40 + ct_len]
+    ct = blob[40 : 40 + ct_len]
     # 2) the entangled KDF: wrong HWID / patched .text / swapped pubkey all land here as a decrypt failure
     key = derive_key(hwid_bytes, pubkey_raw, text_crc, slug, salt)
     try:
@@ -314,11 +343,11 @@ def verify_file(blob: bytes, hwid_bytes: bytes, text_crc: int, pubkey_raw: bytes
     # minus getting the response from sip_progate — here we recompute it from the decrypted seed.
     ent["xdll_ok"] = None
     xoff = 40 + ct_len
-    if signed[xoff:xoff + 4] == XDLL_SECTION_MAGIC:
-        challenge = signed[xoff + 4:xoff + 36]
-        xnonce = signed[xoff + 36:xoff + 48]
+    if signed[xoff : xoff + 4] == XDLL_SECTION_MAGIC:
+        challenge = signed[xoff + 4 : xoff + 36]
+        xnonce = signed[xoff + 36 : xoff + 48]
         (xlen,) = struct.unpack_from("<H", signed, xoff + 48)
-        xct = signed[xoff + 50:xoff + 50 + xlen]
+        xct = signed[xoff + 50 : xoff + 50 + xlen]
         try:
             xpt = AESGCM(derive_xdll_key(ent["xdll_seed"], challenge, hwid_bytes)).decrypt(xnonce, xct, None)
             ent["xdll_ok"] = xpt[:4] == XUNLOCK_MAGIC
@@ -330,14 +359,12 @@ def verify_file(blob: bytes, hwid_bytes: bytes, text_crc: int, pubkey_raw: bytes
 def cmd_verify(args) -> None:
     priv = load_private()  # oracle verifies with the matching pubkey
     pub = pubkey_raw_from_priv(priv)
-    ok, reason, ent = verify_file(Path(args.file).read_bytes(), normalize_hwid(args.hwid),
-                                  args.text_crc, pub, args.slug)
+    ok, reason, ent = verify_file(Path(args.file).read_bytes(), normalize_hwid(args.hwid), args.text_crc, pub, args.slug)
     print(f"verify: {'PASS' if ok else 'FAIL'} — {reason}")
     if ent:
         print(f"  tier   : {['FREE', 'PRO'][ent['tier']]}")
         print(f"  subject: {ent['subject']!r}")
-        print(f"  masks  : dump=0x{ent['mask_dump']:04X} inject=0x{ent['mask_inject']:04X} "
-              f"edit=0x{ent['mask_edit']:04X} trap=0x{ent['mask_trap']:04X}")
+        print(f"  masks  : dump=0x{ent['mask_dump']:04X} inject=0x{ent['mask_inject']:04X} edit=0x{ent['mask_edit']:04X} trap=0x{ent['mask_trap']:04X}")
         xdll = ent.get("xdll_ok")
         print(f"  xdll   : {'unlock blob OK (ExtendedTools will unlock)' if xdll else 'MISSING/BAD' if xdll is not None else 'no XDLB section (old license)'}")
     sys.exit(0 if ok else 1)
@@ -353,8 +380,7 @@ def cmd_attack(args) -> None:
     crc = args.text_crc
 
     def show(label, **kw):
-        ok, reason, _ = verify_file(**{"blob": blob, "hwid_bytes": hwid, "text_crc": crc,
-                                       "pubkey_raw": pub, "slug": args.slug, **kw})
+        ok, reason, _ = verify_file(**{"blob": blob, "hwid_bytes": hwid, "text_crc": crc, "pubkey_raw": pub, "slug": args.slug, **kw})
         print(f"  {label:38s}: {'PASS' if ok else 'FAIL'} — {reason}")
 
     print("baseline (legit machine, unpatched binary, real pubkey):")
@@ -371,8 +397,10 @@ def cmd_attack(args) -> None:
         tampered[55] ^= 0x01
     ok, reason, _ = verify_file(bytes(tampered), hwid, crc, pub, args.slug)
     print(f"  {'[flip a ciphertext byte]':38s}: {'PASS' if ok else 'FAIL'} — {reason}")
-    print("\nEvery shallow crack fails before reaching a comparable boolean. A working forge needs the"
-          "\nprivate key (signature) AND the VM-recovered mask bases (or NtOpenProcess denies access).")
+    print(
+        "\nEvery shallow crack fails before reaching a comparable boolean. A working forge needs the"
+        "\nprivate key (signature) AND the VM-recovered mask bases (or NtOpenProcess denies access)."
+    )
 
 
 def _crc_arg(s: str) -> int:
@@ -387,12 +415,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     def add_common(sp):
         sp.add_argument("--hwid", required=True, help="target HWID (hex or raw; VMProtectGetCurrentHWID)")
-        sp.add_argument("--text-crc", dest="text_crc", type=_crc_arg, required=True,
-                        help="CRC-32 of the protected on-disk image the verifier computes at runtime "
-                             "(sip_report_tool prints it; e.g. 0xA1B2C3D4)")
+        sp.add_argument(
+            "--text-crc",
+            dest="text_crc",
+            type=_crc_arg,
+            required=True,
+            help="CRC-32 of the protected on-disk image the verifier computes at runtime (sip_report_tool prints it; e.g. 0xA1B2C3D4)",
+        )
         sp.add_argument("--slug", default=SLUG_DEFAULT)
 
-    i = sub.add_parser("issue"); add_common(i)
+    i = sub.add_parser("issue")
+    add_common(i)
     i.add_argument("--subject", required=True)
     i.add_argument("--tier", choices=("free", "pro"), default="pro")
     i.add_argument("--expires", default="never", help="days until expiry, or 'never'")
@@ -404,11 +437,13 @@ def build_parser() -> argparse.ArgumentParser:
     i.add_argument("--mask-trap", type=_crc_arg, default=MASK_TRAP)
     i.set_defaults(func=cmd_issue)
 
-    v = sub.add_parser("verify"); add_common(v)
+    v = sub.add_parser("verify")
+    add_common(v)
     v.add_argument("file")
     v.set_defaults(func=cmd_verify)
 
-    a = sub.add_parser("attack"); add_common(a)
+    a = sub.add_parser("attack")
+    add_common(a)
     a.add_argument("file")
     a.set_defaults(func=cmd_attack)
     return p

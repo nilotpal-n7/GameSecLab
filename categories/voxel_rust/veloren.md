@@ -1,6 +1,6 @@
 # Hooking Veloren's `Health::change_by` with Frida (warm-up)
 
-A gentle run-up to function hooking on a target you fully understand. You'll *observe* then *modify* a live
+A gentle run-up to function hooking on a target you fully understand. You'll _observe_ then _modify_ a live
 function, which is exactly what you'll do to Unreal's `ProcessEvent` later — just without the extra
 Unreal machinery.
 
@@ -11,12 +11,12 @@ inserts a detour at `addr`: when the CPU reaches it, your JavaScript runs first 
 registers via `this.context`), then the original code continues. No files are patched on disk; it's all in
 memory, and it's gone when the process exits.
 
-**Why hook `change_by`?** In memory editing you found that *all* damage and healing funnels through
+**Why hook `change_by`?** In memory editing you found that _all_ damage and healing funnels through
 `Health::change_by`, and you verified the exact store `mov [rcx+0x50], r15d` at RVA `0xF4D9B3`. Hooking that
 one spot sees every health change in the game — the same "one choke point" idea as `ProcessEvent` on Unreal.
 
 **Why hook the store, not the function entry?** Rust doesn't use the C argument convention and inlines
-heavily, so reading arguments at the entry is unreliable. At the store we *know*: `rcx` = the Health struct,
+heavily, so reading arguments at the entry is unreliable. At the store we _know_: `rcx` = the Health struct,
 `r15` (low 32) = the new value, `[rcx+0x50]` = old value, `[rcx+0x58]` = maximum. Addresses move every launch
 (ASLR), but **RVA `0xF4D9B3` is constant**, so Frida finds it via `module base + RVA`.
 
@@ -33,7 +33,7 @@ python run_hook.py change_by_logger.js
 ```
 
 Take a hit, heal, stand in a fire. Each health change prints: entity address, old -> new HP, delta, max.
-**Watch for this:** you'll see lines for hits you *didn't* take — NPCs fighting elsewhere. That proves the
+**Watch for this:** you'll see lines for hits you _didn't_ take — NPCs fighting elsewhere. That proves the
 function is shared across all entities (ECS). Press Enter to detach.
 
 Paste a few log lines back.
@@ -44,7 +44,7 @@ Paste a few log lines back.
 python run_hook.py change_by_block_damage.js
 ```
 
-Now when a write would *lower* health, the script overwrites `r15` with the old value first, so no damage
+Now when a write would _lower_ health, the script overwrites `r15` with the old value first, so no damage
 lands. Try to take a hit — you won't lose HP.
 
 **The lesson in the pain:** this also makes **enemies invincible**, because the hook fires for everyone.

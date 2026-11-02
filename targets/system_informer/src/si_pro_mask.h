@@ -21,8 +21,8 @@
 #ifndef SI_PRO_MASK_H
 #define SI_PRO_MASK_H
 
-#include <windows.h>  /* ULONG, LONG, ACCESS_MASK */
 #include "pro_gate.h" /* SipFeature (the public contract owns the enum) */
+#include <windows.h>  /* ULONG, LONG, ACCESS_MASK */
 
 /* The unlicensed trap mask. Grants a handle but no forensic right, so misuse denies at the syscall. */
 #ifndef SIP_TRAP_MASK
@@ -31,11 +31,9 @@
 
 /* Branchless mask selection. `entitled`, `crc_ok`, `nodbg` MUST each be exactly 0 or 1.
  * Returns `base` when all three hold, otherwise `trap`. No comparisons, no branches. */
-static __forceinline ACCESS_MASK sip_select_mask(ULONG base, ULONG trap,
-                                                 ULONG entitled, ULONG crc_ok, ULONG nodbg)
-{
-    ULONG m = (ULONG)(-(LONG)(entitled & crc_ok & nodbg));
-    return (ACCESS_MASK)((base & m) | (trap & ~m));
+static __forceinline ACCESS_MASK sip_select_mask(ULONG base, ULONG trap, ULONG entitled, ULONG crc_ok, ULONG nodbg) {
+	ULONG m = (ULONG)(-(LONG)(entitled & crc_ok & nodbg));
+	return (ACCESS_MASK)((base & m) | (trap & ~m));
 }
 
 #endif /* SI_PRO_MASK_H */
