@@ -1,5 +1,6 @@
 /* sip_report_tool.c — tiny diagnostic: load sip_progate.dll and print this machine's HWID and the DLL's
- * on-disk .text CRC-32, the two values needed to issue a license for this exact build:
+ * on-disk image CRC-32 (whole file; "text_crc" in the format), the two values needed to issue a license
+ * for this exact build:
  *
  *     python license_signer.py issue --hwid <HWID> --text-crc 0x<CRC> --subject "Name" --tier pro
  *

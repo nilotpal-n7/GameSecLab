@@ -18,8 +18,12 @@ branchless kernel gate ANDs together) is AES-256-GCM encrypted under a key deriv
 
 and the whole file is then Ed25519-signed with the user's private key. Consequences, by attack:
 
-  * patch one byte of protected .text  -> text_crc changes -> K changes -> AES-GCM auth FAILS.
+  * patch one byte of the protected image -> text_crc changes -> K changes -> AES-GCM auth FAILS.
         The license does not "return false"; it fails to DECRYPT. There is no compare to NOP.
+        ("text_crc" is the field name. The verifier's sip_image_text_crc32() CRCs the whole on-disk
+        module file -- pre-pack that is dominated by .text; once VMProtect packs the output, .text's raw
+        data is zeroed into packed sections, so a whole-file CRC is what stays reproducible and binds the
+        license to the exact packed build, incl. the VM bytecode the cracker actually edits.)
   * swap the embedded .rdata pubkey for the attacker's own (classic forge) -> pubkey bytes in ikm change
         -> K changes. The attacker can still self-sign + self-encrypt under their pubkey-derived K, so the
         sig check alone would pass — but the DECRYPTED payload must then also carry the EXACT mask bases
@@ -336,7 +340,8 @@ def build_parser() -> argparse.ArgumentParser:
     def add_common(sp):
         sp.add_argument("--hwid", required=True, help="target HWID (hex or raw; VMProtectGetCurrentHWID)")
         sp.add_argument("--text-crc", dest="text_crc", type=_crc_arg, required=True,
-                        help="CRC-32 of the protected .text the verifier computes at runtime (e.g. 0xA1B2C3D4)")
+                        help="CRC-32 of the protected on-disk image the verifier computes at runtime "
+                             "(sip_report_tool prints it; e.g. 0xA1B2C3D4)")
         sp.add_argument("--slug", default=SLUG_DEFAULT)
 
     i = sub.add_parser("issue"); add_common(i)

@@ -54,9 +54,15 @@ static uint32_t crc32_buf(const uint8_t *p, size_t n)
 
 extern "C" uint32_t sip_image_text_crc32(void)
 {
-    /* CRC the ON-DISK raw .text of this module's own file, not the mapped image: ASLR relocations can make
-     * the in-memory .text differ per process, which would make the KDF input non-reproducible. The on-disk
-     * bytes are stable and are exactly what an attacker patches, which is the threat we bind against. */
+    /* CRC the ENTIRE ON-DISK image of this module's own file, not the mapped image. Rationale:
+     *   - On-disk, not mapped: ASLR relocations + the loader-patched IAT make the in-memory image differ
+     *     per process; the file bytes are stable, so the KDF input is reproducible.
+     *   - Whole file, not just the section named ".text": once VMProtect packs the output, every original
+     *     section (.text included) has its raw data zeroed and the real payload moves into packed sections
+     *     (.vmp*, .(Ci, ...) whose names vary. A ".text"-only CRC would read 0 bytes -> 0. Hashing the whole
+     *     deterministic packed file binds the license to this exact build and makes ANY patched byte --
+     *     including the VM bytecode an attacker actually edits -- break the KDF (fail to decrypt, not fail a
+     *     compare). The function name is kept for its callers; it now means "image CRC", packing-robust. */
     HMODULE self = NULL;
     if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
                             GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
@@ -74,21 +80,8 @@ extern "C" uint32_t sip_image_text_crc32(void)
     if (sz != INVALID_FILE_SIZE && sz > 0x200) {
         uint8_t *buf = static_cast<uint8_t *>(malloc(sz));
         DWORD got = 0;
-        if (buf && ReadFile(f, buf, sz, &got, NULL) && got == sz) {
-            const IMAGE_DOS_HEADER *dos = reinterpret_cast<const IMAGE_DOS_HEADER *>(buf);
-            if ((DWORD)dos->e_lfanew + sizeof(IMAGE_NT_HEADERS) <= sz) {
-                const IMAGE_NT_HEADERS *nt =
-                    reinterpret_cast<const IMAGE_NT_HEADERS *>(buf + dos->e_lfanew);
-                const IMAGE_SECTION_HEADER *sec = IMAGE_FIRST_SECTION(nt);
-                for (unsigned i = 0; i < nt->FileHeader.NumberOfSections; ++i) {
-                    if (memcmp(sec[i].Name, ".text", 5) == 0) {
-                        DWORD off = sec[i].PointerToRawData, len = sec[i].SizeOfRawData;
-                        if ((uint64_t)off + len <= sz) crc = crc32_buf(buf + off, len);
-                        break;
-                    }
-                }
-            }
-        }
+        if (buf && ReadFile(f, buf, sz, &got, NULL) && got == sz)
+            crc = crc32_buf(buf, sz);
         free(buf);
     }
     CloseHandle(f);
