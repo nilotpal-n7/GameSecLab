@@ -41,10 +41,14 @@ static HMODULE SipProgateModule(void)
     return module;
 }
 
-/* guard(suppress): these wrappers call into sip_progate.dll through GetProcAddress pointers. The host and
- * plugin are built with Control Flow Guard / XFG, but sip_progate is VMProtect-packed and its real entry
- * points are not valid CFG indirect-call targets, so an instrumented icall would fast-fail (0xC0000409).
- * Suppress the CFG/XFG check for the icalls in these shims (the target is our own, trusted module). */
+/* These wrappers call into sip_progate.dll through GetProcAddress pointers. Two host mitigations collide
+ * with a VMProtect-packed callee:
+ *   1. CET shadow stacks (primary): the host is normally built /CETCOMPAT, so returning out of the packed
+ *      core -- whose virtualized control flow isn't shadow-stack-safe -- fast-fails with
+ *      FAST_FAIL_CONTROL_INVALID_RETURN_ADDRESS (0x39, surfaced as 0xC0000409). The lab build turns CET off
+ *      for the host (Common.User.props: <CETCompat>false</CETCompat>) so the packed code can return cleanly.
+ *   2. Control Flow Guard / XFG (secondary): guard(suppress) elides the CFG icall check at these call sites,
+ *      since the target is our own trusted (if un-instrumented) module. Harmless even with CET off. */
 __declspec(guard(suppress)) SipInitResult sip_gate_init(const char *machine_file_path)
 {
     typedef SipInitResult (*InitFn)(const char *);
