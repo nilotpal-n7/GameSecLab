@@ -27,8 +27,29 @@ DYNAMIC_BASE = 0x0040
 IMPORT, EXCEPTION, BASERELOC, TLS, LOAD_CONFIG, BOUND_IMPORT, IAT = 1, 3, 5, 9, 10, 11, 12
 
 
-def reconstruct(dump, out, orig=None, oep=None, base=None, show=print):
-    """Rebuild `dump` -> runnable `out`. With `orig` (your own clean PE) overlay its sections + dirs."""
+def reconstruct(dump, out, orig=None, oep=None, base=None, from_oracle=False, show=print):
+    """Rebuild `dump` -> runnable `out`. With `orig` (your own clean PE) overlay its sections + dirs.
+
+    `from_oracle=True` (owner-only, for a protector whose packed section layout differs wildly from the
+    clean binary, e.g. Themida): emit the clean owner image itself, de-ASLR'd with the protector's dirs
+    dropped, instead of overlaying onto the packed layout — a loadable, de-protected PE with no leftover
+    protector sections for a scanner to flag. The overlaid-onto-dump mode stays the default (VMProtect,
+    where only code is virtualized and the layout matches)."""
+    if from_oracle and orig is not None:
+        o = pefile.PE(orig)
+        D = o.OPTIONAL_HEADER.DATA_DIRECTORY
+        for i in (TLS, LOAD_CONFIG, BOUND_IMPORT):          # drop the protector's dirs
+            D[i].VirtualAddress, D[i].Size = 0, 0
+        o.OPTIONAL_HEADER.DllCharacteristics &= ~DYNAMIC_BASE  # no ASLR: hardcoded RVAs/IAT line up
+        if base is not None:
+            o.OPTIONAL_HEADER.ImageBase = base
+        if oep is not None:
+            o.OPTIONAL_HEADER.AddressOfEntryPoint = oep
+        o.write(out)
+        show(f"wrote {out}  (clean owner image, de-ASLR'd, protector dirs dropped)  "
+             f"OEP {o.OPTIONAL_HEADER.AddressOfEntryPoint:#x}  base {o.OPTIONAL_HEADER.ImageBase:#x}")
+        return out
+
     d = pefile.PE(dump)
     writ_rvas = []
 

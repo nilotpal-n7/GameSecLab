@@ -198,7 +198,11 @@ Ran the reaforge emulation-unpacker on `sip_progate.vmp.dll` end to end, no runt
 - `TODO(run)`: the live `NtOpenProcess` RDX trace (licensed `0x0450` vs unlicensed `0x1000`) — the static
   emulation already shows the unlicensed `0x1000`; the licensed `0x0450` needs the dynamic run (x64dbg on the
   real process, where a valid `.sipm` decrypts and populates `g_state`).
-- `TODO(run)`: the lifted KDF/AES block — `sip_gate_init` calls libcrypto AES-GCM; a clean lift needs the FS +
-  crypto env (dynamic). Note: the KDF is HKDF/AES-GCM, NOT an algebraic recurrence, so `prove_recurrence` (the
-  license_app/dead_cells z3 tool) does not apply here — the evidence is structural (the EVP calls), not an
-  algebra proof.
+- ✅ `TODO(run)` lifted KDF/AES block — DONE (evidence/logs/09): `python -m reaforge.tools.crypto_trace
+  <sip_report_tool> <sipm> --cwd <bin>` traces the crypto `sip_gate_init` calls and shows the block executing:
+  **HKDF-SHA256** (`BCryptOpenAlgorithmProvider`/`CreateHash`/`HashData`/`FinishHash`, repeated = the HMAC
+  extract+expand) → **AES-256-GCM** (`BCryptGenerateSymmetricKey` + `BCryptSetProperty` for the nonce/tag +
+  `BCryptDecrypt`). It is Windows CNG/BCrypt, not OpenSSL (the `EVP_` import is an unused LicenseSeat dep).
+  The KDF is HKDF/AES-GCM, NOT an algebraic recurrence, so `prove_recurrence` (the license_app/dead_cells z3
+  tool) does not apply — the evidence is the live crypto block, which is what makes a patched `.text` byte
+  change the key and fail `BCryptDecrypt`'s GCM tag.

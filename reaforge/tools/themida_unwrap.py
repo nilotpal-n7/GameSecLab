@@ -91,8 +91,27 @@ def export_map(mods):
     return amap
 
 
-def unwrap(dump, mod_sub, iat_rva, iat_sz, show=print):
-    """Resolve an API-wrapped IAT from a full-memory dump. Returns [(rva, slot_val, tag, api), ...]."""
+def _oracle_iat_names(oracle_path):
+    """Map {iat_thunk_rva: 'DLL!Name'} from the owner's clean binary — used only to NAME the handful of
+    stubs whose SecureEngine emulation can't be driven to a tail-jmp (e.g. ExitProcess, whose wrapper would
+    terminate). Owner-mode convenience; such entries are tagged 'oracle', not 'UNWRAPPED'."""
+    import pefile
+    names = {}
+    o = pefile.PE(oracle_path)
+    o.parse_data_directories(directories=[pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_IMPORT"]])
+    for d in getattr(o, "DIRECTORY_ENTRY_IMPORT", []):
+        dll = d.dll.decode(errors="ignore")
+        for i, imp in enumerate(d.imports):
+            nm = imp.name.decode(errors="ignore") if imp.name else f"ordinal_{imp.ordinal}"
+            names[d.struct.FirstThunk + i * 8] = f"{dll}!{nm}"
+    return names
+
+
+def unwrap(dump, mod_sub, iat_rva, iat_sz, show=print, oracle=None):
+    """Resolve an API-wrapped IAT from a full-memory dump. Returns [(rva, slot_val, tag, api), ...].
+    With `oracle` (the owner's clean binary) any stub the emulation can't land is named from the oracle's
+    import table by IAT RVA (tagged 'oracle')."""
+    oracle_names = _oracle_iat_names(oracle) if oracle else {}
     mod_sub = mod_sub.lower()
     mf, rdr, segs, mods, teb = load(dump)
     main_mod = next((m for m in mods if mod_sub in os.path.basename(m[0]).lower()), None)
@@ -153,7 +172,7 @@ def unwrap(dump, mod_sub, iat_rva, iat_sz, show=print):
 
     n = iat_sz // 8
     show(f"== Themida IAT unwrap ==  module {os.path.basename(main_mod[0])} base {base:#x}  IAT {iat_va:#x} x{n}")
-    resolved = wrapped = direct = 0
+    resolved = wrapped = direct = named = 0
     out = []
     for k in range(n):
         slot = iat_va + k * 8
@@ -169,11 +188,17 @@ def unwrap(dump, mod_sub, iat_rva, iat_sz, show=print):
         else:                                              # wrapper stub -> emulate to the real API
             land = trace(v)
             api = (resolve_landing(land) if land else None)
-            if api: resolved += 1; tag = "UNWRAPPED"
-            else: wrapped += 1; tag = "unresolved"; api = f"(stub {v:#x}, landed {land:#x})" if land else f"(stub {v:#x})"
+            if api:
+                resolved += 1; tag = "UNWRAPPED"
+            elif (slot - base) in oracle_names:             # emulation couldn't land -> name from the oracle
+                api = oracle_names[slot - base]; named += 1; tag = "oracle"
+            else:
+                wrapped += 1; tag = "unresolved"
+                api = f"(stub {v:#x}, landed {land:#x})" if land else f"(stub {v:#x})"
         out.append((slot - base, v, tag, api))
         show(f"  [+{slot-base:#06x}] {v:#018x}  {tag:10} {api}")
-    show(f"\n  direct {direct}  UNWRAPPED {resolved}  unresolved {wrapped}  (of {len(out)})")
+    extra = f" + oracle-named {named}" if named else ""
+    show(f"\n  direct {direct}  UNWRAPPED {resolved}{extra}  unresolved {wrapped}  (of {len(out)})")
     return out
 
 
@@ -255,15 +280,15 @@ def pipeline(packed_module, dump, out, oracle=None, module_substr=None, iat_rva=
         iat_rva = d[12].VirtualAddress or d[1].VirtualAddress
         iat_size = iat_size or d[12].Size or d[1].Size
     show(f"  IAT rva {iat_rva:#x} size {iat_size:#x}  (from {'oracle' if oracle and iat_rva else 'packed'})")
-    resolved = unwrap(dump, mod_sub, iat_rva, iat_size, show=show)
+    resolved = unwrap(dump, mod_sub, iat_rva, iat_size, show=show, oracle=oracle)
     if not any(len(r) > 3 and r[3] for r in (resolved or [])):
         show("  note: 0 thunks resolved at this RVA. This Themida build's wrapped IAT is elsewhere in memory;")
         show("  locate it (e.g. Scylla 'IAT autosearch' / the module's first import thunk) and re-run the")
         show("  direct form:  themida_unwrap <dump> " + mod_sub + " <located_iat_rva> <size>.")
         show("  The owner-oracle rebuild below restores the real imports regardless.")
 
-    show("\n[3/3] rebuild a loadable, de-virtualized PE (packed PE + clean-oracle overlay):")
-    reconstruct(packed_module, out, oracle, show=show)
+    show("\n[3/3] rebuild a clean, loadable, de-protected PE (owner image, de-ASLR'd, protector dirs dropped):")
+    reconstruct(packed_module, out, oracle, from_oracle=bool(oracle), show=show)
     show(f"\nwrote {out}  (+ {out}.dumped.bin)")
     return resolved
 

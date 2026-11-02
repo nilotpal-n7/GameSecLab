@@ -144,8 +144,11 @@ def test_system_informer_apply_and_themida():
     assert "license_signer.py issue" in txt and "c30e127afb5ab2d9e4b8af5200848f5c" in txt
     assert "0x3AEAAED9" in txt and "SystemInformer.sipm" in txt
     assert "sip_report_tool" in apply_license.render("Reviewer")   # no HWID/CRC -> how to get them
-    from reaforge.tools.themida_unwrap import capture_command, pipeline  # noqa: F401
+    from reaforge.tools.themida_unwrap import capture_command, carve_module, pipeline  # noqa: F401
     assert "MiniDumpWriteDump" in capture_command("SystemInformer")
+    from reaforge.tools.crypto_trace import DEFAULT_HOOKS, trace  # noqa: F401
+    from reaforge.tools.pe_reconstruct import reconstruct  # noqa: F401
+    assert "bcrypt.dll" in DEFAULT_HOOKS and "BCryptDecrypt" in DEFAULT_HOOKS["bcrypt.dll"]
     from targets.system_informer.config import THEMIDA
     assert THEMIDA["module"] == "ExtendedTools"
 

@@ -140,15 +140,32 @@ reproducible command `themida_unwrap pipeline`. Three automated stages:
 [2/3] unwrap the API-wrapped IAT (evidence: wrapped -> real API):   IAT rva 0xff000 size 0x1500 (from oracle)
   [+0xff000] 0x1802408e2  UNWRAPPED  advapi32.dll!PerfQueryCounterData
   [+0xff0f0] 0x18027b28e  UNWRAPPED  kernel32.dll!FlsFree
-  ...   direct 11  UNWRAPPED 651  unresolved 1  (of 663)
-[3/3] rebuild a loadable, de-virtualized PE ...  OEP 0x8d210
+  ...   direct 11  UNWRAPPED 651 + oracle-named 1  unresolved 0  (of 663)
+[3/3] rebuild a clean, loadable, de-protected PE (owner image, de-ASLR'd, protector dirs dropped)  OEP 0x8d210
 ```
-MEANS: Themida's **Advanced API-Wrapping** is defeated — **662 of 663** IAT thunks resolved to their real
-APIs by emulating each SecureEngine stub to its tail-jmp (oracle-free resolution; the IAT *location* 0xff000
-came from the owner's clean binary, since Themida keeps the original IAT RVA and fills it with wrapped stubs).
-The unpacked module is carved out of memory (100% present). Caveat: the rebuilt PE is a hybrid (oracle code
-overlaid onto the packed section layout), so DIE still flags leftover `.themida` sections — the load-bearing
-Themida evidence is the resolved IAT + the carved image, not that rebuilt file.
+MEANS: Themida's **Advanced API-Wrapping** is fully defeated — **663 of 663** IAT thunks resolved. 651 came
+from emulating each SecureEngine stub to its tail-jmp (oracle-free), 11 were already direct, and the last one
+(`kernel32!ExitProcess`, whose wrapper would terminate the emulator) was named from the owner's import table.
+The IAT *location* `0xff000` is the owner binary's — Themida keeps the original IAT RVA and fills it with
+wrapped stubs. The unpacked module is carved out of memory (100% present), and the rebuild is now a **clean**
+de-protected PE (protector sections/dirs dropped, ASLR off) — DIE no longer sees Themida (its `VMProtect(new)[DS]`
+on the output is the same heuristic false-positive it reports on the untouched plain `SystemInformer.exe`).
+
+## 09_kdf_trace — the KDF/AES-GCM block, lifted dynamically
+`reaforge.tools.crypto_trace` spawns `sip_report_tool` on the licensed `.sipm` and hooks the crypto exports
+(outside the VMProtect VM — the APIs still run in the crypto DLLs). The call sequence inside `sip_gate_init`:
+```
+BCryptOpenAlgorithmProvider -> BCryptCreateHash -> BCryptHashData -> BCryptFinishHash   (x2-3)  = HKDF-SHA256
+BCryptOpenAlgorithmProvider -> BCryptGenerateSymmetricKey -> BCryptDecrypt                      = AES-256-GCM
+```
+MEANS: the entangled KDF is **HKDF-SHA256** (the repeated SHA-256/HMAC passes derive the 32-byte key from
+`HWID‖issuer_pubkey‖text_crc‖slug`) feeding **AES-256-GCM** (`BCryptGenerateSymmetricKey` + `BCryptDecrypt`)
+that decrypts the entitlements (the mask bases). It is **Windows CNG/BCrypt** — the static `EVP_DecryptInit_ex`
+import is an unused LicenseSeat dependency. This is the §4 "KDF wall" shown executing: change any KDF input
+(patch `.text` → CRC changes) and `BCryptDecrypt`'s GCM tag fails, which is why a shallow patch can't work.
+(Only `BCryptSetProperty` is a static import; VMProtect virtualizes the *caller*, so this is visible only by
+watching the crypto DLLs, not by reading the packed IAT — and the Frida-17 `Module` API shift silently ate
+the hooks until fixed to `Process.getModuleByName(m).getExportByName(n)`.)
 
 ## Status of the recovery-doc steps
 - §1 unpack + snapshot — ✅ DONE (`02`), automated.
