@@ -91,6 +91,11 @@ int EtXdllUnlock(const char *sipm_path)
     int flags = 0;
 
     VM_START
+    /* Ensure the licensing core has verified + cached the Pro state (HWID + image CRC + Ed25519 + KDF)
+     * before we ask for the handshake response; the host only calls sip_gate_init() lazily (on a dump),
+     * which would be too late for the plugin-load handshake, the Pro menu and the About status. */
+    sip_gate_init(sipm_path);
+
     uint32_t flen = 0;
     uint8_t *buf = et_read_all(sipm_path, &flen);
     if (buf && flen > 40u + 64u) {
@@ -133,4 +138,9 @@ int EtXdllUnlock(const char *sipm_path)
 int EtIsProUnlocked(void)
 {
     return g_et_pro_flags != 0;
+}
+
+int EtXdllFlags(void)
+{
+    return g_et_pro_flags;
 }

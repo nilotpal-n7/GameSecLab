@@ -34,7 +34,7 @@
 /* Linker-provided base of the module this code is linked into (the exe or the plugin DLL). */
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 
-/* ---- CRC-32 (zlib polynomial 0xEDB88320), over this module's own mapped .text -------------------- */
+/* ---- CRC-32 (zlib polynomial 0xEDB88320), over this module's own on-disk image ------------------- */
 static uint32_t crc32_buf(const uint8_t *p, size_t n)
 {
     static uint32_t tbl[256];
@@ -88,7 +88,7 @@ extern "C" uint32_t sip_image_text_crc32(void)
     return crc;
 }
 
-/* Diagnostic export: report this machine's HWID and this DLL's on-disk .text CRC, so a license can be
+/* Diagnostic export: report this machine's HWID and this DLL's on-disk image CRC, so a license can be
  * issued for this exact build (license_signer.py --hwid <> --text-crc <>). Exposing these does not weaken
  * the scheme — both are attacker-derivable; the secret is the issuer private key. */
 extern "C" __declspec(dllexport) void sip_report(char *hwid_out, int hwid_cap, uint32_t *crc_out)

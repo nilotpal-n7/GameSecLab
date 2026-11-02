@@ -26,6 +26,10 @@ int EtXdllUnlock(const char *sipm_path);
  * ACCESS_MASK the dumper/editor use). Non-zero iff the last EtXdllUnlock() unlocked Pro. */
 int EtIsProUnlocked(void);
 
+/* The raw feature bitmask the last EtXdllUnlock() recovered from the handshake-decrypted blob (0 when
+ * Community/denied). Bit 0 => Pro tier granted. Used by the Pro menu to label/enable features. */
+int EtXdllFlags(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -66,7 +66,7 @@ struct GateState {
     int      ok;            /* 1 iff a valid Pro license verified on this machine with this image      */
     uint32_t tier;
     uint32_t mask_base[SIP_FEAT__COUNT]; /* decrypted ACCESS_MASK bases (dump/inject/edit)             */
-    uint32_t crc_ok;        /* 0/1: runtime .text CRC matched the value folded into the decrypt key    */
+    uint32_t crc_ok;        /* 0/1: runtime image CRC matched the value folded into the decrypt key    */
     uint32_t nodbg;         /* 0/1: no debugger observed                                                */
     uint8_t  xdll_seed[32]; /* cross-DLL rolling-key seed from the entitlements                         */
 };

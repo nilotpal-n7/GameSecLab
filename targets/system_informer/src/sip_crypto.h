@@ -4,7 +4,7 @@
  * matches license_signer.py byte for byte. The backing is sip_crypto_licenseseat.cpp:
  *   - HWID + Ed25519 verify come from the LicenseSeat C++ SDK (device::generate_device_id,
  *     crypto::verify_ed25519_signature).
- *   - AES-256-GCM + HKDF-SHA256 + the .text CRC come from Windows CNG (BCrypt) — LicenseSeat's public
+ *   - AES-256-GCM + HKDF-SHA256 + the image CRC come from Windows CNG (BCrypt) — LicenseSeat's public
  *     headers do not expose standalone AES-GCM/HKDF, and SI already relies on CNG.
  *
  * Contract (all little-endian where it matters; all functions are leaf, allocate nothing, never throw):

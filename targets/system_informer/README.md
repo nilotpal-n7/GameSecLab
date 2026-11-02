@@ -19,7 +19,7 @@ crack through the entire reaforge toolchain.
 No naked booleans. The license state is turned into the `NtOpenProcess` ACCESS_MASK the feature actually
 uses, so the **kernel** enforces the gate:
 
-```
+```text
 m      = (ULONG)(-(LONG)(entitled & crc_ok & nodbg));   // branchless, no JZ/JNZ
 access = (base & m) | (0x1000 & ~m);                     // base when entitled, trap (0x1000) otherwise
 ```
@@ -33,7 +33,7 @@ Ed25519-signed, so entitlements cannot be forged without the issuer private key.
 
 ## Layout
 
-```
+```text
 license_signer.py   reference oracle (Ed25519 + AES-256-GCM signer; the user holds the private key)
 config.py           mask bases, slug, RVAs (single source of truth)
 src/
@@ -61,8 +61,8 @@ python license_signer.py attack licenses/Name.sipm --hwid <HWID> --text-crc 0x<C
 ```
 
 `<HWID>` comes from `VMProtectGetCurrentHWID()` on the target machine; `<CRC>` is the runtime CRC-32 of
-the protected `.text` (the build prints it under `DEMO_SOFT`). Both bind the license to that machine +
-that exact protected build.
+the protected on-disk image (whole file; `sip_report_tool` prints it). Both bind the license to that
+machine + that exact protected build.
 
 ## Build / protect (user runs these in the fork)
 
