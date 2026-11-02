@@ -102,6 +102,17 @@ VERSION = 1
 HKDF_INFO = b"SIP-offline-v1"
 SLUG_DEFAULT = "enterprise-forensics"
 
+# Cross-DLL handshake (ExtendedTools.dll <- sip_progate.dll). An "XDLB" section carrying a per-license
+# unlock blob is appended to the outer file AFTER the ciphertext and BEFORE the Ed25519 signature, so it
+# is covered by the signature yet readable without the main KDF. ExtendedTools gets the handshake response
+# from sip_progate (HKDF below) and uses it as the AES-256-GCM key to open the blob; a wrong/absent response
+# fails GCM auth -> the plugin stays in Community mode. Response-as-key: no naked boolean crosses the seam.
+# sip_gate_init() is untouched by this: it takes sig = last 64 bytes, verifies everything before (so the
+# XDLB bytes are signed), and reads ct by its length at offset 40 (so the trailing section is ignored).
+XDLL_INFO = b"SIP-xdll-v1"       # == info in pro_gate.cpp sip_xdll_respond (salt = HWID, ikm = seed||challenge)
+XDLL_SECTION_MAGIC = b"XDLB"     # outer-file section tag
+XUNLOCK_MAGIC = b"XUNL"          # plaintext magic inside the unlock blob (followed by u32 feature flags)
+
 # The four ACCESS_MASK bases the branchless gate selects between. Single source of truth = config.py;
 # duplicated here as defaults so the signer runs stand-alone for filming. Keep them in sync.
 MASK_DUMP = 0x00000450
@@ -172,6 +183,24 @@ def derive_key(hwid_bytes: bytes, pubkey_raw: bytes, text_crc: int, slug: str, s
     return HKDF(algorithm=hashes.SHA256(), length=32, salt=salt, info=HKDF_INFO).derive(ikm)
 
 
+def derive_xdll_key(xdll_seed: bytes, challenge: bytes, hwid_bytes: bytes) -> bytes:
+    """The cross-DLL handshake response == the key that unlocks the ExtendedTools blob. Must match
+    pro_gate.cpp sip_xdll_respond byte for byte: HKDF(ikm = seed||challenge, salt = HWID, info = "SIP-xdll-v1")."""
+    return HKDF(algorithm=hashes.SHA256(), length=32, salt=hwid_bytes,
+                info=XDLL_INFO).derive(xdll_seed + challenge)
+
+
+def build_xdll_section(xdll_seed: bytes, hwid_bytes: bytes) -> bytes:
+    """XDLB | challenge(32) | nonce(12) | u16 len | AES-256-GCM(unlock-blob). The blob plaintext is
+    XUNLOCK_MAGIC + u32 feature-flags; a genuine handshake response decrypts it, nothing else does."""
+    challenge = os.urandom(32)
+    xnonce = os.urandom(12)
+    xkey = derive_xdll_key(xdll_seed, challenge, hwid_bytes)
+    pt = XUNLOCK_MAGIC + struct.pack("<I", 1)        # feature flags = 1 (Pro)
+    xct = AESGCM(xkey).encrypt(xnonce, pt, None)     # 16-byte tag appended
+    return XDLL_SECTION_MAGIC + challenge + xnonce + struct.pack("<H", len(xct)) + xct
+
+
 # ── key management ────────────────────────────────────────────────────────────────────────────────
 def load_private() -> Ed25519PrivateKey:
     if not PRIV_PEM.exists():
@@ -209,7 +238,7 @@ def cmd_pubkey_c(_args) -> None:
 
 # ── issue / verify ────────────────────────────────────────────────────────────────────────────────
 def build_file(priv: Ed25519PrivateKey, hwid_bytes: bytes, text_crc: int, payload: bytes,
-               slug: str, demo_soft: bool) -> bytes:
+               slug: str, demo_soft: bool, xdll_seed: bytes) -> bytes:
     pub = pubkey_raw_from_priv(priv)
     salt = os.urandom(16)
     nonce = os.urandom(12)
@@ -217,6 +246,7 @@ def build_file(priv: Ed25519PrivateKey, hwid_bytes: bytes, text_crc: int, payloa
     ct = AESGCM(key).encrypt(nonce, payload, None)  # tag appended
     flags = 0x01 if demo_soft else 0x00
     header = MAGIC + struct.pack("<BBH", VERSION, flags, 0) + salt + nonce + struct.pack("<I", len(ct)) + ct
+    header += build_xdll_section(xdll_seed, hwid_bytes)   # signed region, after ct, before sig (see note above)
     sig = priv.sign(header)
     return header + sig
 
@@ -226,12 +256,13 @@ def cmd_issue(args) -> None:
     hwid_bytes = normalize_hwid(args.hwid)
     tier = TIER_PRO if args.tier == "pro" else TIER_FREE
     expires = 0 if args.expires in (None, "never") else int(time.time()) + int(args.expires) * 86400
+    xdll_seed = os.urandom(32)   # one seed: feeds both the ENTL payload (sip_progate) and the XDLB unlock (ExtendedTools)
     payload = pack_entitlements(
         subject=args.subject, slug=args.slug, tier=tier, issued=int(time.time()), expires=expires,
-        license_id=uuid.uuid4().bytes, xdll_seed=os.urandom(32),
+        license_id=uuid.uuid4().bytes, xdll_seed=xdll_seed,
         mask_dump=args.mask_dump, mask_inject=args.mask_inject, mask_edit=args.mask_edit,
         mask_trap=args.mask_trap)
-    blob = build_file(priv, hwid_bytes, args.text_crc, payload, args.slug, args.demo_soft)
+    blob = build_file(priv, hwid_bytes, args.text_crc, payload, args.slug, args.demo_soft, xdll_seed)
     out = Path(args.out) if args.out else HERE / "licenses" / f"{args.subject.replace(' ', '_')}.sipm"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_bytes(blob)
@@ -278,6 +309,21 @@ def verify_file(blob: bytes, hwid_bytes: bytes, text_crc: int, pubkey_raw: bytes
         return False, "license expired", ent
     if ent["slug"] != slug:
         return False, f"entitlement slug mismatch ({ent['slug']!r} != {slug!r})", ent
+    # cross-DLL handshake self-check: locate the XDLB section (after ct, before sig) and confirm the unlock
+    # blob opens under the recomputed handshake key. This is exactly what ExtendedTools does at runtime,
+    # minus getting the response from sip_progate — here we recompute it from the decrypted seed.
+    ent["xdll_ok"] = None
+    xoff = 40 + ct_len
+    if signed[xoff:xoff + 4] == XDLL_SECTION_MAGIC:
+        challenge = signed[xoff + 4:xoff + 36]
+        xnonce = signed[xoff + 36:xoff + 48]
+        (xlen,) = struct.unpack_from("<H", signed, xoff + 48)
+        xct = signed[xoff + 50:xoff + 50 + xlen]
+        try:
+            xpt = AESGCM(derive_xdll_key(ent["xdll_seed"], challenge, hwid_bytes)).decrypt(xnonce, xct, None)
+            ent["xdll_ok"] = xpt[:4] == XUNLOCK_MAGIC
+        except Exception:
+            ent["xdll_ok"] = False
     return True, "ok", ent
 
 
@@ -292,6 +338,8 @@ def cmd_verify(args) -> None:
         print(f"  subject: {ent['subject']!r}")
         print(f"  masks  : dump=0x{ent['mask_dump']:04X} inject=0x{ent['mask_inject']:04X} "
               f"edit=0x{ent['mask_edit']:04X} trap=0x{ent['mask_trap']:04X}")
+        xdll = ent.get("xdll_ok")
+        print(f"  xdll   : {'unlock blob OK (ExtendedTools will unlock)' if xdll else 'MISSING/BAD' if xdll is not None else 'no XDLB section (old license)'}")
     sys.exit(0 if ok else 1)
 
 

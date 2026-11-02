@@ -113,11 +113,13 @@ This works but is unstable and defeated by the CRC-into-KDF on the next clean ru
 
 ## 7. Cross-DLL handshake
 
-`ExtendedTools.dll` (Themida) challenges `SystemInformer.exe` (VMProtect); the response is
-`HKDF(xdll_seed || challenge, salt=HWID, info="SIP-xdll-v1")`. `xdll_seed` comes from the decrypted
-license, so a module that never decrypted a valid license cannot answer. Breaking this requires having
-broken §4 in *both* protector families — the Themida unwrap/reconstruct path and the VMProtect devirt
-path — which is the point of running one binary through each protector.
+`ExtendedTools.dll` (Themida, `et_xdll.c`) challenges `sip_progate.dll` (VMProtect); the response is
+`HKDF(xdll_seed || challenge, salt=HWID, info="SIP-xdll-v1")`, where `xdll_seed` comes from the decrypted
+license, so a module that never decrypted a valid license cannot answer. The coupling is **response-as-key**:
+the `.sipm` carries an `XDLB` section (challenge + an AES-256-GCM unlock blob keyed by that response), and
+ExtendedTools decrypts the blob with the response to obtain its Pro feature flags — there is no boolean to
+NOP across the DLL seam. Breaking this requires having broken §4 in *both* protector families — the Themida
+unwrap/reconstruct path and the VMProtect devirt path — which is the point of running one binary through each.
 
 ---
 

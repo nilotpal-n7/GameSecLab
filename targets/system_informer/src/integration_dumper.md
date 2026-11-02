@@ -140,8 +140,13 @@ stays zero and the mask is the trap regardless.
   `CreateRemoteThread` / `LdrLoadDll` thunk; the plugin `AgentTools` is a candidate) and open with
   `sip_access_mask(SIP_FEAT_INJECT)` (0x002A = `PROCESS_VM_WRITE | PROCESS_VM_OPERATION |
   PROCESS_CREATE_THREAD`). TODO(build): confirm the exact call site.
-- **Cross-DLL handshake**: `ExtendedTools.dll` sends a 32-byte challenge; `SystemInformer.exe` answers
-  with `sip_xdll_respond`; the plugin recomputes and compares. Only a genuinely Pro-verified pair match.
+- **Cross-DLL handshake (response-as-key)**: the `.sipm` carries an `XDLB` section = a challenge + an
+  AES-256-GCM "unlock" blob. `ExtendedTools.dll` (`et_xdll.c`, Themida) reads the challenge, gets the
+  response from `sip_progate.dll`'s VMProtect-virtualized `sip_xdll_respond`
+  (`HKDF(xdll_seed || challenge, salt=HWID, info="SIP-xdll-v1")`), and uses it as the AES key to open the
+  blob (CNG). Right response -> `EtXdllUnlock` returns the Pro feature flags; a wrong/absent response fails
+  GCM auth -> Community. No naked boolean crosses the boundary, so one 32-byte key couples the two
+  separately-protected binaries. Proven via `src/et_xdll_test.exe` (valid -> flags=1; wrong-CRC -> 0).
 
 > KPH / ksi kernel driver must be **OFF** for the demo build. With KPH loaded, `KphOpenProcess` can grant
 > access the user-mode ACCESS_MASK gate would deny, bypassing the whole scheme. Ship the demo with KPH
