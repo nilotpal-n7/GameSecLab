@@ -53,3 +53,7 @@ desktop.ini
 # Python virtualenv (local; recreate with: python -m venv .venv + pip install -r requirements.txt)
 .venv/
 temp.txt
+
+# System Informer break: raw run logs + preserved locked binaries (artifacts; FINDINGS.md is the tracked index)
+targets/system_informer/evidence/logs/
+targets/system_informer/evidence/locked_binaries/

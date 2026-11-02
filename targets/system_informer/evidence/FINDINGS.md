@@ -74,17 +74,80 @@ AES-GCM, not modeled here) — but [3] is the load-bearing result and doesn't de
 
 ---
 
-## What still needs the DYNAMIC run (recording-time, on the real process)
-These are not static-break failures — they *require* a live licensed process by design:
-- The licensed `sip_access_mask → 0x0450` (vs the `0x1000` shown here): needs a valid `.sipm` to decrypt and
-  populate `g_state`. Capture with an x64dbg HW-exec BP on the `NtOpenProcess` stub, read RDX.
-- The KDF/AES block of `sip_gate_init`: structural (it calls `EVP_*` = HKDF→AES-256-GCM). Not an algebraic
-  recurrence, so `prove_recurrence` doesn't apply — the evidence is the EVP call chain, captured live.
-- The Themida side (`ExtendedTools.dll`): `themida_unwrap.py` needs a full-memory dump of the unpacked
-  process (Task Manager → Create dump file while paused post-unpack).
+## 04_ida_sip_progate — IDA Pro 9.1 (Hex-Rays) static view of the packed core
+LOOK AT [exports]: gate exports at the same RVAs the emulation found (`sip_access_mask` 0x1249,
+`sip_gate_init` 0x1320, `sip_xdll_respond` 0x16F4, `sip_is_pro` 0x1DF2).
+LOOK AT [gate export bodies]: IDA shows them as **raw data** (`db 7 dup(?)`, `dq 1Ah dup(?)`) and Hex-Rays
+`decompile = None`.
+```
+-- sip_access_mask @ 0x180001249 --
+    0x180001249  db 7 dup(?)        <- IDA can't even make it code
+  [hexrays]
+    None                            <- no C to read
+```
+MEANS: **static IDA is defeated by VMProtect** — the gate logic isn't native, so there's nothing to
+decompile. (Our emulation-unpack is what recovered the `jmp 0x3540` VMEnter; IDA alone can't.)
+LOOK AT [imports]: the crypto dependency is still visible in the IAT even though the code is hidden:
+```
+EVP_DecryptInit_ex   (OpenSSL AES-GCM)      BCryptSetProperty   (Windows CNG)
+```
+MEANS: the KDF/decrypt rides on AES-GCM — statically provable from the imports, which is the thread §4 says
+to pull. VMProtect section names (`.yr)`, `._Xa`, `.v6v`) confirm the packing.
 
-## Tooling changed this pass
+## 05_dynamic_licensed_mask — the gate run for real (licensed vs unlicensed)
+`sip_report_tool.exe` loads the **real** VMProtect DLL (no debugger → anti-debug passes) and runs the gate.
+LOOK AT:
+```
+[A] LICENSED (deployed .sipm):   sip_gate_init = 0 (OK)   sip_is_pro = 1   sip_access_mask(DUMP) = 0x0450
+[B] UNLICENSED (missing .sipm):  sip_gate_init = 2 (bad)  sip_is_pro = 0   sip_access_mask(DUMP) = 0x1000
+    HWID=c30e127afb5ab2d9e4b8af5200848f5c   TEXT_CRC=0x3AEAAED9
+```
+MEANS: this is the dynamic counterpart to the static `0x1000`. The **same** `sip_access_mask` returns the
+real base **0x0450** once — and only once — `sip_gate_init` succeeds (AES-GCM decrypt → `g_state`). No
+license ⇒ `0x1000`. The licensed base is data the decrypt produces, not a constant you can lift. This is the
+`NtOpenProcess` DesiredAccess the dumper would pass: `0x0450` licensed vs `0x1000` trap.
+
+## 06_ida_si_callsite — IDA Pro Hex-Rays of the CALLER side (SystemInformer.exe + PDB)
+The host is unprotected by design, so Hex-Rays decompiles it cleanly (PDB names applied). This is recovery
+doc §2 — "find the gate: the NtOpenProcess call site and its ACCESS_MASK producer" — in readable C.
+
+The explicit-load shim (`sip_resolve.c`) decompiles 1:1 (`SipProgateModule` + `GetProcAddress`), and the
+dumper `PhUiCreateDumpFileProcess` wires the gate straight into the process open:
+```c
+// NULL -> the .sipm beside the exe, then verify/decrypt:
+strcpy_s(v38 + 1, v70 - v38, "SystemInformer.sipm");
+ProcAddress = GetProcAddress(v36, "sip_gate_init");
+if (ProcAddress) ((void (__fastcall *)(char *))ProcAddress)(v37);   // sip_gate_init(path)
+
+// THE gate: the DesiredAccess is produced by sip_access_mask, not chosen by a branch:
+if (v40 && (v41 = GetProcAddress(v40, "sip_access_mask")) != 0)
+    v42 = ((__int64 (__fastcall *)(_QWORD))v41)(0);                 // sip_access_mask(SIP_FEAT_DUMP)
+else
+    v42 = 4096;                                                     // 0x1000 trap — fail-safe fallback
+v43 = PhOpenProcess((void **)v29 + 7, v42, *((void **)v29 + 2));    // PhOpenProcess(&h, v42, pid)
+```
+MEANS: `PhOpenProcess`'s access mask `v42` comes **directly** from `sip_access_mask` (`0x0450` licensed /
+`0x1000` trap from `05`). There is no `if (licensed)` to NOP — the license state *is* the access mask. Even
+the unresolved-shim path falls back to `0x1000` (trap), so it fails closed. (`PhpAboutDlgProc` — the Help→About
+Activate-Pro flow — also references the `.sipm` and is in the log.)
+
+## Status of the recovery-doc steps
+- §1 unpack + snapshot — ✅ DONE (`02`), automated.
+- §2 find the gate / the ACCESS_MASK producer — ✅ DONE: `sip_access_mask` is the producer; licensed it
+  yields `0x0450`, unlicensed `0x1000` (`05`). (`06_ida_si_callsite` adds the Hex-Rays wiring if present.)
+- §3 devirt the gate shape — ✅ shown by execution (`03`): emulated through the VM, fail-closed to trap.
+- §4 the KDF wall — PARTIAL: statically proven that it rides on AES-GCM (`EVP_DecryptInit_ex`/`BCrypt` in the
+  IAT, `04`) and that a successful decrypt is REQUIRED to get `0x0450` (`05`). A full instruction-level lift of
+  the HKDF/AES block still wants a live trace; it is HKDF/AES-GCM, not an algebraic recurrence, so
+  `prove_recurrence` does not apply — the evidence is the EVP call chain, not an algebra proof.
+- Themida side (`ExtendedTools.dll`) — PENDING: `themida_unwrap.py` needs a full-memory dump of the unpacked
+  plugin inside a live SI process (Task Manager → Create dump file while paused post-unpack) — a recording-time
+  capture, not a static step.
+
+## Tooling changed/added this pass
 - `reaforge/core/loader.py` — generalized `_synth_exports` to catalog third-party import DLLs from their real
   on-disk export tables (not just system/CRT). This is why OpenSSL-linked targets now unpack. (General upgrade,
   benefits every future target that imports a non-system DLL.)
-- `targets/system_informer/break_gate.py` — the title-specific gate driver used for `03`.
+- `targets/system_informer/break_gate.py` — the title-specific gate driver (static break, `03`).
+- `reaforge/tools/ida_sip_gate.py` — IDA Pro headless gate analyzer (`04`, `06`): exports, VMEnter bodies,
+  crypto imports, Hex-Rays of the gate + its callers. General (keys off the opened file).
