@@ -1,0 +1,38 @@
+System Informer Pro — Activation
+=================================
+
+System Informer Pro ships in COMMUNITY mode. Process viewing and the standard
+tools work out of the box, unprotected.
+
+The PRO tier (Process Memory Dumper, DLL Injection, live Memory Editor writes,
+and the ExtendedTools cross-DLL features) is gated by an OFFLINE, per-machine
+license file:
+
+    SystemInformer.sipm
+
+placed next to SystemInformer.exe (this folder).
+
+How the gate works (this is a reverse-engineering lab target)
+-------------------------------------------------------------
+* The license is machine-locked to a hardware id (HWID) and is Ed25519-signed
+  by the issuer's private key, which is NOT on this machine.
+* On a valid Pro license, the licensing core (sip_progate.dll, protected with
+  VMProtect) derives the real NtOpenProcess ACCESS_MASK the privileged features
+  use. Without it, those paths get a trap mask and the operation is denied.
+* ExtendedTools.dll (protected with Themida) completes a cross-DLL handshake
+  with sip_progate.dll; only a genuinely Pro-verified pair unlocks its Pro
+  features. There is no boolean flag to flip -- a patched byte makes the
+  license fail to DECRYPT.
+
+To activate on THIS machine you need a license issued for its HWID by the
+issuer tool (license_signer.py). Drop the resulting SystemInformer.sipm beside
+SystemInformer.exe and restart the app.
+
+Notes
+-----
+* The KPH / ksi kernel driver is intentionally NOT installed. With the driver
+  loaded, KphOpenProcess would bypass the user-mode ACCESS_MASK gate that this
+  lab demonstrates.
+* sip_progate.dll (VMProtect) and ExtendedTools.dll (Themida) are built with
+  the DEMO editions of those protectors, so each pops a one-time demo watermark
+  message box the first time it loads. Click OK; this is expected.

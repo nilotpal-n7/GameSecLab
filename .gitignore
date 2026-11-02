@@ -18,6 +18,8 @@ targets/**/dumps/
 #    issued .sipm licenses are regenerable from the signer, so keep them out of git too. ──
 targets/system_informer/issuer_keys/
 targets/system_informer/licenses/
+# Inno Setup build output (the setup exe is regenerable from the .iss).
+targets/system_informer/installer/Output/
 
 # ── REAForge generated/runtime files (keep code + READMEs, drop outputs) ──
 reaforge/capabilities.json
