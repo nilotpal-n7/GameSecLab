@@ -57,3 +57,6 @@ temp.txt
 # System Informer break: raw run logs + preserved locked binaries (artifacts; FINDINGS.md is the tracked index)
 targets/system_informer/evidence/logs/
 targets/system_informer/evidence/locked_binaries/
+
+# Manim render output from reaforge/viz beats (render with --media_dir to scratchpad for final takes)
+media/

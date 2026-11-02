@@ -169,6 +169,23 @@ def test_system_informer_apply_and_themida():
     assert THEMIDA["module"] == "ExtendedTools"
 
 
+def test_viz_beats_wired():
+    """RE-explainer scene-kit imports and the SI mask beat stays keyed to the target config.
+
+    Skips cleanly where Manim is not installed (it is a video-production dep, not a reversing one)."""
+    try:
+        from reaforge.viz import branchless_mask, kit  # noqa: F401
+    except ImportError as e:
+        print(f"  [skip] manim not installed ({e}); viz beats not checked")
+        return
+    assert all(callable(getattr(kit, f)) for f in ("bit_strip", "value_box", "mono", "caption"))
+    assert issubclass(branchless_mask.SiProDumpMask, branchless_mask.BranchlessMaskScene)
+    from targets.system_informer.config import MASK, MASK_TRAP
+
+    scene = branchless_mask.SiProDumpMask()  # __init__ pulls the numbers; no render
+    assert scene.BASE == MASK["dump"] and scene.TRAP == MASK_TRAP  # beat can't drift from the gate
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     fails = 0
