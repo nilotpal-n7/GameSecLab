@@ -14,7 +14,8 @@
  *   - sip_ed25519_verify: returns 1 iff `sig`(64) is a valid signature of `msg` under `pub`(32).
  *   - sip_hwid: canonical machine id bytes (LicenseSeat HWID / VMProtectGetCurrentHWID), same bytes the
  *       signer was given via --hwid. Writes up to *len; updates *len.
- *   - sip_image_text_crc32: CRC-32 (zlib polynomial) over this module's own mapped .text, computed at
+ *   - sip_image_text_crc32: CRC-32 (zlib polynomial) over this module's own ON-DISK image (the whole file;
+ *       dominated by .text pre-pack, and packing-robust once VMProtect zeroes .text's raw data), computed at
  *       runtime. Feeds the KDF; a patched byte (incl. a debugger's 0xCC) changes it -> decrypt fails.
  */
 #ifndef SIP_CRYPTO_H

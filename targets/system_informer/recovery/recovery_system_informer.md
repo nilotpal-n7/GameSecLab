@@ -129,9 +129,28 @@ unwrap/reconstruct path and the VMProtect devirt path — which is the point of 
 - Show DIE classification, then the two different reaforge entry points, then the identical recovered
   algorithm — i.e. the protection is interchangeable but the *scheme* is what matters.
 
-## Open items (fill from the build)
+## Build-provided addresses (filled 2026-11-02)
 
-- `TODO(build)`: RVAs for `sip_gate_init`, `sip_access_mask`, `sip_xdll_respond` (from `/MAP`).
-- `TODO(build)`: `check_rva` in `config.py`, the post-OEP snapshot, the Themida-unwrapped image.
-- `TODO(build)`: the live `NtOpenProcess` RDX trace (licensed vs unlicensed).
-- `TODO(build)`: the lifted KDF block + `prove_recurrence` transcript.
+Gate functions in `sip_progate.dll` (image base `0x180000000`). The unpacked `/MAP` RVA is where the C
+compiler put each function; after the VMProtect pass that code is virtualized, so in the shipped (packed)
+DLL the live entry point is the **export RVA** — that is where an RE actually lands and must devirt from.
+
+| function               | unpacked `.map` RVA | packed export RVA | role                              |
+|------------------------|---------------------|-------------------|-----------------------------------|
+| `sip_access_mask`      | `0x3540`            | `0x1249`          | the mask materialiser (choke pt)  |
+| `sip_gate_init`        | `0x35D0`            | `0x1320`          | verify / entangled-KDF choke pt   |
+| `sip_xdll_respond`     | `0x3DC0`            | `0x16F4`          | cross-DLL handshake responder     |
+| `sip_is_pro`           | `0x3D90`            | `0x1DF2`          | UI predicate (not the gate)       |
+| `sip_image_text_crc32` | `0x6130`            | — (internal)      | whole-image CRC feeding the KDF   |
+| `sip_nodbg`            | `0x33A0`            | — (internal)      | anti-debug predicate              |
+
+- `config.py` `check_rva` = `0x1249` (packed `sip_access_mask` export).
+- Themida side: in `plugins\ExtendedTools.dll` the handshake challenger `EtXdllUnlock` is the virtualized
+  macro at RVA `0x7C8AB-0x7CB4E` (from the Themida protection log; Demo => FALCON64-Tiny VM). Packed plugin
+  MD5 `5bc7854cf650a0f1f4fbe6dabceee1cb`.
+
+## Open items (produced by the recovery RUN, not the build)
+
+- `TODO(run)`: post-OEP snapshot + the Themida-unwrapped image (outputs of `themida_unwrap.py` + `pe_reconstruct.py`).
+- `TODO(run)`: the live `NtOpenProcess` RDX trace (licensed `0x0450` vs unlicensed `0x1000`).
+- `TODO(run)`: the lifted KDF/AES block + the `prove_recurrence` transcript.

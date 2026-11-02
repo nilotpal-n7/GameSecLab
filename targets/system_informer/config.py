@@ -33,8 +33,8 @@ SLUG = "enterprise-forensics"
 # These are carried ENCRYPTED in the license payload - they are not immediates in the protected binary;
 # a correct recovery must pull them out of the decrypted entitlements, not read them from .rdata.
 MASK = {
-    "dump":   0x00000450,  # Process Memory Dumper (PhWriteMiniDumpProcess / misccmd.c)
-    "inject": 0x0000002A,  # DLL Injection (misccmd.c)
+    "dump":   0x00000450,  # Process Memory Dumper (PhUiCreateDumpFileProcess / mdump.c)
+    "inject": 0x0000002A,  # DLL Injection (call site TODO)
     "edit":   0x00000038,  # live Memory Editor write access (memedit.c)
 }
 MASK_TRAP = 0x00001000     # unlicensed trap (PROCESS_SUSPEND_RESUME): handle opens, Pro op denies
@@ -53,13 +53,15 @@ def expected_key(feature) -> int:
 
 CONFIG = campaign.Config(
     name="system_informer Pro gate",
-    # TODO: drop the protected build in dumps/ and `orchestrator authorize` it. The VMProtect binary is
-    # SystemInformer.exe; the Themida pass (optional) targets plugins\ExtendedTools.dll.
-    packed=str(DUMPS / "SystemInformer.vmp.exe"),
+    # The VMProtect-protected binary carrying the gate is sip_progate.dll (SystemInformer.exe itself is
+    # unprotected by design); the Themida pass targets plugins\ExtendedTools.dll. Drop the packed DLL in
+    # dumps/ and `orchestrator authorize` it.
+    packed=str(DUMPS / "sip_progate.vmp.dll"),
     snap=str(DUMPS / "system_informer_postoep.snap"),
-    # TODO: RVA of sip_access_mask (the mask materialiser) once the build MAP is in hand; sip_gate_init
-    # is the verify/KDF choke point. Fill from the /MAP file the protected build emits.
-    check_rva=0x1000,
+    # check_rva = packed export RVA of sip_access_mask (the mask materialiser / devirt choke point) in the
+    # shipped sip_progate.dll: unpacked .map RVA 0x3540 -> packed export 0x1249. (sip_gate_init = 0x1320 is
+    # the verify/KDF choke point.) See recovery/recovery_system_informer.md "Build-provided addresses".
+    check_rva=0x1249,
     expected=expected_key,
     protector="vmprotect",
 )
