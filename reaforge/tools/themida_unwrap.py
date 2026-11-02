@@ -207,24 +207,64 @@ def capture_command(target, out="unpacked_full.dmp"):
     return "\n".join(lines)
 
 
-def pipeline(packed_module, dump, out, oracle=None, module_substr=None, show=print):
-    """Automate the whole POST-capture Themida break: derive the IAT region from the module PE, resolve the
-    API-wrapped IAT in the dump (unwrap, oracle-free), then rebuild a loadable PE (pe_reconstruct; with the
-    owner's clean binary as `oracle` it overlays the clean sections and restores imports in one shot). One
-    call for the reproducible chain; the only non-automated step is the live dump above."""
+def carve_module(dump, module_substr, out, show=print):
+    """Carve a loaded module's in-memory image out of a full-memory minidump into a flat file (its virtual
+    layout — what the protector left after unpacking). General evidence that the unpack happened: the real
+    unpacked module, pulled out of live memory. Returns the module (name, base, end)."""
+    _mf, rdr, segs, mods, _teb = load(dump)
+    m = next((x for x in mods if module_substr.lower() in os.path.basename(x[0]).lower()), None)
+    if not m:
+        sys.exit(f"module ~{module_substr!r} not in dump")
+    name, base, end = m
+    buf = bytearray(end - base)
+    present = 0
+    for s in segs:
+        lo, hi = max(s.start_virtual_address, base), min(s.start_virtual_address + s.size, end)
+        if lo < hi:
+            try:
+                data = rdr.read(lo, hi - lo)
+            except Exception:
+                continue
+            buf[lo - base:lo - base + len(data)] = data
+            present += len(data)
+    with open(out, "wb") as f:
+        f.write(buf)
+    show(f"  carved {os.path.basename(name)} [{base:#x}..{end:#x}] {present}/{end - base} bytes present -> {out}")
+    return name, base, end
+
+
+def pipeline(packed_module, dump, out, oracle=None, module_substr=None, iat_rva=None, iat_size=None, show=print):
+    """Automate the POST-capture Themida break as one call: (1) carve the unpacked module out of the live
+    dump; (2) unwrap the API-wrapped IAT for evidence (oracle-free — supply the located IAT RVA/size for a
+    given build, else a best-effort guess is tried); (3) rebuild a loadable, de-virtualized PE with
+    pe_reconstruct from the PACKED PE plus the owner's clean binary as the overlay oracle. The only
+    non-automated step is the live dump itself (see `capture`)."""
     from reaforge.tools.pe_reconstruct import reconstruct
-    pe = pefile.PE(packed_module, fast_load=True)
-    iat_dir = pe.OPTIONAL_HEADER.DATA_DIRECTORY[12]   # IMAGE_DIRECTORY_ENTRY_IAT
-    imp_dir = pe.OPTIONAL_HEADER.DATA_DIRECTORY[1]    # IMPORT (fallback when the IAT dir is zeroed)
-    iat_rva = iat_dir.VirtualAddress or imp_dir.VirtualAddress
-    iat_size = iat_dir.Size or imp_dir.Size
     mod_sub = module_substr or os.path.splitext(os.path.basename(packed_module))[0]
-    show(f"== themida pipeline ==  module ~{mod_sub!r}  IAT rva {iat_rva:#x} size {iat_size:#x}  (from {os.path.basename(packed_module)})")
-    show("\n[1/2] unwrap the API-wrapped IAT (evidence: wrapped -> real API):")
+    show(f"== themida pipeline ==  module ~{mod_sub!r}")
+
+    show("\n[1/3] carve the unpacked module from the live dump:")
+    carve_module(dump, mod_sub, out + ".dumped.bin", show=show)
+
+    show("\n[2/3] unwrap the API-wrapped IAT (evidence: wrapped -> real API):")
+    if iat_rva is None:
+        # Themida keeps the ORIGINAL IAT location and fills those slots with wrapped stubs, so the clean
+        # owner binary's IAT directory is the right region (the packed PE's IAT dir points at Themida's own
+        # tables). Prefer the oracle's IAT dir; fall back to the packed module's.
+        d = pefile.PE(oracle or packed_module, fast_load=True).OPTIONAL_HEADER.DATA_DIRECTORY
+        iat_rva = d[12].VirtualAddress or d[1].VirtualAddress
+        iat_size = iat_size or d[12].Size or d[1].Size
+    show(f"  IAT rva {iat_rva:#x} size {iat_size:#x}  (from {'oracle' if oracle and iat_rva else 'packed'})")
     resolved = unwrap(dump, mod_sub, iat_rva, iat_size, show=show)
-    show("\n[2/2] rebuild a loadable PE:")
-    reconstruct(dump, out, oracle, show=show)
-    show(f"\nwrote {out}")
+    if not any(len(r) > 3 and r[3] for r in (resolved or [])):
+        show("  note: 0 thunks resolved at this RVA. This Themida build's wrapped IAT is elsewhere in memory;")
+        show("  locate it (e.g. Scylla 'IAT autosearch' / the module's first import thunk) and re-run the")
+        show("  direct form:  themida_unwrap <dump> " + mod_sub + " <located_iat_rva> <size>.")
+        show("  The owner-oracle rebuild below restores the real imports regardless.")
+
+    show("\n[3/3] rebuild a loadable, de-virtualized PE (packed PE + clean-oracle overlay):")
+    reconstruct(packed_module, out, oracle, show=show)
+    show(f"\nwrote {out}  (+ {out}.dumped.bin)")
     return resolved
 
 
@@ -236,10 +276,13 @@ def main(argv):
         return
     if len(argv) >= 2 and argv[1] == "pipeline":
         if len(argv) < 5:
-            sys.exit("usage: themida_unwrap pipeline <packed_module> <dump.dmp> <out.exe> [clean_oracle] [module_substr]")
+            sys.exit("usage: themida_unwrap pipeline <packed_module> <dump.dmp> <out.exe> "
+                     "[clean_oracle] [module_substr] [iat_rva_hex] [iat_size_hex]")
         return pipeline(argv[2], argv[3], argv[4],
                         oracle=argv[5] if len(argv) > 5 else None,
-                        module_substr=argv[6] if len(argv) > 6 else None)
+                        module_substr=argv[6] if len(argv) > 6 else None,
+                        iat_rva=int(argv[7], 16) if len(argv) > 7 else None,
+                        iat_size=int(argv[8], 16) if len(argv) > 8 else None)
     if len(argv) < 5:
         sys.exit(__doc__)
     return unwrap(argv[1], argv[2], int(argv[3], 16), int(argv[4], 16))

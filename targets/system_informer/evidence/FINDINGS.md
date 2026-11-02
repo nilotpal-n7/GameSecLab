@@ -131,6 +131,25 @@ MEANS: `PhOpenProcess`'s access mask `v42` comes **directly** from `sip_access_m
 the unresolved-shim path falls back to `0x1000` (trap), so it fails closed. (`PhpAboutDlgProc` — the Help→About
 Activate-Pro flow — also references the `.sipm` and is in the log.)
 
+## 08_themida_unwrap — the Themida side (ExtendedTools.dll), from a live dump
+Captured a 216 MB full-memory dump of a licensed SI (PID-dumped via MiniDumpWriteDump), then ran the one
+reproducible command `themida_unwrap pipeline`. Three automated stages:
+```
+[1/3] carve the unpacked module from the live dump:
+  carved ExtendedTools.dll [0x180000000..0x180858000] 8749056/8749056 bytes present  (100%)
+[2/3] unwrap the API-wrapped IAT (evidence: wrapped -> real API):   IAT rva 0xff000 size 0x1500 (from oracle)
+  [+0xff000] 0x1802408e2  UNWRAPPED  advapi32.dll!PerfQueryCounterData
+  [+0xff0f0] 0x18027b28e  UNWRAPPED  kernel32.dll!FlsFree
+  ...   direct 11  UNWRAPPED 651  unresolved 1  (of 663)
+[3/3] rebuild a loadable, de-virtualized PE ...  OEP 0x8d210
+```
+MEANS: Themida's **Advanced API-Wrapping** is defeated — **662 of 663** IAT thunks resolved to their real
+APIs by emulating each SecureEngine stub to its tail-jmp (oracle-free resolution; the IAT *location* 0xff000
+came from the owner's clean binary, since Themida keeps the original IAT RVA and fills it with wrapped stubs).
+The unpacked module is carved out of memory (100% present). Caveat: the rebuilt PE is a hybrid (oracle code
+overlaid onto the packed section layout), so DIE still flags leftover `.themida` sections — the load-bearing
+Themida evidence is the resolved IAT + the carved image, not that rebuilt file.
+
 ## Status of the recovery-doc steps
 - §1 unpack + snapshot — ✅ DONE (`02`), automated.
 - §2 find the gate / the ACCESS_MASK producer — ✅ DONE: `sip_access_mask` is the producer; licensed it
@@ -140,9 +159,8 @@ Activate-Pro flow — also references the `.sipm` and is in the log.)
   IAT, `04`) and that a successful decrypt is REQUIRED to get `0x0450` (`05`). A full instruction-level lift of
   the HKDF/AES block still wants a live trace; it is HKDF/AES-GCM, not an algebraic recurrence, so
   `prove_recurrence` does not apply — the evidence is the EVP call chain, not an algebra proof.
-- Themida side (`ExtendedTools.dll`) — PENDING: `themida_unwrap.py` needs a full-memory dump of the unpacked
-  plugin inside a live SI process (Task Manager → Create dump file while paused post-unpack) — a recording-time
-  capture, not a static step.
+- §1/§7 Themida side (`ExtendedTools.dll`) — ✅ DONE (`08`): live dump → `themida_unwrap pipeline` carved the
+  unpacked module and resolved 662/663 API-wrapped IAT thunks. The only human step was the full-memory dump.
 
 ## Tooling changed/added this pass
 - `reaforge/core/loader.py` — generalized `_synth_exports` to catalog third-party import DLLs from their real

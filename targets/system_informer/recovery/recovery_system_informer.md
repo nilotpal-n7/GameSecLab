@@ -190,8 +190,11 @@ Ran the reaforge emulation-unpacker on `sip_progate.vmp.dll` end to end, no runt
 
 ## Open items (produced by the recovery RUN, not the build)
 
-- ✅ `TODO(run)` post-OEP snapshot — DONE (above); the Themida-unwrapped image still pending (needs a runtime
-  full-memory dump for `themida_unwrap.py` + `pe_reconstruct.py` — a recording-time step).
+- ✅ `TODO(run)` post-OEP snapshot — DONE (above).
+- ✅ `TODO(run)` Themida-unwrapped image — DONE (evidence/logs/08): a live full-memory dump → `themida_unwrap
+  pipeline` carved the unpacked ExtendedTools module (100% present) and resolved 662/663 API-wrapped IAT thunks
+  to real APIs (oracle-free stub-emulation; the IAT RVA 0xff000 is the owner binary's, since Themida keeps the
+  original IAT location and fills it with wrapped stubs). The live dump is the only human step.
 - `TODO(run)`: the live `NtOpenProcess` RDX trace (licensed `0x0450` vs unlicensed `0x1000`) — the static
   emulation already shows the unlicensed `0x1000`; the licensed `0x0450` needs the dynamic run (x64dbg on the
   real process, where a valid `.sipm` decrypts and populates `g_state`).
