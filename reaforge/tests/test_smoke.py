@@ -174,16 +174,20 @@ def test_viz_beats_wired():
 
     Skips cleanly where Manim is not installed (it is a video-production dep, not a reversing one)."""
     try:
-        from reaforge.viz import branchless_mask, kit  # noqa: F401
+        from reaforge.viz import branchless_mask, kdf_chain, kit  # noqa: F401
     except ImportError as e:
         print(f"  [skip] manim not installed ({e}); viz beats not checked")
         return
-    assert all(callable(getattr(kit, f)) for f in ("bit_strip", "value_box", "mono", "caption"))
+    kit_fns = ("bit_strip", "value_box", "mono", "caption", "pill", "stage_box", "code_lines")
+    assert all(callable(getattr(kit, f)) for f in kit_fns)
     assert issubclass(branchless_mask.SiProDumpMask, branchless_mask.BranchlessMaskScene)
+    assert issubclass(kdf_chain.SiKdfChain, kdf_chain.KdfChainScene)
     from targets.system_informer.config import MASK, MASK_TRAP
 
-    scene = branchless_mask.SiProDumpMask()  # __init__ pulls the numbers; no render
-    assert scene.BASE == MASK["dump"] and scene.TRAP == MASK_TRAP  # beat can't drift from the gate
+    mask_scene = branchless_mask.SiProDumpMask()  # __init__ pulls the numbers; no render
+    assert mask_scene.BASE == MASK["dump"] and mask_scene.TRAP == MASK_TRAP  # can't drift from the gate
+    kdf_scene = kdf_chain.SiKdfChain()
+    assert kdf_scene.MASKS["dump"] == MASK["dump"] and kdf_scene.TRAP == MASK_TRAP
 
 
 def main():

@@ -11,7 +11,7 @@ Nothing here imports a target -- beats pass in the numbers.
 
 from __future__ import annotations
 
-from manim import BLACK, DOWN, LEFT, ORIGIN, RIGHT, UP, Rectangle, Scene, Text, VGroup
+from manim import BLACK, DOWN, LEFT, ORIGIN, RIGHT, UP, Rectangle, RoundedRectangle, Scene, Text, VGroup
 
 # -- palette (GitHub-dark terminal; high contrast, colour-blind-safe true/false) -----------------
 BG = "#0d1117"
@@ -84,6 +84,30 @@ def value_box(hex_text: str, label: str = "", color: str = FG, width: float = 2.
     return group
 
 
+def pill(text: str, color: str = FG, fill: bool = False, size: float = 24, pad: float = 0.34) -> VGroup:
+    """A rounded, auto-sized labelled chip -- an input, an operand, a named stage in a pipeline."""
+    label = mono(text, size=size, color=BLACK if fill else color)
+    box = RoundedRectangle(corner_radius=0.16, width=label.width + pad * 2, height=label.height + pad)
+    box.set_stroke(color=color, width=2)
+    box.set_fill(color=color if fill else BG, opacity=0.95 if fill else 0.25)
+    return VGroup(box, label)
+
+
+def stage_box(text: str, color: str = ACCENT, width: float = 3.4, height: float = 1.0) -> VGroup:
+    """A labelled processing stage (a function / transform) the pipeline flows through."""
+    box = Rectangle(width=width, height=height, stroke_width=2.2, stroke_color=color)
+    box.set_fill(color=color, opacity=0.08)
+    return VGroup(box, mono(text, size=26, color=color).move_to(box))
+
+
+def code_lines(lines: list[str], size: float = 22, color: str = MUTED) -> VGroup:
+    """A left-aligned stack of monospace lines (a call log / disasm). Index it to highlight one: a
+    beat recolours g[i] to ACCENT as each call fires."""
+    g = VGroup(*[mono(ln, size=size, color=color) for ln in lines])
+    g.arrange(DOWN, buff=0.2, aligned_edge=LEFT)
+    return g
+
+
 class ReScene(Scene):
     """Base scene: dark background + kit defaults. Beats subclass this (not Scene)."""
 
@@ -110,6 +134,9 @@ __all__ = [
     "bit_strip",
     "bits_of",
     "caption",
+    "code_lines",
     "mono",
+    "pill",
+    "stage_box",
     "value_box",
 ]
