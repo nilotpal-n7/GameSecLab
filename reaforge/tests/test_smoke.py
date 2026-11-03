@@ -174,7 +174,7 @@ def test_viz_beats_wired():
 
     Skips cleanly where Manim is not installed (it is a video-production dep, not a reversing one)."""
     try:
-        from reaforge.viz import branchless_mask, kdf_chain, kit  # noqa: F401
+        from reaforge.viz import arsenal, branchless_mask, fantasy_cpu, iat, kdf_chain, kit, unpack  # noqa: F401
     except ImportError as e:
         print(f"  [skip] manim not installed ({e}); viz beats not checked")
         return
@@ -182,6 +182,10 @@ def test_viz_beats_wired():
     assert all(callable(getattr(kit, f)) for f in kit_fns)
     assert issubclass(branchless_mask.SiProDumpMask, branchless_mask.BranchlessMaskScene)
     assert issubclass(kdf_chain.SiKdfChain, kdf_chain.KdfChainScene)
+    from reaforge.viz.kit import ReScene
+
+    beats = (arsenal.ArsenalWall, unpack.UnpackToSnapshot, iat.IatUnwrap, fantasy_cpu.FantasyCpu)
+    assert all(issubclass(b, ReScene) for b in beats)  # all six beats build on the kit base
     from targets.system_informer.config import MASK, MASK_TRAP
 
     mask_scene = branchless_mask.SiProDumpMask()  # __init__ pulls the numbers; no render
