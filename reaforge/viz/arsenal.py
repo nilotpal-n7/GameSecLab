@@ -40,9 +40,7 @@ class ArsenalWall(ReScene):
     def construct(self) -> None:
         # left: the modest thing being protected
         title_l = caption("what it protects", size=22).move_to(LEFT * 3.7 + UP * 2.7)
-        rows = VGroup(*[mono(t, size=19, color=MUTED) for t in self.PROTECTS]).arrange(
-            DOWN, buff=0.32, aligned_edge=LEFT
-        )
+        rows = VGroup(*[mono(t, size=19, color=MUTED) for t in self.PROTECTS]).arrange(DOWN, buff=0.32, aligned_edge=LEFT)
         panel = self._panel(rows).next_to(title_l, DOWN, buff=0.4)
         self.play(FadeIn(title_l), FadeIn(panel))
         self.wait(0.5)
@@ -68,9 +66,7 @@ class ArsenalWall(ReScene):
         self.wait(1.5)
 
     def _panel(self, rows: VGroup) -> VGroup:
-        box = RoundedRectangle(
-            corner_radius=0.14, width=rows.width + 1.0, height=rows.height + 0.7, stroke_width=2
-        )
+        box = RoundedRectangle(corner_radius=0.14, width=rows.width + 1.0, height=rows.height + 0.7, stroke_width=2)
         box.set_stroke(color=MUTED).set_fill(color=BG, opacity=0.4)
         rows.move_to(box).shift(RIGHT * 0.15)
         marks = VGroup(*[mono("x", size=18, color=FALSE).next_to(r, LEFT, buff=0.25) for r in rows])

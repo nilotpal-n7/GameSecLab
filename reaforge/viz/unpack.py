@@ -14,22 +14,8 @@ from manim import DOWN, LEFT, RIGHT, UP, Arrow, Create, FadeIn, FadeOut, Indicat
 
 from reaforge.viz.kit import ACCENT, FALSE, GOLD, MUTED, TRUE, ReScene, caption, code_lines, mono, stage_box
 
-NOISE = (
-    "4F A2 1B C9 7E 03 D1 8A",
-    "E6 11 9C 55 B0 2F 6D F4",
-    "0A 77 C3 12 AE 59 80 BB",
-    "D9 34 6F 21 93 EC 48 1D",
-    "7C 5A B2 0E F1 86 3B A7",
-    "22 C8 90 4D 1F E3 65 9B",
-)
-CODE = (
-    "push   rbp",
-    "mov    rbp, rsp",
-    "sub    rsp, 0x40",
-    "lea    rcx, [rip+key]",
-    "call   sip_gate_init",
-    "mov    [rbp-8], rax",
-)
+NOISE = ("4F A2 1B C9 7E 03 D1 8A", "E6 11 9C 55 B0 2F 6D F4", "0A 77 C3 12 AE 59 80 BB", "D9 34 6F 21 93 EC 48 1D", "7C 5A B2 0E F1 86 3B A7", "22 C8 90 4D 1F E3 65 9B")
+CODE = ("push   rbp", "mov    rbp, rsp", "sub    rsp, 0x40", "lea    rcx, [rip+key]", "call   sip_gate_init", "mov    [rbp-8], rax")
 
 
 class UnpackToSnapshot(ReScene):

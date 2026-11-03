@@ -40,15 +40,7 @@ def bits_of(value: int, nbits: int) -> list[int]:
     return [(value >> i) & 1 for i in range(nbits - 1, -1, -1)]
 
 
-def bit_strip(
-    value: int,
-    nbits: int = 16,
-    cell: float = 0.3,
-    on: str = ACCENT,
-    off: str = MUTED,
-    nibble_gap: float = 0.12,
-    show_bits: bool = False,
-) -> VGroup:
+def bit_strip(value: int, nbits: int = 16, cell: float = 0.3, on: str = ACCENT, off: str = MUTED, nibble_gap: float = 0.12, show_bits: bool = False) -> VGroup:
     """A row of `nbits` little squares, MSB on the left, filled when the bit is set.
 
     Grouped in nibbles with a small gap so a hex value is readable at a glance. The returned VGroup

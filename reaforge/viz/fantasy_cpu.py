@@ -38,9 +38,7 @@ class FantasyCpu(ReScene):
 
         # ...which jumps into a made-up instruction set run by an interpreter
         disp = stage_box("VM dispatcher", color=GOLD, width=3.4, height=1.3).move_to(RIGHT * 2.6)
-        loop = CurvedArrow(
-            disp.get_right() + UP * 0.35, disp.get_right() + DOWN * 0.35, angle=-3.4, color=GOLD, tip_length=0.2
-        )
+        loop = CurvedArrow(disp.get_right() + UP * 0.35, disp.get_right() + DOWN * 0.35, angle=-3.4, color=GOLD, tip_length=0.2)
         a_stub = Arrow(sframe.get_right(), disp.get_top(), buff=0.2, color=ACCENT, stroke_width=3)
         self.play(Create(a_stub), FadeIn(disp), Create(loop))
 
@@ -57,8 +55,15 @@ class FantasyCpu(ReScene):
 
         # ask the decompiler -> nothing. that IS the proof.
         self.play(
-            FadeOut(stub), FadeOut(sframe), FadeOut(stag), FadeOut(a_stub), FadeOut(a_bc),
-            FadeOut(bytecode), FadeOut(btag), FadeOut(note), FadeOut(loop),
+            FadeOut(stub),
+            FadeOut(sframe),
+            FadeOut(stag),
+            FadeOut(a_stub),
+            FadeOut(a_bc),
+            FadeOut(bytecode),
+            FadeOut(btag),
+            FadeOut(note),
+            FadeOut(loop),
             disp.animate.move_to(UP * 2.3).scale(0.8),
         )
         dec = stage_box("decompiler", color=ACCENT, width=3.2, height=1.0).move_to(LEFT * 3.0)

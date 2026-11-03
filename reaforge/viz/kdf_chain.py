@@ -30,12 +30,7 @@ class KdfChainScene(ReScene):
 
     INGREDIENTS = ("HWID", "issuer pubkey", "binary CRC", "product slug")
     CRC_INDEX = 2  # which ingredient is the binary checksum (spotlit for the callback)
-    HKDF_CALLS = (
-        "BCryptOpenAlgorithmProvider",
-        "BCryptCreateHash",
-        "BCryptHashData",
-        "BCryptFinishHash",
-    )
+    HKDF_CALLS = ("BCryptOpenAlgorithmProvider", "BCryptCreateHash", "BCryptHashData", "BCryptFinishHash")
     AES_CALLS = ("GenerateSymmetricKey", "SetProperty  (GCM)", "Decrypt")
     MASKS = {"dump": 0x450, "inject": 0x2A, "edit": 0x38}
     TRAP = 0x1000
@@ -85,10 +80,7 @@ class KdfChainScene(ReScene):
         self.play(Indicate(crc, color=GOLD), FadeIn(plant))
         self.wait(0.9)
 
-        self.play(
-            FadeOut(ings), FadeOut(log), FadeOut(hk), FadeOut(note),
-            FadeOut(arrow_in), FadeOut(arrow_key), FadeOut(plant),
-        )
+        self.play(FadeOut(ings), FadeOut(log), FadeOut(hk), FadeOut(note), FadeOut(arrow_in), FadeOut(arrow_key), FadeOut(plant))
         self.play(key.animate.move_to(LEFT * 3.4 + UP * 2.4))
         return key
 
@@ -106,42 +98,27 @@ class KdfChainScene(ReScene):
         for ln in log:
             self.play(ln.animate.set_color(ACCENT), run_time=0.3)
 
-        masks = VGroup(
-            *[value_box(_hex32(v), label=name, color=TRUE, width=2.5) for name, v in self.MASKS.items()]
-        ).arrange(RIGHT, buff=0.5).move_to(DOWN * 2.4)
+        masks = VGroup(*[value_box(_hex32(v), label=name, color=TRUE, width=2.5) for name, v in self.MASKS.items()]).arrange(RIGHT, buff=0.5).move_to(DOWN * 2.4)
         arrow_out = Arrow(aes.get_bottom(), masks.get_top(), buff=0.15, color=TRUE, stroke_width=3)
         self.play(Create(arrow_out), FadeIn(masks, shift=DOWN * 0.2))
-        done = caption("the entitlements decrypt  ->  the real access masks", size=24).next_to(
-            masks, DOWN, buff=0.3
-        )
+        done = caption("the entitlements decrypt  ->  the real access masks", size=24).next_to(masks, DOWN, buff=0.3)
         self.play(FadeIn(done))
         self.play(Indicate(masks, color=TRUE))
         self.wait(1.1)
 
-        self.play(
-            FadeOut(key), FadeOut(blob), FadeOut(aes), FadeOut(log),
-            FadeOut(a_key), FadeOut(a_blob), FadeOut(arrow_out), FadeOut(done),
-        )
+        self.play(FadeOut(key), FadeOut(blob), FadeOut(aes), FadeOut(log), FadeOut(a_key), FadeOut(a_blob), FadeOut(arrow_out), FadeOut(done))
         self.play(masks.animate.move_to(DOWN * 0.3))
         return masks
 
     def _fail(self, masks: VGroup) -> None:
-        note = caption(
-            "patch one byte  ->  CRC changes  ->  key is wrong",
-            size=26, color=FALSE,
-        ).move_to(UP * 2.3)
+        note = caption("patch one byte  ->  CRC changes  ->  key is wrong", size=26, color=FALSE).move_to(UP * 2.3)
         self.play(Write(note))
         self.wait(0.4)
 
-        trap = VGroup(
-            *[value_box(_hex32(self.TRAP), label=name, color=FALSE, width=2.5) for name in self.MASKS]
-        ).arrange(RIGHT, buff=0.5).move_to(masks)
+        trap = VGroup(*[value_box(_hex32(self.TRAP), label=name, color=FALSE, width=2.5) for name in self.MASKS]).arrange(RIGHT, buff=0.5).move_to(masks)
         self.play(ReplacementTransform(masks, trap))
         self.play(Indicate(trap, color=FALSE))
-        punch = caption(
-            "GCM auth fails  ->  the gate returns the trap mask",
-            size=22, color=FALSE,
-        ).next_to(trap, DOWN, buff=0.5)
+        punch = caption("GCM auth fails  ->  the gate returns the trap mask", size=22, color=FALSE).next_to(trap, DOWN, buff=0.5)
         self.play(Write(punch))
         self.wait(1.4)
 

@@ -1,373 +1,335 @@
-# Breaking System Informer Pro — walkthrough script
+# The most paranoid software I've ever seen — walkthrough script
 
-**Target length:** ~20 min · **Format:** screen-first, no face, voiceover · **Voice:** your own (record in short
-passes; retakes are invisible on a screen cut).
+**Target length:** ~20 min · **Format:** screen-first, no face, voiceover · **Voice:** your own.
+
+**The angle (read this first).** Nobody cares that this is "VMProtect" or "Themida" — those are brand names
+for tool nerds. What people care about is the _insanity_: the absurd, paranoid, overbuilt arsenal a piece of
+software deploys to stop you touching three menu options. That's the hook. The video is a tour of the
+weapons locker — hardware binding, OS fingerprinting, encryption, obfuscation, debugger checks, integrity
+checks, anti-tamper, timing checks, a whole emulated fantasy CPU, self-generating code — revealed one layer
+at a time, each one more unhinged than the last, until all of it falls to one person with a laptop. The
+protectors are the _monster_. We never make them the subject.
+
+Tone: awe and a little fear. The viewer should keep thinking "this is insane, and there's STILL more."
 
 **How to read this file**
-- Plain text = narration, spoken.
-- `[ ... ]` = delivery / emotion cue (how to say it, when to pause).
-- **[Screen: ...]** = what's on screen at that moment.
-- **[ANIM: name]** = cut to a motion-graphic beat. Beats live in `reaforge/viz/`. Status: `mask` = built
-  (`branchless_mask.py`), the rest to build from the same kit.
-- `~m:ss` markers are rough targets at ~140 words/min — don't chase them, they're just pacing rails.
 
-**Recording tips baked into the cut**
-- Read off a second monitor; mark your breaths at the line breaks.
-- The emotion that sells this isn't acted — it's you *reacting* to the content. The two beats that carry the
-  whole video are the patch that does nothing (§0) and the Frida mystery (§5). Perform those, don't read them.
-- Capture every terminal/UI take at 1440p+, font 18–20pt, a clean desktop, one accent color. The commands are
-  already one-liners (that's why) — do a dry run so each take is a clean single take.
+- Plain text = narration. `[ ... ]` = delivery/emotion cue. **[Screen: ...]** = what's on screen.
+  **[ANIM: name]** = a motion-graphic beat (`reaforge/viz/`). Built: `mask`, `KDF`. The rest are notes for
+  later — no rendering now.
+- `~m:ss` = rough pacing at ~140 wpm. Narration is ~13 min of talk; screen action + pauses carry it to ~20.
 
 ---
 
-## §0 — Cold open  ~0:00–1:00
+## §0 — Cold open: the weapons locker ~0:00–1:20
 
-**[Screen: System Informer open, a busy process list. Right-click a process → the "System Informer Pro"
-submenu — Dump, Inject, Edit — all greyed out.]**
+**[Screen: System Informer. Right-click a process → three menu items, greyed out. Click one. Nothing.]**
 
-This is System Informer. Think Task Manager — for people who actually want to know what their machine is
-doing. And these three options right here —
+See these three options? They're locked. To use them, you need a license.
 
-**[Screen: hover the greyed items; click one, nothing happens.]**
+[plainly] Fair enough. Software costs money. But I got curious about _how_ it stops you. So I pulled it
+apart. And what I found defending these three menu items was —
 
-— are locked. Pro features. Licensed.
+[start calm, then accelerate, no breaths between — this is a barrage]
 
-[beat]
+Hardware binding. OS fingerprinting. Multiple layers of encryption. Code obfuscation. Debugger detection.
+Integrity checks. Anti-tamper. Timing checks.
 
-Now normally? This is the easiest thing in the world. You open a debugger, you find the check — some
-`if (licensed)`, somewhere — you flip one jump, and you're done. Five minutes. I've done it a hundred times.
+[beat — then quieter, almost disbelief]
 
-**[Screen: x64dbg attached, scrolling, land on a plausible compare + conditional jump near the menu handler.
-Patch the jump — nop it / invert it. Save.]**
+An entire emulated CPU. A processor that doesn't exist in any computer on Earth, invented _purely_ so you'd
+have to reverse-engineer an imaginary machine before you could read a single line.
 
-So I did exactly that.
+And code that rewrites itself while it runs.
 
-**[Screen: back in SI, right-click, click the Pro item again — still greyed / still dead.]**
+[flat, let it land]
 
-And… [flat] nothing.
+I'm not reading a feature list off a box. Every single one of those is inside this one program. To protect…
+three menu options.
 
-[a little incredulous] I patched the check. The feature's still dead.
+**[Screen: x64dbg — find a plausible check, NOP the jump, save. Back in SI: still greyed. Still dead.]**
 
-[quicker, leaning in] Because there *is* no check. Not the way you think.
+I tried the easy way first. The way that works on almost everything. [beat] It did nothing. It didn't even
+_notice_ me.
 
-**[ANIM: mask — open on the formula, hold.]**
+[leaning in, a little hooked, a little afraid] So we're going to do this properly. I'm going to take you
+through every single layer of this thing — and show you how each one comes apart.
 
-The license on this thing isn't a yes or a no. It's wired — directly — into the memory access the tool asks
-the *kernel* for. There's no branch to flip. Nothing to patch.
-
-[beat] And that's the moment I knew this was gonna take a while.
-
-**[Title card: "Breaking System Informer Pro — two protectors, one license."]**
+**[Title card: "The most paranoid software I've ever seen."]**
 
 ---
 
-## §1 — The setup  ~1:00–3:00
+## §1 — The absurdity ~1:20–3:00
 
-**[Screen: SI running, calm b-roll of the UI — process tree, graphs.]**
+**[Screen: calm b-roll of System Informer running — process tree, graphs.]**
 
-Okay. Let's back up and do this properly.
+Let me set the scene, because the scene is ridiculous.
 
-System Informer is open source — it's the community successor to Process Hacker. What I'm running is a
-*fork*: same tool, but somebody bolted a commercial "Pro" tier on top. Three features, all gated:
+This is System Informer. It's a system monitor — Task Manager with superpowers. It's open source. Free. And
+someone took it, and built a paid "Pro" tier on top, with three extra features:
 
-**[Screen: the Pro submenu again, naming each as it's highlighted.]**
+**[Screen: the Pro submenu, naming each.]**
 
-A process **memory dumper** — snapshot a running process to disk. A **DLL injector**. And a live **memory
-editor** — read and write another process's memory by hand. Serious, powerful stuff. Exactly the kind of
-thing you'd put behind a license.
+Dump a process's memory to disk. Inject a DLL. Edit another process's memory live. Useful tools. The kind of
+thing you'd reasonably charge for.
 
-[curious] And here's what makes it interesting. When you buy the Pro tier, you don't get a new build. You get
-a *file* — a little machine-bound license that sits next to the executable. The features were in there the
-whole time. The license just… decides whether they work.
+[turning] So here's the imbalance I want you to hold in your head for the next twenty minutes.
 
-So the obvious question: how does it decide? And *that* is where this stops being a normal crackme.
+**[ANIM: a single checkbox on one side. On the other, the arsenal from §0 stacking up as a wall.]**
 
-**[ANIM: mask — full beat, ~35s, let it play with narration under it.]**
+On this side: three menu options. On _this_ side: the most aggressive software protection stack money can
+buy. Two separate commercial fortresses, stacked on top of each other, running every defense I just listed —
+to guard a feature set you could rebuild in an afternoon.
 
-Every one of those features ends up calling into the kernel to open a process — `NtOpenProcess` — and that
-call takes an *access mask*: a bitfield that says exactly what you're allowed to do to that process. Dump
-needs read rights. Inject needs to allocate and write. The editor needs write.
-
-What this gate does is take three facts — are you *entitled*, does the binary's *checksum* match, is there
-*no debugger* — AND them into a single bit. Then it does something clever: it *negates* that bit into a
-full-width mask. One becomes all-ones. Zero becomes all-zeros.
-
-**[ANIM: mask — the select moment.]**
-
-And then the access mask is just: `base AND m`, OR'd with a trap value AND *not*-m. Licensed, and the real
-access rights survive. Not licensed —
-
-**[ANIM: mask — the flip to trap.]**
-
-— and you get the trap mask instead. `0x1000`. The handle still opens. It looks like it worked. But the
-operation quietly dies, because you were never granted the right to do it.
-
-[flat, dry] No compare. No jump. Nothing to NOP. The license value *is* the access mask.
-
-[beat] This wasn't a weekend project.
+[half a laugh] It's like putting a bank vault door on a garden shed. And I love it. Because somewhere, a
+developer decided these three checkboxes were worth _all of this_ — and I want to know what "all of this"
+actually is. So let's open the vault door. Layer by layer.
 
 ---
 
-## §2 — Recon: two protectors  ~3:00–5:30
+## §2 — Weapon one: it's welded to your machine ~3:00–5:30
 
-**[Screen: terminal. Run the reaforge orchestrator recon step; DIE (Detect It Easy) output scrolls.]**
+**[Screen: the license file sitting next to the executable.]**
 
-First thing you do with an unknown binary is ask what it's made of. This is Detect It Easy, driven from my
-toolchain. And right away —
+First layer. The license isn't a password you type. It's a _file_ — and that file is bound to one specific
+computer. This one. Copy it to another machine and it's dead on arrival.
 
-**[Screen: DIE flags the core module.]**
+How? It reads your hardware. A fingerprint of _your_ machine — and it bakes that fingerprint into the math
+that unlocks the features.
 
-— the core. **VMProtect.** Then I point it at the plugin that carries the feature menu —
+**[ANIM: mask — open on the formula; this is the gate the fingerprint feeds.]**
 
-**[Screen: DIE on the plugin → Themida / WinLicense.]**
+And here's the part that got me. I expected a check — some `if (licensed)` I could flip. There isn't one.
+The license state is fused _directly_ into the memory access the tool asks the operating system for. There's
+no yes-or-no to patch.
 
-— and that one's **Themida**. [small laugh] Two different commercial protectors. In one target. Great.
+**[ANIM: mask — the select; licensed → real access, flip → trap.]**
 
-Quick primer, because this matters for everything after.
+Licensed, and it asks the kernel for real access. Not licensed —
 
-**[ANIM: protectors — a clean binary, then two transforms.]**
+**[ANIM: mask — flip to trap.]**
 
-A protector wraps your real code so it's hard to read and hard to run outside the licensed environment.
-There are two big families here. **Packing** encrypts your code and unrolls it in memory at runtime — so on
-disk there's nothing to read. **Virtualization** is nastier: it takes your actual instructions and rewrites
-them into bytecode for a *made-up* CPU that only exists inside the protector. Your logic is still there — but
-to read it, you'd have to reverse the imaginary processor first.
+— and it asks for a dead-end instead. The handle opens. It _looks_ like it worked. And then the operation
+quietly dies, because you were never actually granted the right to do it. No branch. Nothing to NOP.
 
-VMProtect does both. Themida does both, plus a specialty we'll get to that makes the imports lie to you.
-
-[matter-of-fact] So there's no single "unpack" button. Two protectors, two completely different jobs.
-
----
-
-## §3 — Breaking VMProtect  ~5:30–10:00
-
-**[Screen: terminal, the unpack step starting.]**
-
-Let's take the core first — the VMProtect side, because that's where the gate logic lives.
-
-You can't just read the packed file; on disk the real code is encrypted. So instead of fighting the unpacker,
-I let it do its job — under emulation. My toolchain loads the packed binary into a CPU emulator and *runs* it,
-step by step, until it finishes decrypting itself and jumps to the original entry point — the OEP.
-
-**[ANIM: unpack — packed bytes resolving toward an OEP marker.]**
-
-**[Screen: the emulator reaching OEP; a snapshot being written.]**
-
-The moment it hits that point, I freeze it. Snapshot the whole memory image. Now I've got the *real*,
-decrypted code sitting in a file — and every future run starts from this snapshot instead of unpacking again.
-[aside] Minutes, down to seconds.
-
-**[Screen: IDA Pro opens on the snapshot. Navigate to the gate export.]**
-
-Now, IDA. This is the function the whole gate rides on — the one that produces that access mask. And here's
-what's waiting for me.
-
-**[Screen: the export body — a tiny stub: move a register, load an address, jump.]**
-
-[beat] That's it. Move a value, load a pointer, jump. That's not the function. That's a *doorway* — into the
-virtual machine. The real logic was turned into bytecode for that made-up CPU I mentioned. Watch what happens
-when I ask IDA's decompiler for the C.
-
-**[Screen: Hex-Rays bails / produces nothing meaningful.]**
-
-Nothing. [small, satisfied] And that's not a failure — that *is* the evidence. A normal function decompiles.
-This one can't, because there's no normal code here to decompile. It's virtualized.
-
-[aside, lighter] Side note — this thing fought me before I even got it *running*. The host has a modern
-security feature on called shadow stacks, and when the packed code tried to return through it, the whole
-process just… fast-failed. Instant crash. Turning that off was step zero. The protector doesn't play nice,
-even with the operating system.
-
-So — if I can't read the logic statically, I do what I did with the unpacker: I *run* it, and I watch what it
-produces.
-
-**[Screen: terminal — the dynamic step. Run the gate with no license; print the mask for each feature.]**
-
-No license installed. Dumper?
-
-**[Screen: 0x1000.]**
-
-Trap. Injector? Trap. Editor? Trap. [flat] Everything's `0x1000`. Every feature, shut.
-
-**[Screen: with a valid license present — the dumper mask.]**
-
-And with a real license — dump comes back `0x450`. The actual process-dump rights. [beat]
-
-There it is. I don't need to read the imaginary CPU. I've got the exact masks it hands out in both states —
-licensed and not — and I've proven, live, that flipping the license is the *only* thing that moves them. And
-if you go back to the callers —
-
-**[Screen: IDA on the host with symbols — the dumper call site decompiled: `access = sip_access_mask(...)`
-feeding straight into `PhOpenProcess(&handle, access, pid)`.]**
-
-— it reads exactly like the picture. The mask comes out of the gate and goes straight into the kernel call.
-Clean. The VMProtect side is understood.
+[beat] That's weapon one. And it's keyed to a fingerprint of your machine. We'll come back for the key — I
+have to get _into_ the thing first. And that's where it starts fighting dirty.
 
 ---
 
-## §4 — Breaking Themida  ~10:00–14:00
+## §3 — Weapon two: it knows when you're watching ~5:30–8:00
 
-**[Screen: back to terminal; the plugin binary.]**
+**[Screen: attach a debugger. Something immediately goes wrong — a crash, a bail-out.]**
 
-Now the plugin. The Themida one. And Themida has a trick that's genuinely mean.
+The second you try to _look_ at a program like this, it feels it.
 
-**[ANIM: IAT — a normal import table: slot → real API in a system DLL.]**
+Debugger checks. The standard move in reverse-engineering is: attach a debugger, step through, watch it run.
+This thing watches _back_. Attach to it and it can see you — through the operating system, through timing,
+through a dozen tells — and it changes its behavior, or it just dies, so you never see the real path.
 
-Every program has an import table — a list of the system functions it calls, each one a slot pointing at the
-real function. `LoadLibrary`, `WriteProcessMemory`, and so on. It's the first thing you read to understand
-what a binary *does*.
+**[Screen: the specific crash — returning out of the protected code fast-fails.]**
 
-**[ANIM: IAT — the slots now point into the protector's own stubs instead.]**
+It fought me before I could even run it cleanly. There's a modern CPU security feature — a shadow stack —
+and when the protected code tried to return through it, the whole process instantly killed itself. A booby
+trap, basically. Step on it wrong, and there's nothing left to analyze.
 
-Themida rewrites that table. Every slot now points at *its own* code — a little wrapper buried inside the
-protector that eventually, after some obfuscation, jumps to the real function. So if you just read the import
-table, you learn nothing. Every call goes through the protector first.
+[a little rattled, then determined] And layered under that: timing checks. It measures how long its own code
+takes to run. A debugger makes everything slower — so if a stretch of code suddenly takes a thousand times
+longer than it should, it _knows_ someone's single-stepping it, and it bails.
 
-[matter-of-fact] You can't fix that by hand — there are hundreds of them. So you automate it. For each slot,
-you emulate the wrapper until it stops wrapping and finally jumps somewhere real — and *that* address tells
-you which API it was hiding.
-
-But first I need the unpacked code, and the clean on-disk file won't give it to me. So I take it from a
-*running* copy.
-
-**[Screen: the capture command — a full-memory dump of the live process. Watch the size climb.]**
-
-That's the whole process — 216 megabytes of live memory, everything decrypted, exactly as it runs.
-
-**[Screen: carve the plugin module out of the dump; then the unwrap running.]**
-
-Carve the plugin out of that dump, and turn the unwrapper loose on its import table.
-
-**[Screen: the unwrap log resolving slot after slot.]**
-
-And now it just… walks them. Six hundred and fifty-one of them emulated straight through. Eleven more that
-point directly. Which leaves —
-
-**[Screen: 662 / 663. One unresolved.]**
-
-[beat, deadpan] — one. Six hundred and sixty-two of six hundred and sixty-three.
-
-[a little exasperated, affectionate] One stubborn thunk. And of course it's a special one — it's the function
-that *terminates the process*. I can't emulate a wrapper whose whole job is to call "exit," or my emulator
-exits with it. [beat] So I don't emulate it. I look it up — the clean build I kept knows that slot by name,
-and I just borrow the answer.
-
-**[Screen: 663 / 663.]**
-
-Six hundred and sixty-three of six hundred and sixty-three. [quiet, satisfied] All of them.
-
-**[Screen: rebuild the clean PE; run DIE on it.]**
-
-Rebuild it into a clean file — imports restored, the protector's sections dropped — run the detector back over
-it, and… no Themida. It's just a normal DLL again. [beat] The wrapping's gone.
+So rule one with something this paranoid: [beat] don't poke the live animal. Don't attach. Don't single-step.
+Work on a _corpse_ — a frozen snapshot of its memory — where it can't see you, can't feel time passing, and
+can't fight back. Which brings us to the next wall: getting a corpse at all.
 
 ---
 
-## §5 — The KDF  ~14:00–17:00
+## §4 — Weapon three: you can't even read it ~8:00–11:00
 
-**[Screen: terminal. The gate, the license file.]**
+**[Screen: open the raw file in a hex viewer / disassembler — it's noise.]**
 
-One piece left — the part I'd been avoiding. The crypto.
+Here's the file on disk. This is supposed to be the program. [beat] It's garbage. Encrypted noise. There's no
+code here to read, because the real code is _encrypted_, and it only decrypts itself in memory, at the last
+possible second, right before it runs.
 
-That license file isn't plaintext. The access masks — the `0x450`, the real rights — are *encrypted* inside
-it. The gate derives a key, decrypts the entitlements, and only then does it have the numbers to hand out. If
-I want to forge a license, I have to know exactly how that key is built.
+**[ANIM: unpack — packed bytes slowly resolving toward a clean entry point.]**
 
-And the key derivation is inside the VMProtected core. Virtualized. [flat] So reading it statically is off the
-table — same wall as before.
+So I don't decrypt it by hand. I let the program do it — but inside an emulator. A sandbox CPU that runs the
+packed code step by step and lets it unpack _itself_, while I watch from outside, invisibly. The instant it
+finishes unwrapping and jumps to the real start, I freeze everything and photograph the memory. Now I've got
+my corpse: the real, decrypted code, sitting still.
 
-But crypto has to touch the real world eventually. It calls the operating system's actual crypto library. So I
-don't read the code — I *watch the calls*. I hook every crypto function the process touches and just let it run.
+**[Screen: the clean, decrypted code in the disassembler.]**
 
-**[Screen: run the crypto tracer against the live process. The output is… empty.]**
+[relief] And now I can finally read it. Except — [beat] it's lying to me.
 
-[beat] And I get… nothing. [flat] No calls. Zero.
+**[ANIM: IAT — a normal import list: each slot → a real system function.]**
 
-[the mood drops — this is the despair beat, play it] Which, after everything else, I read exactly one way:
-VMProtect is hiding the crypto too. Virtualizing the calls, bypassing the normal library. [quietly] Of course
-it is. Why would this be the easy part.
+Every program keeps a list of the system functions it borrows — open a file, write memory, and so on. It's
+the first thing you read to understand what a program _does_. This one rewrote that entire list.
 
-**[Screen: staring at the empty log. A pause on screen.]**
+**[ANIM: IAT — every slot now detours through the protector's own code before the real function.]**
 
-So I spent a while convinced I was beaten on this one.
+Every single entry now points at the protector's _own_ code first — a little maze that eventually, after a
+pile of junk, jumps to the real function. Obfuscation. Hundreds of them. So even with the decrypted code in
+front of me, I can't tell what it's calling.
 
-[a turn, lighter] And then I actually read my own hook code. [beat] And the trace wasn't catching nothing
-because the crypto was hidden. It was catching nothing because *my tool was wrong.* The scripting library had
-changed one function in a new version — the exact call I used to find exports had been *removed* — so I was
-installing hooks on… nothing. Silently. No error. [dry] An empty log that looked exactly like defeat.
+[matter-of-fact, regaining control] You can't undo that by hand. So you automate it: follow each maze to its
+exit, and whatever it lands on is the real function it was hiding. Hundreds of them, unwound —
 
-**[Screen: fix the one line; re-run the tracer. The log explodes with calls.]**
+**[Screen: the unwrap running; 663/663.]**
 
-One line. And —
+— all but one. [small, affectionate] One stubborn entry, and of course it's the one whose job is to _kill the
+program_ — I can't follow a maze that exits by terminating my own tool. So I look that one up by name from a
+clean copy, and… [beat] there. Every import, named. The file's readable for the first time. The obfuscation
+is off.
 
-**[ANIM: KDF — the call sequence assembling: hash → hash → hash, then the symmetric key, then decrypt.]**
-
-— there's the whole thing. A hash-based key derivation — SHA-256, run in passes — building a key out of your
-hardware ID, the publisher's signing key, and a checksum of the binary itself. [that's the "aha", say it like
-one] *That's* why patching the binary broke the feature back at the start — change one byte and the checksum
-changes, and the key comes out wrong, and the whole thing fails closed. It was all connected.
-
-And then that derived key drives an AES decrypt — and *out* come the real access masks. [beat] The ones I'd
-only ever seen as numbers are now something I can reproduce. The license is understood, end to end.
+[beat] And I still haven't reached the worst of it.
 
 ---
 
-## §6 — The payoff  ~17:00–19:00
+## §5 — Weapon four: the fantasy CPU ~11:00–14:30
 
-**[Screen: the signer tool. Issue a license for this machine's hardware ID.]**
+**[Screen: navigate to the function that actually runs the license gate. Open it.]**
 
-So let's use it. I hold the signing side now — hardware ID, the entitlements, the masks — sign it, and write
-the license file next to the executable.
+This. This is the one I still can't quite believe is a real thing people ship.
 
-**[Screen: drop `SystemInformer.sipm` next to the exe. Launch System Informer. Open Help → About.]**
+I finally find the function at the heart of the whole license — the code that decides what you're allowed to
+do. I open it, expecting logic. And I get —
 
-**[Screen: the About box — status flips to licensed / Pro.]**
+**[Screen: a tiny stub — load a pointer, jump.]**
 
-[quiet] Pro.
+— that. Three instructions. Load an address, and jump. That's not the function. That's a _doorway_.
 
-**[Screen: right-click a process → the Pro submenu. The three items are *live* now — not greyed.]**
+**[ANIM: fantasy-cpu — a normal instruction stream morphing into alien bytecode feeding a dispatcher loop.]**
 
-And the menu. [beat] All three. Lit.
+Because the real logic isn't x86 anymore. Somebody took the actual code and _translated it into a made-up
+instruction set_ — bytecode for a processor that does not exist. A fantasy CPU. And they shipped a little
+interpreter for that fantasy CPU inside the program. So to read the license logic, you'd first have to
+reverse-engineer an entire imaginary computer — its made-up instructions, its made-up registers — that was
+invented for the sole purpose of wasting your life.
 
-**[Screen: run the memory dumper on a process — a dump file lands on disk. Then the live editor — read an
-address, change a value, write it back.]**
+**[Screen: ask the decompiler for the logic — it produces nothing usable.]**
 
-Dump — real file, real process. The editor — read memory, change it, write it back, and it *takes*.
+Watch. I ask the decompiler for the C. [beat] Nothing. And that's not it failing — that _is_ the proof.
+Normal code decompiles. This can't, because there's no normal code here. It's running on the imaginary
+machine. [a little awed] And on top of _that_, the interpreter rewrites and reshuffles its own code as it
+runs, so it never even looks the same twice.
 
-[warm, earned] Same executable I started with. I never patched a single byte of it. I didn't crack the code —
-I cracked the *license*, the way it was actually meant to be issued. The features were always there. I just
-finally convinced the gate to open.
+[steadying] Okay. If I can't read what it _is_, I can watch what it _does_. I can't reverse the fantasy CPU —
+but I can run the whole thing under my emulator, feed it a license and no license, and just _watch the number
+it spits out_ for each feature.
+
+**[Screen: run it, no license — every feature returns the dead-end value. With a license — the real one.]**
+
+No license: every feature, dead-end. Valid license: real access. [beat] I don't need to understand the
+imaginary machine. I just proved, live, exactly what it outputs in both worlds — and that the license is the
+only thing that moves it. The fantasy CPU kept its secret. It just couldn't stop me watching the exit.
 
 ---
 
-## §7 — Outro  ~19:00–20:00
+## §6 — Weapon five: it checks itself ~14:30–16:30
 
-**[Screen: a quick montage — the DIE output, the OEP snapshot, the 663/663, the KDF trace.]**
+**[Screen: back to the decrypted gate; the inputs to the license math.]**
 
-Let's be honest about what this was. Two commercial protectors. A license fused into kernel access rights so
-there's no check to patch. Encrypted entitlements behind a key derivation tied to the hardware, the publisher,
-and the binary itself. [beat] This is what real software protection looks like now. Not a jump you flip.
+Remember the very first thing I tried? Patching a byte. And how it did _nothing_? Here's why.
 
-**[Screen: the toolchain repo — the reusable pieces.]**
+This thing doesn't just check your license. It checks _itself_. Integrity. Anti-tamper. It takes a checksum
+of its own code — a fingerprint of every byte — and it folds that checksum _into the license math itself_.
 
-And none of the tools I used here were one-offs. The unpacker, the import un-wrapper, the crypto tracer, the
-little animation you saw explaining the mask — they're all general. Next target, I point them somewhere new
-and most of the work's already done. [aside] That's the actual game: reverse something once, and walk away
-with tools.
+**[ANIM: mask — spotlight the "binary matches" input feeding the gate.]**
 
-[direct, friendly] If you want to see the next one — whatever it is — you know what to do. [beat] I'll see you
-in that one.
+So the license doesn't only ask "are you entitled." It asks "is this program unmodified, and is there no
+debugger here" — all three, fused into one. Change a single byte anywhere, to patch anything, and the
+checksum changes, and the math silently comes out wrong, and the features die. [beat] Which is _exactly_ what
+happened to me in the first thirty seconds. I didn't fail to find the check. There was no check to find — and
+my patch poisoned the one number that mattered.
+
+[quiet] It's a trap designed so that the obvious attack doesn't just fail — it fails _invisibly_, and makes
+you think you're close, while you burn hours. That's not protection. That's psychology.
+
+---
+
+## §7 — Breaking through: the key ~16:30–18:30
+
+**[Screen: the license file; the crypto.]**
+
+So I can't patch it, I can't read the logic, and the real unlock values are _encrypted_ inside the license.
+One thing left: figure out exactly how it builds the key, and forge my own.
+
+And the key derivation is inside the fantasy CPU. Unreadable. [flat] Again. But crypto has to touch the real
+world eventually — so I don't read it, I hook every crypto call the program makes and watch.
+
+**[Screen: run the tracer — the log is empty.]**
+
+[the low point — play it] And I get nothing. Empty. And after everything this thing had already thrown at me,
+I believed it: the protector's hiding the crypto too. Of course it is. I sat there, genuinely beaten.
+
+[a turn, lighter] And then I read my own tool. [beat] The trace wasn't empty because the crypto was hidden.
+It was empty because _my hook was broken_ — one function I relied on had changed in a new version, and I was
+quietly attaching to nothing. An empty log that looked exactly like defeat. [dry] The scariest wall in the
+whole video was me.
+
+**[Screen: one-line fix; re-run; the log floods with crypto calls.]**
+
+**[ANIM: KDF — the chain assembling: hash passes → a key → decrypt → the real unlock values.]**
+
+And there's the whole recipe. The key is built from your hardware fingerprint, the publisher's secret, and —
+[the aha] — that checksum of the program. All of it, hashed together into one key. _That's_ the thread tying
+every layer into a knot: hardware binding, integrity, and encryption are the _same mechanism_. And now that
+I've watched it built, I can build it too. [beat] The license is mine to forge.
+
+---
+
+## §8 — The payoff ~18:30–19:30
+
+**[Screen: issue a license for this machine. Drop it next to the exe. Launch. Help → About flips to Pro.]**
+
+So I sign a license — for this machine, with the real unlock values — and drop it in.
+
+**[Screen: right-click a process → the three Pro items, live now, not greyed. Run the dumper → a file lands.
+Open the editor → change a value in another process, live.]**
+
+[quiet, earned] All three. Working. A real dump. Live memory, edited and written back.
+
+Same executable I started with. I never changed a byte of it — I couldn't, that was the whole point. I didn't
+break the code. I understood the _fortress_, every wall of it, and then I walked in through the front door
+with a key I made myself.
+
+---
+
+## §9 — Outro: the arms race ~19:30–20:30
+
+**[Screen: a fast montage — the arsenal wall from §1, now with each weapon ticking off.]**
+
+Let's count what was guarding three menu options. Hardware binding. OS fingerprinting. Encryption.
+Obfuscation. Debugger checks. Timing checks. Integrity and anti-tamper. An imaginary CPU. Self-rewriting
+code. [beat] All of it. On a Task Manager plugin.
+
+This is what protecting software actually looks like now. Not a license check — a _siege_. And here's the
+thing nobody in that arms race likes to say out loud: it all still came apart. Not because the protection was
+bad — it was genuinely, terrifyingly good — but because defense only has to lose once, and the attacker only
+has to be patient.
+
+[direct, warm] If that broke your brain a little — good. It should. [beat] I've got a tool I built along the
+way that turns most of this into a repeatable process, and a next target that's meaner than this one. That's
+the next video. I'll see you there.
 
 **[End card.]**
 
 ---
 
-## Animation build list (from §-callouts)
+## Animation build list (reordered for the new cut)
 
-| Beat | Used in | Status |
-|------|---------|--------|
-| `mask` — the branchless gate | §0, §1 | **built** (`reaforge/viz/branchless_mask.py`) |
-| `protectors` — packing vs virtualization | §2 | to build |
-| `unpack` — packed → OEP under emulation | §3 | to build |
-| `IAT` — import slot → protector stub → real API | §4 | to build |
-| `KDF` — hash passes → AES decrypt chain | §5 | to build |
+| Beat                                                    | Used in | Status                           |
+| ------------------------------------------------------- | ------- | -------------------------------- |
+| `mask` — the branchless, self-checking gate             | §2, §6  | **built** (`branchless_mask.py`) |
+| `KDF` — hardware + integrity + secret → key → unlock    | §7      | **built** (`kdf_chain.py`)       |
+| `arsenal` — the checkbox-vs-weapons-wall (hook + outro) | §1, §9  | to build                         |
+| `unpack` — encrypted bytes → decrypted snapshot         | §4      | to build                         |
+| `IAT` — every import detoured through the protector     | §4      | to build                         |
+| `fantasy-cpu` — x86 → alien bytecode + dispatcher       | §5      | to build                         |
+
+> Note: the arsenal items are real capabilities of the two protectors on this target. The hands-on segments
+> show the ones actually defeated here (hardware binding, anti-debug + the CET trap, packing, IAT obfuscation,
+> virtualization, integrity/CRC, the KDF). Timing checks and OS fingerprinting are named at the arsenal level,
+> not claimed as separately defeated — keep that honest line if you tighten the script.

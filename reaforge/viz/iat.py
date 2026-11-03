@@ -32,9 +32,7 @@ class IatUnwrap(ReScene):
         rtag = caption("ntdll / kernel32", size=20, color=TRUE).next_to(real, UP, buff=0.25)
         self.play(FadeIn(slots), FadeIn(stag), FadeIn(real), FadeIn(rtag))
 
-        direct = VGroup(
-            *[Arrow(s.get_right(), real.get_left(), buff=0.2, color=MUTED, stroke_width=3) for s in slots]
-        )
+        direct = VGroup(*[Arrow(s.get_right(), real.get_left(), buff=0.2, color=MUTED, stroke_width=3) for s in slots])
         self.play(*[Create(a) for a in direct])
         n1 = caption("normally: each slot -> the real function", size=22).to_edge(DOWN, buff=0.6)
         self.play(FadeIn(n1))
@@ -43,9 +41,7 @@ class IatUnwrap(ReScene):
         # the protector slides its maze in between
         self.play(FadeOut(direct), FadeOut(n1))
         stub = stage_box("stub\nmaze", color=FALSE, width=2.4, height=2.2)
-        in_arrows = VGroup(
-            *[Arrow(s.get_right(), stub.get_left(), buff=0.2, color=FALSE, stroke_width=3) for s in slots]
-        )
+        in_arrows = VGroup(*[Arrow(s.get_right(), stub.get_left(), buff=0.2, color=FALSE, stroke_width=3) for s in slots])
         out_arrow = Arrow(stub.get_right(), real.get_left(), buff=0.2, color=FALSE, stroke_width=3)
         self.play(FadeIn(stub), *[Create(a) for a in in_arrows], Create(out_arrow))
         n2 = caption("here: every slot detours through the protector's own code", size=22, color=FALSE)
